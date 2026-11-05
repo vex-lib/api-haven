@@ -1,10 +1,8 @@
-#include "annotation/intention.h"
-#include "annotation/overview.h"
+#include "annotation/annotation.h"
 #include "ai/ai_provider.h"
 
 #include <stddef.h>
 #include <string.h>
-#include "annotation/definition.h"
 
 ;;DEFINITION
 /** The provider directory. It exists so the engine gains or loses a provider by

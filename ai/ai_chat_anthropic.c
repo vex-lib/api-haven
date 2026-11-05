@@ -1,12 +1,10 @@
-#include "annotation/intention.h"
-#include "annotation/overview.h"
+#include "annotation/annotation.h"
 #include "ai/ai_chat_anthropic.h"
 #include "api/rest.h"
 #include "net/json.h"
 
 #include <stdio.h>
 #include <string.h>
-#include "annotation/definition.h"
 
 ;;DEFINITION
 /** The Anthropic Messages client: the same request shape as AiChat, rendered

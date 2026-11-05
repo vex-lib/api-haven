@@ -1,9 +1,7 @@
-#include "annotation/intention.h"
-#include "annotation/overview.h"
+#include "annotation/annotation.h"
 #include "ai/ai_sse.h"
 
 #include <string.h>
-#include "annotation/definition.h"
 
 ;;DEFINITION
 /** The incremental Server-Sent Events decoder. It exists because a token stream

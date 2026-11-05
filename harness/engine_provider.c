@@ -1,10 +1,8 @@
-#include "annotation/intention.h"
-#include "annotation/overview.h"
+#include "annotation/annotation.h"
 #include "harness/engine_provider.h"
 
 #include <stddef.h>
 #include <string.h>
-#include "annotation/definition.h"
 
 ;;DEFINITION
 /** The CLI coding-engine directory: 20 static descriptors naming the engines the

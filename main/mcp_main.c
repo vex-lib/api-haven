@@ -1,9 +1,8 @@
-#include "annotation/overview.h"
+#include "annotation/annotation.h"
 #include "mcp/mcp_server.h"
 
 #include <stdio.h>
 #include <string.h>
-#include "annotation/definition.h"
 
 ;;DEFINITION
 /** The stdio transport for McpServer, and nothing else. It exists so the protocol

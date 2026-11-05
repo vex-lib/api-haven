@@ -1,10 +1,8 @@
-#include "annotation/intention.h"
-#include "annotation/overview.h"
+#include "annotation/annotation.h"
 #include "asset/asset_provider.h"
 
 #include <stddef.h>
 #include <string.h>
-#include "annotation/definition.h"
 
 ;;DEFINITION
 /** The external asset-source directory: 12 static descriptors over blessed public

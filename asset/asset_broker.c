@@ -1,9 +1,7 @@
-#include "annotation/intention.h"
-#include "annotation/overview.h"
+#include "annotation/annotation.h"
 #include "asset/asset_broker.h"
 
 #include <string.h>
-#include "annotation/definition.h"
 
 ;;DEFINITION
 /** The download-to-cache seam. It exists so a stream arrives as copies the caller

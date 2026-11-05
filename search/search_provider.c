@@ -1,10 +1,8 @@
-#include "annotation/intention.h"
-#include "annotation/overview.h"
+#include "annotation/annotation.h"
 #include "search/search_provider.h"
 
 #include <stddef.h>
 #include <string.h>
-#include "annotation/definition.h"
 
 ;;DEFINITION
 /** The blessed web-search directory: 3 static descriptors (searxng, google-cse,

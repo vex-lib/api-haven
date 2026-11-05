@@ -1,10 +1,8 @@
-#include "annotation/intention.h"
-#include "annotation/overview.h"
+#include "annotation/annotation.h"
 #include "database/db_sqlite_file.h"
 
 #include <stdio.h>
 #include <string.h>
-#include "annotation/definition.h"
 
 ;;DEFINITION
 /** A catalog-only, read-only SQLite row: a borrowed path, capability caps, byte

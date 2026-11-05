@@ -1,5 +1,5 @@
 #include "com/discord/discord.h"
-#include "annotation/overview.h"
+#include "annotation/annotation.h"
 #include "net/http.h"
 #include "net/json.h"
 #include "net/url.h"
@@ -8,7 +8,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "annotation/definition.h"
 
 ;;DEFINITION
 /** The Discord webhook client: text and rich-embed payloads rendered off-heap

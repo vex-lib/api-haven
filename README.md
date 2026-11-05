@@ -17,7 +17,7 @@ normalized contract, plus the MCP tool/resource server. A library, not a product
   JSON-RPC core (`McpServer`, 14 tools + 7 resources; the `mcp_server` runner is
   `src/main/mcp_main.c`).
 
-**Proven:** owner tests exist and are wired under `../../../tests/api-haven`; the ledger
+**Proven:** owner tests exist and are wired under `../../tests/api-haven`; the ledger
 records executed evidence only for `storage/snapshot_io.h` (via
 `../../../tests/sesh/run.py`). The rest is **not ledger-proven** — test files existing is
 not executed proof (the Timestamped Test Checklist Law).
@@ -68,7 +68,7 @@ ecosystem map lives in `../../README.md` and the readiness Gist.
 ### Build
 
 ```sh
-./tools/b build api_haven # from the Vexgraph workspace root
+./tools/b.sh build api_haven # from the Vexgraph workspace root
 ```
 
 ### Standalone autonomy
@@ -100,7 +100,7 @@ Workspace indexing is not a standalone runtime build.
 ## Requirements
 
 * C23 compiler (Clang with `-std=gnu23`).
-* `vexspoke` runtime (for `net/http`, `net/json`, `nio/mem`, and `primitive/string`).
+* `vexspoke` runtime (for `net/http`, `net/json`, `nio/mem`, and `primitive/vex-string`).
 * POSIX sockets (TLS is **not** implemented: `web_search` fails closed with `TLS_BACKEND_MISSING`).
 * The workspace build system, `b` (`./tools/b`).
 

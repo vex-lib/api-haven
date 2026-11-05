@@ -1,7 +1,7 @@
 # SECURITY.md — api-haven
 
 > **Internal invariant set, not a public disclosure channel.** See the
-> [vexgraph security baseline](../../../SECURITY.md) for everything inherited
+> [vexgraph security baseline](../../SECURITY.md) for everything inherited
 > here. This file states only this repository's own surface.
 
 **Role:** R3 API connector. It owns REST/WS/SSE connector contracts, the AI

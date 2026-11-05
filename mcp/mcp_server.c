@@ -1,5 +1,4 @@
-#include "annotation/intention.h"
-#include "annotation/overview.h"
+#include "annotation/annotation.h"
 #include "mcp/mcp_server.h"
 
 #include "ai/ai_provider.h"
@@ -20,7 +19,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "annotation/definition.h"
 
 ;;DEFINITION
 /** The Model Context Protocol engine: a newline-delimited JSON-RPC 2.0 core that

@@ -1,11 +1,8 @@
-#include "annotation/intention.h"
-#include "annotation/overview.h"
-#include "annotation/platform_exclusive.h"
+#include "annotation/annotation.h"
 #include "app/app_provider.h"
 
 #include <stddef.h>
 #include <string.h>
-#include "annotation/definition.h"
 
 ;;DEFINITION
 /** The app/automation directory: 29 static descriptors naming the targets the

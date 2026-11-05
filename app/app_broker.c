@@ -1,10 +1,7 @@
-#include "annotation/intention.h"
-#include "annotation/overview.h"
-#include "annotation/platform_exclusive.h"
+#include "annotation/annotation.h"
 #include "app/app_broker.h"
 
 #include <stddef.h>
-#include "annotation/definition.h"
 
 ;;DEFINITION
 /** The bounded app/automation action seam. It exists so a driver call cannot

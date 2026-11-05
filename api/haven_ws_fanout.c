@@ -1,10 +1,7 @@
 #include "api/haven_ws_fanout.h"
-#include "annotation/draft.h"
-#include "annotation/intention.h"
-#include "annotation/overview.h"
+#include "annotation/annotation.h"
 
 #include <stdlib.h>
-#include "annotation/definition.h"
 
 ;;DEFINITION
 /** A fixed fan-out table over opaque socket handles. It exists so R2 can drive

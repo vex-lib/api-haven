@@ -1,6 +1,5 @@
 #include "api/client.h"
-#include "annotation/intention.h"
-#include "annotation/overview.h"
+#include "annotation/annotation.h"
 #include "net/http.h"
 #include "net/url.h"
 #include "nio/mem.h"
@@ -8,7 +7,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "annotation/definition.h"
 
 ;;DEFINITION
 /** The engine's own telemetry client: it formulates JSON packets off-heap and

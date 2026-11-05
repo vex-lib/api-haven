@@ -3,9 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "annotation/overview.h"
+#include "annotation/annotation.h"
 #include "net/url.h"
-#include "annotation/definition.h"
 
 ;;DEFINITION
 /** The one place a request becomes bytes: URL parsing, auth injection and HTTP

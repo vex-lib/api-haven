@@ -38,7 +38,7 @@ static void check(int ok, const char *what) {
 // Run one line through the engine; assert a response was written.
 /* Sends one JSON-RPC line through the server and records whether a response was produced. */
 static const char *run(McpServer *srv, const char *line, char *out,
-                       size_t cap, const char *what) {
+                       bytes cap, const char *what) {
     out[0] = '\0';
     const bool wrote = McpServer_handleLine(srv, line, strlen(line), out, cap);
     check(wrote, what);

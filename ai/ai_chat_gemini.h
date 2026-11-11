@@ -8,7 +8,7 @@
 #include "ai/ai_chat.h"
 #include "ai/ai_provider.h"
 #include "api/auth.h"
-#include "c23/constructor.h"
+#include "util/constructor.h"
 #include "net/http.h"
 
 // ai/ai_chat_gemini.h — Gemini generateContent chat client (L2 behavior).
@@ -42,13 +42,13 @@ AiChatGemini AiChatGemini_2(const char *model, const char *apiKey);
 // final URL into urlBuf, credential into authOut. dest-last per Rule 9.
 // Everything is caller-owned scratch; fast enough for build-mode reuse.
 bool AiChatGemini_buildRequest(const AiChatGemini *self, const AiMessage *msgs,
-                               uint32_t msgCount, char *bodyBuf, size_t bodyCap,
-                               char *urlBuf, size_t urlCap, ApiAuth *authOut);
+                               u32 msgCount, char *bodyBuf, bytes bodyCap,
+                               char *urlBuf, bytes urlCap, ApiAuth *authOut);
 // buildRequest + Rest_postJson through the shared REST core.
 // resp is caller-owned (see net/http.h). No network in tests — use
 // AiChatGemini_buildRequest for headless verification.
 bool AiChatGemini_complete(const AiChatGemini *self, const AiMessage *msgs,
-                            uint32_t msgCount, char *bodyBuf, size_t bodyCap,
+                            u32 msgCount, char *bodyBuf, bytes bodyCap,
                             HttpResponse *resp);
 
 // --- Setters ---

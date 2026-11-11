@@ -82,7 +82,7 @@ ApiAuth ApiAuth_bearerFn(ApiTokenFn fn, void *userdata) {
 // CORE FUNCTIONS
 /** Copies the selected credential into valueBuf and returns its header name. */
 bool ApiAuth_apply(const ApiAuth *auth, const char **nameOut,
-                   char *valueBuf, size_t valueCap) {
+                   char *valueBuf, bytes valueCap) {
     if (!auth || !nameOut || !valueBuf || valueCap == 0)
         return false;
     if ((*auth).kind == API_AUTH_NONE)
@@ -90,7 +90,7 @@ bool ApiAuth_apply(const ApiAuth *auth, const char **nameOut,
     if ((*auth).kind == API_AUTH_API_KEY) {
         if (!(*auth).headerName || !(*auth).credential)
             return false;
-        size_t n = strlen((*auth).credential);
+        bytes n = strlen((*auth).credential);
         if (n + 1 > valueCap)
             return false;
         memcpy(valueBuf, (*auth).credential, n + 1);
@@ -105,7 +105,7 @@ bool ApiAuth_apply(const ApiAuth *auth, const char **nameOut,
     if (!token)
         return false;
     int n = snprintf(valueBuf, valueCap, "Bearer %s", token);
-    if (n < 0 || (size_t)n >= valueCap)
+    if (n < 0 || (bytes)n >= valueCap)
         return false;
     *nameOut = "Authorization";
     return true;

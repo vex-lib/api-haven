@@ -33,11 +33,11 @@
  * ----------------------------------------------------------------------------
  *   void *slotHandle;                // borrowed fanout handle (NULL = unbound)
  *   const HavenWsSource *slotSource; // borrowed fn-table (NULL = unbound)
- *   uint64_t timeoutMs;              // per-slice bound (default 100)
+ *   u64 timeoutMs;              // per-slice bound (default 100)
  *   bool cancelled;                  // cancel flag: feed degrades to false
  *   bool done;                       // true once a "[DONE]" event dispatches
  *   char lineBuf[AI_SSE_LINE_CAP];   // partial line staging (no alloc)
- *   uint32_t lineLen;                // staged Bytes in lineBuf
+ *   u32 lineLen;                // staged Bytes in lineBuf
  *   char eventBuf[AI_SSE_EVENT_CAP]; // current event name ("message" default,
  *                                    // sticky until the next event: line)
  *
@@ -75,13 +75,13 @@
 /** Restores the default SSE event name in the parser's event buffer. */
 static void setDefaultEvent(AiSse *self) {
     const char *dflt = "message";
-    size_t n = strlen(dflt);
+    bytes n = strlen(dflt);
     memcpy((*self).eventBuf, dflt, n + 1);
 }
 
 /** Appends a payload fragment and flags truncation when the output cannot hold it. */
-static bool appendText(char *textOut, size_t textCap, size_t *used,
-                       const char *s, size_t n, bool *outTruncated) {
+static bool appendText(char *textOut, bytes textCap, bytes *used,
+                       const char *s, bytes n, bool *outTruncated) {
     if (*used + n + 1 > textCap) {
         if (outTruncated)
             *outTruncated = true;
@@ -97,8 +97,8 @@ static bool appendText(char *textOut, size_t textCap, size_t *used,
 // payloads into textOut; latches done on "[DONE]". Returns false only
 // on textOut overflow (flag set) — dispatch state still advances.
 /** Applies one parsed SSE line, appending data or updating event completion state. */
-static bool dispatchLine(AiSse *self, const char *line, size_t lineLen,
-                         char *textOut, size_t textCap, size_t *used,
+static bool dispatchLine(AiSse *self, const char *line, bytes lineLen,
+                         char *textOut, bytes textCap, bytes *used,
                          bool *hasData, bool *dispatched,
                          bool *outTruncated) {
     if (lineLen == 0) {
@@ -112,12 +112,12 @@ static bool dispatchLine(AiSse *self, const char *line, size_t lineLen,
         return true;
     if (lineLen >= 6 && memcmp(line, "event:", 6) == 0) {
         const char *v = line + 6;
-        size_t vlen = lineLen - 6;
+        bytes vlen = lineLen - 6;
         if (vlen > 0 && (*v) == ' ') {
             v++;
             vlen--;
         }
-        size_t take = vlen;
+        bytes take = vlen;
         if (take >= AI_SSE_EVENT_CAP)
             take = AI_SSE_EVENT_CAP - 1;
         memcpy((*self).eventBuf, v, take);
@@ -126,7 +126,7 @@ static bool dispatchLine(AiSse *self, const char *line, size_t lineLen,
     }
     if (lineLen >= 5 && memcmp(line, "data:", 5) == 0) {
         const char *v = line + 5;
-        size_t vlen = lineLen - 5;
+        bytes vlen = lineLen - 5;
         if (vlen > 0 && (*v) == ' ') {
             v++;
             vlen--;
@@ -160,8 +160,8 @@ AiSse AiSse_0(void) {
 // CORE FUNCTIONS
 
 /** Feeds an input byte span and emits complete SSE data events into textOut. */
-bool AiSse_feed(AiSse *self, const char *Bytes, size_t byteLen,
-                char *textOut, size_t textCap, bool *outTruncated) {
+bool AiSse_feed(AiSse *self, const char *Bytes, bytes byteLen,
+                char *textOut, bytes textCap, bool *outTruncated) {
     if (self == nullptr)
         return false;
     if (outTruncated)
@@ -177,13 +177,13 @@ bool AiSse_feed(AiSse *self, const char *Bytes, size_t byteLen,
     if (byteLen > 0 && Bytes == nullptr)
         return false;
     textOut[0] = '\0';
-    size_t used = 0;
+    bytes used = 0;
     bool hasData = false;
     bool dispatched = false;
-    for (size_t i = 0; i < byteLen; i++) {
+    for (bytes i = 0; i < byteLen; i++) {
         char c = Bytes[i];
         if (c == '\n') {
-            size_t llen = (*self).lineLen;
+            bytes llen = (*self).lineLen;
             if (llen > 0 && (*self).lineBuf[llen - 1] == '\r')
                 llen--;
             if (!dispatchLine(self, (*self).lineBuf, llen, textOut, textCap,
@@ -248,7 +248,7 @@ void AiSse_cancel(AiSse *self) {
 // SETTERS
 
 /** Sets the timeout value associated with the bound polling slice. */
-void AiSse_setTimeout(AiSse *self, uint64_t timeoutMs) {
+void AiSse_setTimeout(AiSse *self, u64 timeoutMs) {
     if (self == nullptr)
         return;
     (*self).timeoutMs = timeoutMs;
@@ -285,7 +285,7 @@ const HavenWsSource *AiSse_getSlotSource(const AiSse *self) {
 }
 
 /** Returns the configured timeout, or zero for a null receiver. */
-uint64_t AiSse_getTimeout(const AiSse *self) {
+u64 AiSse_getTimeout(const AiSse *self) {
     if (self == nullptr)
         return 0;
     return (*self).timeoutMs;
@@ -306,7 +306,7 @@ bool AiSse_isDone(const AiSse *self) {
 }
 
 /** Returns the number of bytes currently buffered for an incomplete line. */
-uint32_t AiSse_getLineLen(const AiSse *self) {
+u32 AiSse_getLineLen(const AiSse *self) {
     if (self == nullptr)
         return 0;
     return (*self).lineLen;

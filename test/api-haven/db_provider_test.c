@@ -55,7 +55,7 @@ int main(int argc, const char **argv) {
 
     DbProvider *db = DbProvider_shared();
     CHECK(db != nullptr);
-    const uint32_t total = DbProvider_count(db);
+    const u32 total = DbProvider_count(db);
     printf("DbProvider_count = %u\n", total);
     CHECK(total == 25);
 
@@ -97,8 +97,8 @@ int main(int argc, const char **argv) {
     CHECK(DbProvider_at(db, 0) != nullptr);
     CHECK(DbProvider_at(db, total) == nullptr);
     const char *names[25];
-    uint32_t nameCount = 0;
-    for (uint32_t i = 0; i < total; i++) {
+    u32 nameCount = 0;
+    for (u32 i = 0; i < total; i++) {
         const DbProviderSlot *row = DbProvider_at(db, i);
         CHECK(row != nullptr);
         CHECK(row && isSlugValid(DbProvider_getSlug(db, row)));
@@ -110,7 +110,7 @@ int main(int argc, const char **argv) {
         CHECK(rowEngine && (*rowEngine) != '\0');
         if (row && rowName) {
             int dup = 0;
-            for (uint32_t j = 0; j < nameCount; j++) {
+            for (u32 j = 0; j < nameCount; j++) {
                 if (strcmp(names[j], rowName) == 0)
                     dup = 1;
             }

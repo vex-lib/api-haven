@@ -31,8 +31,8 @@
  * file's class):
  * ----------------------------------------------------------------------------
  *   const char *path;              // borrowed file path (NULL = undescribed)
- *   uint32_t caps;                 // capability bits (DB_SQLITE_CAP_*)
- *   uint64_t maxBytes;             // read bound (0 = unknown)
+ *   u32 caps;                 // capability bits (DB_SQLITE_CAP_*)
+ *   u64 maxBytes;             // read bound (0 = unknown)
  *   bool readOnly;                 // always true on _0/_1; no writer exists
  *   void *execHandle;              // borrowed owner handle (NULL = unbound)
  *   const DbSqliteExec *execTable; // borrowed fn-table (NULL = unbound)
@@ -107,7 +107,7 @@ void DbSqliteFile_unbind(DbSqliteFile *self) {
 }
 
 /** Formats this descriptor into out when the complete text fits. */
-bool DbSqliteFile_describe(const DbSqliteFile *self, char *out, size_t outCap) {
+bool DbSqliteFile_describe(const DbSqliteFile *self, char *out, bytes outCap) {
     if (self == nullptr)
         return false;
     if (out == nullptr || outCap == 0)
@@ -118,14 +118,14 @@ bool DbSqliteFile_describe(const DbSqliteFile *self, char *out, size_t outCap) {
     const int n = snprintf(out, outCap, "sqlite file: path=%s readOnly=%d caps=%u maxBytes=%llu",
                            path, (*self).readOnly ? 1 : 0,
                            (*self).caps, (unsigned long long)(*self).maxBytes);
-    if (n <= 0 || (size_t)n >= outCap)
+    if (n <= 0 || (bytes)n >= outCap)
         return false;
     return true;
 }
 
 /** Delegates a read request to the bound database owner's execution callback. */
 bool DbSqliteFile_exec(const DbSqliteFile *self, const char *sql,
-                       char *out, size_t outCap) {
+                       char *out, bytes outCap) {
     if (self == nullptr)
         return false;
     if (sql == nullptr || (*sql) == '\0')
@@ -150,14 +150,14 @@ void DbSqliteFile_setPath(DbSqliteFile *self, const char *path) {
 }
 
 /** Replaces the descriptor's advertised capability flags. */
-void DbSqliteFile_setCaps(DbSqliteFile *self, uint32_t caps) {
+void DbSqliteFile_setCaps(DbSqliteFile *self, u32 caps) {
     if (self == nullptr)
         return;
     (*self).caps = caps;
 }
 
 /** Sets the maximum byte bound advertised for reads. */
-void DbSqliteFile_setMaxBytes(DbSqliteFile *self, uint64_t maxBytes) {
+void DbSqliteFile_setMaxBytes(DbSqliteFile *self, u64 maxBytes) {
     if (self == nullptr)
         return;
     (*self).maxBytes = maxBytes;
@@ -180,14 +180,14 @@ const char *DbSqliteFile_getPath(const DbSqliteFile *self) {
 }
 
 /** Returns the advertised capability bits, or zero for a null receiver. */
-uint32_t DbSqliteFile_getCaps(const DbSqliteFile *self) {
+u32 DbSqliteFile_getCaps(const DbSqliteFile *self) {
     if (self == nullptr)
         return 0;
     return (*self).caps;
 }
 
 /** Returns the read byte limit, or zero for a null receiver. */
-uint64_t DbSqliteFile_getMaxBytes(const DbSqliteFile *self) {
+u64 DbSqliteFile_getMaxBytes(const DbSqliteFile *self) {
     if (self == nullptr)
         return 0;
     return (*self).maxBytes;

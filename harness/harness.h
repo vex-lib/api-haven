@@ -6,7 +6,7 @@
 #include <stdint.h>
 
 #include "harness/engine_provider.h"
-#include "c23/constructor.h"
+#include "util/constructor.h"
 
 // harness/harness.h — bounded CLI-engine job seam (L2 behavior).
 //
@@ -35,22 +35,22 @@ typedef enum HarnessStatus {
 // SLOT RECORD — one bounded job slot (Rule 3 co-location). Borrowed
 // engine row; driver-owned handle closed via cancel before teardown.
 typedef struct HarnessJob {
-    uint32_t jobId;                    // slot index + 1; stable per slot
+    u32 jobId;                    // slot index + 1; stable per slot
     const EngineProviderSlot *engine;  // borrowed descriptor row
     HarnessStatus status;              // lifecycle state
-    uint64_t timeoutMs;                // per-slot bound handed to driver
+    u64 timeoutMs;                // per-slot bound handed to driver
     void *driverHandle;                // opaque driver job; NULL when idle
-    size_t outLen;                     // driver-reported output length
+    bytes outLen;                     // driver-reported output length
 } HarnessJob;
 
 // Driver seam — implemented outside api-haven (vexspoke/R3). Every wait
 // inside these fns takes timeoutMs and degrades (drop frame, TIMEOUT)
 // instead of blocking unbounded (Rule 27). Zero steady-state allocation.
 typedef bool (*HarnessSpawnFn)(void *driverCtx, const EngineProviderSlot *engine,
-                               const char *prompt, size_t promptLen,
-                               uint64_t timeoutMs, void **outHandle);
+                               const char *prompt, bytes promptLen,
+                               u64 timeoutMs, void **outHandle);
 typedef HarnessStatus (*HarnessPollFn)(void *driverCtx, void *handle,
-                                       uint64_t timeoutMs);
+                                       u64 timeoutMs);
 typedef void (*HarnessCancelFn)(void *driverCtx, void *handle);
 
 typedef struct HarnessDriverTable {
@@ -61,8 +61,8 @@ typedef struct HarnessDriverTable {
 
 typedef struct Harness {
     HarnessJob jobs[HARNESS_MAX_JOBS]; // fixed slots, BitPool discipline
-    uint32_t jobCount;                 // slots ever issued, capped at MAX
-    uint64_t timeoutMs;                // default bound for new jobs
+    u32 jobCount;                 // slots ever issued, capped at MAX
+    u64 timeoutMs;                // default bound for new jobs
     const EngineProviderSlot *engine;  // bound engine row; NULL = unbound
     void *driver;                      // opaque driver ctx, never touched
     HarnessDriverTable table;          // injected driver fns
@@ -71,7 +71,7 @@ typedef struct Harness {
 
 // --- Constructors (value structs, zero heap — AiChat precedent) ---
 Harness Harness_0(void);                        // engine NULL, 100ms default
-Harness Harness_1(uint64_t timeoutMs);          // engine NULL, given default
+Harness Harness_1(u64 timeoutMs);          // engine NULL, given default
 #define Harness(...) CONSTRUCTOR_DISPATCH(Harness, __VA_ARGS__)
 
 // --- Core functions ---
@@ -79,28 +79,28 @@ Harness Harness_1(uint64_t timeoutMs);          // engine NULL, given default
 // BUSY_FULL + false when all 16 RUNNING. Unbound engine/driver,
 // NULL/empty prompt, or spawn failure degrade to false (lastStatus
 // IDLE). outJobId is dest-last per Rule 9 (NULL-tolerant).
-bool Harness_run(Harness *self, const char *prompt, size_t promptLen,
-                 uint64_t timeoutMs, uint32_t *outJobId);
+bool Harness_run(Harness *self, const char *prompt, bytes promptLen,
+                 u64 timeoutMs, u32 *outJobId);
 // Bounded status check: hands the slot timeout to pollFn; NULL pollFn
 // reports the stored status. IDLE on NULL self or unknown jobId.
-HarnessStatus Harness_poll(Harness *self, uint32_t jobId);
+HarnessStatus Harness_poll(Harness *self, u32 jobId);
 // Bounded teardown hook per slot (Rule 26): cancelFn, then IDLE.
 // False on NULL self, unknown jobId, or a slot not RUNNING.
-bool Harness_cancel(Harness *self, uint32_t jobId);
+bool Harness_cancel(Harness *self, u32 jobId);
 
 // --- Setters ---
 void Harness_setEngine(Harness *self, const EngineProviderSlot *engine);
 void Harness_setDriver(Harness *self, void *driver, HarnessDriverTable table);
-void Harness_setTimeout(Harness *self, uint64_t timeoutMs);
+void Harness_setTimeout(Harness *self, u64 timeoutMs);
 
 // --- Getters (Rule 24, null-safe) ---
 const EngineProviderSlot *Harness_getEngine(const Harness *self);
 void *Harness_getDriver(const Harness *self);
-uint64_t Harness_getTimeout(const Harness *self);
+u64 Harness_getTimeout(const Harness *self);
 bool Harness_isRunning(const Harness *self);
-uint32_t Harness_getJobCount(const Harness *self);
-const HarnessJob *Harness_getJobAt(const Harness *self, uint32_t i);
-HarnessStatus Harness_getJobStatus(const Harness *self, uint32_t jobId);
+u32 Harness_getJobCount(const Harness *self);
+const HarnessJob *Harness_getJobAt(const Harness *self, u32 i);
+HarnessStatus Harness_getJobStatus(const Harness *self, u32 jobId);
 HarnessStatus Harness_getLastStatus(const Harness *self);
 
 #endif

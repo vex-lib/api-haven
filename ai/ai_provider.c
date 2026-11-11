@@ -25,7 +25,7 @@
  *
  * STRUCT FIELDS (Mirroring ai/ai_provider.h — exactly this file's class):
  * ----------------------------------------------------------------------------
- *   uint32_t reserved;   // singleton marker; no mutable state — all data
+ *   u32 reserved;   // singleton marker; no mutable state — all data
  *                        // lives in the static const AiProviderSlot rows
  *
   * SLOT RECORD (AiProviderSlot — Rule 3 co-location, zero behavior of its own:
@@ -38,8 +38,8 @@
   *   AiProviderAuth   auth;    // credential scheme enum
   *   AiProviderRegion region;  // region bucket enum
   *   const char *note;         // caveat / variant note; NULL when none
-  *   uint32_t quotaPerDay;     // free-tier requests/day (0 = unknown)
-  *   uint32_t quotaRemaining;  // free-tier remainder (0 = unknown/exhausted)
+  *   u32 quotaPerDay;     // free-tier requests/day (0 = unknown)
+  *   u32 quotaRemaining;  // free-tier remainder (0 = unknown/exhausted)
   *   int64_t  resetUnix;       // quota window reset epoch secs (0 = unknown)
   *   const char *authKind;     // credential kind label; NULL = see auth
   *   const char *licenseFamily;// license family label; NULL = UNKNOWN
@@ -90,14 +90,14 @@ static const AiProviderSlot *const kAiProviderGroups[] = {
     kAiProvidersEurope,
 };
 
-static const uint32_t kAiProviderGroupSizes[] = {
-    (uint32_t)(sizeof(kAiProvidersGlobal) / sizeof(kAiProvidersGlobal[0])),
-    (uint32_t)(sizeof(kAiProvidersChina) / sizeof(kAiProvidersChina[0])),
-    (uint32_t)(sizeof(kAiProvidersEurope) / sizeof(kAiProvidersEurope[0])),
+static const u32 kAiProviderGroupSizes[] = {
+    (u32)(sizeof(kAiProvidersGlobal) / sizeof(kAiProvidersGlobal[0])),
+    (u32)(sizeof(kAiProvidersChina) / sizeof(kAiProvidersChina[0])),
+    (u32)(sizeof(kAiProvidersEurope) / sizeof(kAiProvidersEurope[0])),
 };
 
-static const uint32_t kAiProviderGroupCount =
-    (uint32_t)(sizeof(kAiProviderGroups) / sizeof(kAiProviderGroups[0]));
+static const u32 kAiProviderGroupCount =
+    (u32)(sizeof(kAiProviderGroups) / sizeof(kAiProviderGroups[0]));
 
 static AiProvider sAiProviderShared; // zero-init singleton
 
@@ -111,20 +111,20 @@ AiProvider *AiProvider_shared(void) {
 // CORE FUNCTIONS
 
 /** Returns the number of directory rows, or zero for a null receiver. */
-uint32_t AiProvider_count(const AiProvider *self) {
+u32 AiProvider_count(const AiProvider *self) {
     if (!self)
         return 0;
-    uint32_t total = 0;
-    for (uint32_t g = 0; g < kAiProviderGroupCount; g++)
+    u32 total = 0;
+    for (u32 g = 0; g < kAiProviderGroupCount; g++)
         total += kAiProviderGroupSizes[g];
     return total;
 }
 
 /** Returns the flattened directory row at index i, or nullptr out of range. */
-const AiProviderSlot *AiProvider_at(const AiProvider *self, uint32_t i) {
+const AiProviderSlot *AiProvider_at(const AiProvider *self, u32 i) {
     if (!self)
         return nullptr;
-    for (uint32_t g = 0; g < kAiProviderGroupCount; g++) {
+    for (u32 g = 0; g < kAiProviderGroupCount; g++) {
         if (i < kAiProviderGroupSizes[g])
             return &kAiProviderGroups[g][i];
         i -= kAiProviderGroupSizes[g];
@@ -136,8 +136,8 @@ const AiProviderSlot *AiProvider_at(const AiProvider *self, uint32_t i) {
 const AiProviderSlot *AiProvider_get(const AiProvider *self, const char *slug) {
     if (!self || !slug || (*slug) == '\0')
         return nullptr;
-    const uint32_t total = AiProvider_count(self);
-    for (uint32_t i = 0; i < total; i++) {
+    const u32 total = AiProvider_count(self);
+    for (u32 i = 0; i < total; i++) {
         const AiProviderSlot *slot = AiProvider_at(self, i);
         if ((*slot).slug && strcmp((*slot).slug, slug) == 0)
             return slot;
@@ -213,14 +213,14 @@ const char *AiProvider_getNote(const AiProvider *self, const AiProviderSlot *slo
 }
 
 /** Returns the slot's daily quota value, or zero when unavailable. */
-uint32_t AiProvider_getQuotaPerDay(const AiProvider *self, const AiProviderSlot *slot) {
+u32 AiProvider_getQuotaPerDay(const AiProvider *self, const AiProviderSlot *slot) {
     if (!self || !slot)
         return 0;
     return (*slot).quotaPerDay;
 }
 
 /** Returns the slot's remaining quota value, or zero when unavailable. */
-uint32_t AiProvider_getQuotaRemaining(const AiProvider *self, const AiProviderSlot *slot) {
+u32 AiProvider_getQuotaRemaining(const AiProvider *self, const AiProviderSlot *slot) {
     if (!self || !slot)
         return 0;
     return (*slot).quotaRemaining;

@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include "c23/constructor.h"
+#include "util/constructor.h"
 
 // asset/asset_broker.h — the AssetBroker class: bounded chunked-copy
 // downloader into the VexHome cache (L2 behavior, R2 api-haven).
@@ -28,9 +28,9 @@
 
 typedef struct AssetBroker {
     char cacheSub[ASSET_BROKER_CACHE_SUB_CAP]; // VexHome_cache subsystem slot
-    uint64_t chunkBudgetMs;                    // per-chunk bound (default 100)
+    u64 chunkBudgetMs;                    // per-chunk bound (default 100)
     bool cancelled;                            // cancel flag: copy degrades false
-    uint32_t bytesCopied;                      // lifetime copied Bytes (counter)
+    u32 bytesCopied;                      // lifetime copied Bytes (counter)
 } AssetBroker;
 
 // --- Constructors (value structs, no allocation) ---
@@ -44,15 +44,15 @@ AssetBroker AssetBroker_1(const char *cacheSub);    // named cache slot
 // copied chunk. Drop-degrade false on NULL self/args, cancelled, zero
 // budget, chunkLen past ASSET_BROKER_CHUNK_CAP, or dest overflow — the
 // overflow path sets the flag (dest-last, Rule 9). NULL flag degrades.
-bool AssetBroker_copyChunk(AssetBroker *self, const uint8_t *srcChunk, size_t chunkLen,
-                           uint8_t *dest, size_t destCap, uint32_t *usedLen,
+bool AssetBroker_copyChunk(AssetBroker *self, const u8 *srcChunk, bytes chunkLen,
+                           u8 *dest, bytes destCap, u32 *usedLen,
                            bool *outTruncated);
 // Render the cache-confined relative path "cache/<sub>/<fileName>"
 // into caller-owned out (NUL always). False on NULL args, zero cap, or
 // overflow. The host joins it under VexHome_cache(cacheSub); files are
 // closed before Memory_freeAll per Rule 26. Dest-last per Rule 9.
 bool AssetBroker_cachePath(const AssetBroker *self, const char *fileName,
-                           char *out, size_t outCap);
+                           char *out, bytes outCap);
 // Drop the cancel latch and zero the byte counter (slot stays bound).
 void AssetBroker_reset(AssetBroker *self);
 // Latch the cancel flag (copies degrade to false until reset).
@@ -62,15 +62,15 @@ void AssetBroker_cancel(AssetBroker *self);
 // Cache slot copy with a loud truncation flag (Rule 35.3): false +
 // flag when sub overflows the slot (slot keeps its old value).
 bool AssetBroker_setCacheSub(AssetBroker *self, const char *sub, bool *outTruncated);
-void AssetBroker_setChunkBudget(AssetBroker *self, uint64_t chunkBudgetMs);
+void AssetBroker_setChunkBudget(AssetBroker *self, u64 chunkBudgetMs);
 void AssetBroker_setCancelled(AssetBroker *self, bool cancelled);
-void AssetBroker_setBytesCopied(AssetBroker *self, uint32_t bytesCopied);
+void AssetBroker_setBytesCopied(AssetBroker *self, u32 bytesCopied);
 
 // --- Getters (Rule 24, null-safe) ---
 // Borrowed cache slot, valid until the slot changes or the broker is destroyed.
 const char *AssetBroker_getCacheSub(const AssetBroker *self);
-uint64_t AssetBroker_getChunkBudget(const AssetBroker *self);
+u64 AssetBroker_getChunkBudget(const AssetBroker *self);
 bool AssetBroker_isCancelled(const AssetBroker *self);
-uint32_t AssetBroker_getBytesCopied(const AssetBroker *self);
+u32 AssetBroker_getBytesCopied(const AssetBroker *self);
 
 #endif

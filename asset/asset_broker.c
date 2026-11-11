@@ -33,9 +33,9 @@
  * class):
  * ----------------------------------------------------------------------------
  *   char cacheSub[ASSET_BROKER_CACHE_SUB_CAP]; // VexHome_cache slot (64)
- *   uint64_t chunkBudgetMs;                    // per-chunk bound (dflt 100)
+ *   u64 chunkBudgetMs;                    // per-chunk bound (dflt 100)
  *   bool cancelled;                            // cancel flag: copy degrades
- *   uint32_t bytesCopied;                      // lifetime copied Bytes
+ *   u32 bytesCopied;                      // lifetime copied Bytes
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
@@ -82,7 +82,7 @@ AssetBroker AssetBroker_0(void) {
 AssetBroker AssetBroker_1(const char *cacheSub) {
     AssetBroker broker = AssetBroker();
     if (cacheSub) {
-        size_t n = strlen(cacheSub);
+        bytes n = strlen(cacheSub);
         if (n >= ASSET_BROKER_CACHE_SUB_CAP)
             n = ASSET_BROKER_CACHE_SUB_CAP - 1;
         memcpy(broker.cacheSub, cacheSub, n);
@@ -94,8 +94,8 @@ AssetBroker AssetBroker_1(const char *cacheSub) {
 // CORE FUNCTIONS
 
 /** Copies one bounded source chunk to dest at usedLen, reporting capacity truncation. */
-bool AssetBroker_copyChunk(AssetBroker *self, const uint8_t *srcChunk, size_t chunkLen,
-                           uint8_t *dest, size_t destCap, uint32_t *usedLen,
+bool AssetBroker_copyChunk(AssetBroker *self, const u8 *srcChunk, bytes chunkLen,
+                           u8 *dest, bytes destCap, u32 *usedLen,
                            bool *outTruncated) {
     if (self == nullptr)
         return false;
@@ -113,21 +113,21 @@ bool AssetBroker_copyChunk(AssetBroker *self, const uint8_t *srcChunk, size_t ch
         return false;
     if ((*usedLen) > destCap)
         return false;
-    if ((size_t)(*usedLen) + chunkLen > destCap) {
+    if ((bytes)(*usedLen) + chunkLen > destCap) {
         if (outTruncated)
             *outTruncated = true;
         return false;
     }
     if (chunkLen > 0)
         memcpy(dest + (*usedLen), srcChunk, chunkLen);
-    (*usedLen) += (uint32_t)chunkLen;
-    (*self).bytesCopied += (uint32_t)chunkLen;
+    (*usedLen) += (u32)chunkLen;
+    (*self).bytesCopied += (u32)chunkLen;
     return true;
 }
 
 /** Builds a relative cache path from the configured subdirectory and file name. */
 bool AssetBroker_cachePath(const AssetBroker *self, const char *fileName,
-                           char *out, size_t outCap) {
+                           char *out, bytes outCap) {
     if (self == nullptr)
         return false;
     if (fileName == nullptr || (*fileName) == '\0')
@@ -136,17 +136,17 @@ bool AssetBroker_cachePath(const AssetBroker *self, const char *fileName,
         return false;
     const char *prefix = "cache/";
     const char *sub = (*self).cacheSub;
-    size_t need = strlen(prefix) + strlen(sub) + 1 + strlen(fileName) + 1;
+    bytes need = strlen(prefix) + strlen(sub) + 1 + strlen(fileName) + 1;
     if (need > outCap)
         return false;
     memcpy(out, prefix, strlen(prefix) + 1);
-    size_t pos = strlen(prefix);
-    size_t subLen = strlen(sub);
+    bytes pos = strlen(prefix);
+    bytes subLen = strlen(sub);
     memcpy(out + pos, sub, subLen);
     pos += subLen;
     out[pos] = '/';
     pos++;
-    size_t nameLen = strlen(fileName);
+    bytes nameLen = strlen(fileName);
     memcpy(out + pos, fileName, nameLen + 1);
     return true;
 }
@@ -176,7 +176,7 @@ bool AssetBroker_setCacheSub(AssetBroker *self, const char *sub, bool *outTrunca
         *outTruncated = false;
     if (sub == nullptr || (*sub) == '\0')
         return false;
-    size_t n = strlen(sub);
+    bytes n = strlen(sub);
     if (n >= ASSET_BROKER_CACHE_SUB_CAP) {
         if (outTruncated)
             *outTruncated = true;
@@ -187,7 +187,7 @@ bool AssetBroker_setCacheSub(AssetBroker *self, const char *sub, bool *outTrunca
 }
 
 /** Sets the per-chunk time budget used by the broker contract. */
-void AssetBroker_setChunkBudget(AssetBroker *self, uint64_t chunkBudgetMs) {
+void AssetBroker_setChunkBudget(AssetBroker *self, u64 chunkBudgetMs) {
     if (self == nullptr)
         return;
     (*self).chunkBudgetMs = chunkBudgetMs;
@@ -201,7 +201,7 @@ void AssetBroker_setCancelled(AssetBroker *self, bool cancelled) {
 }
 
 /** Sets the reported cumulative number of bytes copied. */
-void AssetBroker_setBytesCopied(AssetBroker *self, uint32_t bytesCopied) {
+void AssetBroker_setBytesCopied(AssetBroker *self, u32 bytesCopied) {
     if (self == nullptr)
         return;
     (*self).bytesCopied = bytesCopied;
@@ -215,7 +215,7 @@ const char *AssetBroker_getCacheSub(const AssetBroker *self) {
 }
 
 /** Returns the per-chunk budget, or zero for a null receiver. */
-uint64_t AssetBroker_getChunkBudget(const AssetBroker *self) {
+u64 AssetBroker_getChunkBudget(const AssetBroker *self) {
     if (self == nullptr)
         return 0;
     return (*self).chunkBudgetMs;
@@ -229,7 +229,7 @@ bool AssetBroker_isCancelled(const AssetBroker *self) {
 }
 
 /** Returns the cumulative copied-byte count, or zero for a null receiver. */
-uint32_t AssetBroker_getBytesCopied(const AssetBroker *self) {
+u32 AssetBroker_getBytesCopied(const AssetBroker *self) {
     if (self == nullptr)
         return 0;
     return (*self).bytesCopied;

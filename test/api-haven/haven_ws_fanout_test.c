@@ -30,13 +30,13 @@ static int sFailures = 0;
     } while (0)
 
 typedef struct MockTransport {
-    uint32_t pollCount;
-    uint64_t lastBudget;
-    uint32_t framesToDeliver;
+    u32 pollCount;
+    u64 lastBudget;
+    u32 framesToDeliver;
 } MockTransport;
 
 /* Records each assigned poll budget and returns the mock transport's queued frame count. */
-static uint32_t mockPoll(void *handle, uint64_t budgetMs) {
+static u32 mockPoll(void *handle, u64 budgetMs) {
     if (!handle)
         return 0;
     MockTransport *mock = (MockTransport*) handle;
@@ -52,7 +52,7 @@ static bool mockConnect(void *handle) {
 }
 
 /* Accepts outbound bytes without network activity for the mock source table. */
-static bool mockSend(void *handle, const uint8_t *Bytes, uint32_t len) {
+static bool mockSend(void *handle, const u8 *Bytes, u32 len) {
     (void)handle;
     (void)Bytes;
     (void)len;
@@ -80,7 +80,7 @@ int main(int argc, const char **argv) {
     HavenWsFanout *fanout = HavenWsFanout();
     CHECK(fanout != nullptr);
     CHECK(HavenWsFanout_getCount(fanout) == 0);
-    for (uint32_t i = 0; i < HAVEN_WS_FANOUT_MAX; i++) {
+    for (u32 i = 0; i < HAVEN_WS_FANOUT_MAX; i++) {
         CHECK(HavenWsFanout_getHandle(fanout, i) == nullptr);
     }
     // Out of bounds getter
@@ -105,7 +105,7 @@ int main(int argc, const char **argv) {
 
     // --- 3. PollStep Budget Slicing ------------------------------------------
     // budgetMs = 10ms across 2 slots -> 5ms per slot
-    uint32_t delivered = HavenWsFanout_pollStep(fanout, 10);
+    u32 delivered = HavenWsFanout_pollStep(fanout, 10);
     CHECK(delivered == (2 + 5));
     CHECK(t1.pollCount == 1);
     CHECK(t1.lastBudget == 5);
@@ -153,7 +153,7 @@ int main(int argc, const char **argv) {
     MockTransport extras[HAVEN_WS_FANOUT_MAX];
     memset(extras, 0, sizeof(extras));
     // Currently 2 slots filled (0 and 1). Fill remaining 14 slots (indices 2..15)
-    for (uint32_t i = 2; i < HAVEN_WS_FANOUT_MAX; i++) {
+    for (u32 i = 2; i < HAVEN_WS_FANOUT_MAX; i++) {
         CHECK(HavenWsFanout_attach(fanout, &extras[i], &sMockSource));
     }
     CHECK(HavenWsFanout_getCount(fanout) == HAVEN_WS_FANOUT_MAX);
@@ -166,7 +166,7 @@ int main(int argc, const char **argv) {
     // Detach all
     CHECK(HavenWsFanout_detach(fanout, &t1));
     CHECK(HavenWsFanout_detach(fanout, &t2));
-    for (uint32_t i = 2; i < HAVEN_WS_FANOUT_MAX; i++) {
+    for (u32 i = 2; i < HAVEN_WS_FANOUT_MAX; i++) {
         CHECK(HavenWsFanout_detach(fanout, &extras[i]));
     }
     CHECK(HavenWsFanout_getCount(fanout) == 0);

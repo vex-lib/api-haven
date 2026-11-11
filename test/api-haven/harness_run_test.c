@@ -41,12 +41,12 @@ static int sFailures = 0;
 static int sSpawnCalls = 0;
 static int sCancelCalls = 0;
 static HarnessStatus sPollVerdict = HARNESS_STATUS_RUNNING;
-static uint64_t sLastTimeoutMs = 0;
+static u64 sLastTimeoutMs = 0;
 
 /* Records launches and returns a synthetic handle for each accepted job. */
 static bool stubSpawn(void *driverCtx, const EngineProviderSlot *engine,
-                      const char *prompt, size_t promptLen,
-                      uint64_t timeoutMs, void **outHandle) {
+                      const char *prompt, bytes promptLen,
+                      u64 timeoutMs, void **outHandle) {
     (void)driverCtx;
     (void)engine;
     (void)prompt;
@@ -59,7 +59,7 @@ static bool stubSpawn(void *driverCtx, const EngineProviderSlot *engine,
 }
 
 /* Returns the test-selected poll verdict for a synthetic job handle. */
-static HarnessStatus stubPoll(void *driverCtx, void *handle, uint64_t timeoutMs) {
+static HarnessStatus stubPoll(void *driverCtx, void *handle, u64 timeoutMs) {
     (void)driverCtx;
     (void)handle;
     (void)timeoutMs;
@@ -148,7 +148,7 @@ int main(int argc, const char **argv) {
     CHECK(Harness_getDriver(&bare) == nullptr);
     CHECK(Harness_getTimeout(&bare) == 100);
     CHECK(!Harness_isRunning(&bare));
-    uint32_t jobId = 0;
+    u32 jobId = 0;
     CHECK(!Harness_run(&bare, "hello", 5, 100, &jobId));
     CHECK(Harness_getLastStatus(&bare) == HARNESS_STATUS_IDLE);
     CHECK(Harness_getJobCount(&bare) == 0);
@@ -191,16 +191,16 @@ int main(int argc, const char **argv) {
     Harness_setEngine(&full, EngineProvider_get(dir, "claude-code"));
     Harness_setDriver(&full, &driverCtx, stubTable());
     sPollVerdict = HARNESS_STATUS_RUNNING;
-    uint32_t ids[HARNESS_MAX_JOBS];
-    for (uint32_t i = 0; i < (uint32_t) HARNESS_MAX_JOBS; i++) {
+    u32 ids[HARNESS_MAX_JOBS];
+    for (u32 i = 0; i < (u32) HARNESS_MAX_JOBS; i++) {
         CHECK(Harness_run(&full, "p", 1, 50, &ids[i]));
         CHECK(ids[i] == i + 1);
     }
-    CHECK(Harness_getJobCount(&full) == (uint32_t) HARNESS_MAX_JOBS);
-    uint32_t extra = 0;
+    CHECK(Harness_getJobCount(&full) == (u32) HARNESS_MAX_JOBS);
+    u32 extra = 0;
     CHECK(!Harness_run(&full, "one-too-many", 12, 50, &extra));
     CHECK(Harness_getLastStatus(&full) == HARNESS_STATUS_BUSY_FULL);
-    CHECK(Harness_getJobCount(&full) == (uint32_t) HARNESS_MAX_JOBS);
+    CHECK(Harness_getJobCount(&full) == (u32) HARNESS_MAX_JOBS);
 
     // --- TIMEOUT drop-degrade path via the stub poll -------------------------
     sPollVerdict = HARNESS_STATUS_TIMEOUT;

@@ -32,7 +32,7 @@
 typedef struct McpServer {
     // --- protocol state (mutated by initialize, read-only after) ---
     char protocolVersion[32]; // negotiated client version or latest
-    uint32_t initialized;     // 1 after a successful initialize handshake
+    u32 initialized;     // 1 after a successful initialize handshake
     // --- identity (static) ---
     const char *name;         // "vexgraph-mcp"
     const char *version;      // MCP_SERVER_VERSION
@@ -58,8 +58,8 @@ void McpServer_bindAppDriver(void *driverCtx, AppDriverTable table);
 // when a response line was written (caller prints it + '\n'). Returns
 // false for notifications (no reply) and for NULL/no-cap inputs.
 // outCap must be > 0.
-bool McpServer_handleLine(McpServer *self, const char *line, size_t lineLen,
-                          char *outBuf, size_t outCap);
+bool McpServer_handleLine(McpServer *self, const char *line, bytes lineLen,
+                          char *outBuf, bytes outCap);
 
 // --- Getters (Rule 24; null-safe) ---
 const char *McpServer_getName(const McpServer *self);

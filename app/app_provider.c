@@ -39,7 +39,7 @@
  * STRUCT FIELDS (Mirroring app/app_provider.h — exactly this file's
  * class):
  * ----------------------------------------------------------------------------
- *   uint32_t reserved;   // singleton marker; no mutable state — all data
+ *   u32 reserved;   // singleton marker; no mutable state — all data
  *                        // lives in the static const AppProviderSlot rows
  *
  * SLOT RECORD (AppProviderSlot — Rule 3 co-location, zero behavior of
@@ -200,8 +200,8 @@ static const AppProviderSlot kAppProviders[] = {
      "BlueBubbles bridge; macOS only, UNAVAILABLE when absent"},
 };
 
-static const uint32_t kAppProviderCount =
-    (uint32_t)(sizeof(kAppProviders) / sizeof(kAppProviders[0]));
+static const u32 kAppProviderCount =
+    (u32)(sizeof(kAppProviders) / sizeof(kAppProviders[0]));
 
 static AppProvider sAppProviderShared; // zero-init singleton
 
@@ -215,14 +215,14 @@ AppProvider *AppProvider_shared(void) {
 // CORE FUNCTIONS
 
 /** Returns the directory row count, or zero for a null receiver. */
-uint32_t AppProvider_count(const AppProvider *self) {
+u32 AppProvider_count(const AppProvider *self) {
     if (!self)
         return 0;
     return kAppProviderCount;
 }
 
 /** Returns the row at index i, or nullptr for a null receiver or invalid index. */
-const AppProviderSlot *AppProvider_at(const AppProvider *self, uint32_t i) {
+const AppProviderSlot *AppProvider_at(const AppProvider *self, u32 i) {
     if (!self)
         return nullptr;
     if (i >= kAppProviderCount)
@@ -234,7 +234,7 @@ const AppProviderSlot *AppProvider_at(const AppProvider *self, uint32_t i) {
 const AppProviderSlot *AppProvider_get(const AppProvider *self, const char *slug) {
     if (!self || !slug || (*slug) == '\0')
         return nullptr;
-    for (uint32_t i = 0; i < kAppProviderCount; i++) {
+    for (u32 i = 0; i < kAppProviderCount; i++) {
         const AppProviderSlot *slot = &kAppProviders[i];
         if ((*slot).slug && strcmp((*slot).slug, slug) == 0)
             return slot;
@@ -245,13 +245,13 @@ const AppProviderSlot *AppProvider_get(const AppProvider *self, const char *slug
 /** Copies the row's bundle, CLI, or URL target into the bounded destination. */
 bool AppProvider_resolveTarget(const AppProvider *self,
                                const AppProviderSlot *slot,
-                               char *outBuf, size_t outCap) {
+                               char *outBuf, bytes outCap) {
     if (!self || !slot || !outBuf || outCap == 0)
         return false;
     const char *target = (*slot).bundleIdOrScheme;
     if (!target)
         return false;
-    size_t len = strlen(target);
+    bytes len = strlen(target);
     if (len + 1 > outCap)
         return false;
     memcpy(outBuf, target, len + 1);

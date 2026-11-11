@@ -8,7 +8,7 @@
 #include "ai/ai_chat.h"
 #include "ai/ai_provider.h"
 #include "api/auth.h"
-#include "c23/constructor.h"
+#include "util/constructor.h"
 #include "net/http.h"
 
 // ai/ai_chat_anthropic.h — Anthropic Messages chat client (L2 behavior).
@@ -29,7 +29,7 @@ typedef struct AiChatAnthropic {
     const char *model;           // e.g. "claude-sonnet-4-5"; must be set
     const char *apiKey;          // x-api-key credential; NULL = no auth
     const char *baseUrlOverride; // wins over peer base / family default
-    uint32_t maxTokens;          // token ceiling (default 1024)
+    u32 maxTokens;          // token ceiling (default 1024)
 } AiChatAnthropic;
 
 // --- Constructors (value structs, no allocation — ApiAuth precedent) ---
@@ -43,13 +43,13 @@ AiChatAnthropic AiChatAnthropic_2(const char *model, const char *apiKey);
 // final URL into urlBuf, credential into authOut. dest-last per Rule 9.
 // Everything is caller-owned scratch; fast enough for build-mode reuse.
 bool AiChatAnthropic_buildRequest(const AiChatAnthropic *self, const AiMessage *msgs,
-                                  uint32_t msgCount, char *bodyBuf, size_t bodyCap,
-                                  char *urlBuf, size_t urlCap, ApiAuth *authOut);
+                                  u32 msgCount, char *bodyBuf, bytes bodyCap,
+                                  char *urlBuf, bytes urlCap, ApiAuth *authOut);
 // buildRequest + Rest_postJson through the shared REST core.
 // resp is caller-owned (see net/http.h). No network in tests — use
 // AiChatAnthropic_buildRequest for headless verification.
 bool AiChatAnthropic_complete(const AiChatAnthropic *self, const AiMessage *msgs,
-                               uint32_t msgCount, char *bodyBuf, size_t bodyCap,
+                               u32 msgCount, char *bodyBuf, bytes bodyCap,
                                HttpResponse *resp);
 
 // --- Setters ---
@@ -58,7 +58,7 @@ void AiChatAnthropic_setPeer(AiChatAnthropic *self, const AiProviderSlot *peer);
 void AiChatAnthropic_setModel(AiChatAnthropic *self, const char *model);
 void AiChatAnthropic_setApiKey(AiChatAnthropic *self, const char *apiKey);
 void AiChatAnthropic_setBaseUrl(AiChatAnthropic *self, const char *baseUrlOverride);
-void AiChatAnthropic_setMaxTokens(AiChatAnthropic *self, uint32_t maxTokens);
+void AiChatAnthropic_setMaxTokens(AiChatAnthropic *self, u32 maxTokens);
 
 // --- Getters (Rule 24, null-safe) ---
 const AiProvider *AiChatAnthropic_getProvider(const AiChatAnthropic *self);
@@ -66,6 +66,6 @@ const AiProviderSlot *AiChatAnthropic_getPeer(const AiChatAnthropic *self);
 const char *AiChatAnthropic_getModel(const AiChatAnthropic *self);
 const char *AiChatAnthropic_getApiKey(const AiChatAnthropic *self);
 const char *AiChatAnthropic_getBaseUrl(const AiChatAnthropic *self);
-uint32_t AiChatAnthropic_getMaxTokens(const AiChatAnthropic *self);
+u32 AiChatAnthropic_getMaxTokens(const AiChatAnthropic *self);
 
 #endif

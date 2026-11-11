@@ -28,7 +28,7 @@
  * ----------------------------------------------------------------------------
  *   const char *title;         // Embed card headline
  *   const char *description;   // Embed body markdown
- *   int32_t     color;         // Hex color integer (e.g. 0x00FF00)
+ *   i32     color;         // Hex color integer (e.g. 0x00FF00)
  *   const char *imageUrl;      // Optional image attachment/embed URL
  *
  * FUNCTION REGISTRY:
@@ -40,15 +40,15 @@
  */
 
 /** Splits a webhook URL into bounded scheme, host, port, and path outputs. */
-static bool parseUrl(const char *url, char *scheme, size_t schemeCap,
-                     char *host, size_t hostCap, int *port,
-                     char *path, size_t pathCap) {
+static bool parseUrl(const char *url, char *scheme, bytes schemeCap,
+                     char *host, bytes hostCap, int *port,
+                     char *path, bytes pathCap) {
     if (!url || url[0] == '\0') return false;
 
     const char *p = url;
     const char *schemeEnd = strstr(p, "://");
     if (schemeEnd) {
-        size_t sLen = (size_t)(schemeEnd - p);
+        bytes sLen = (bytes)(schemeEnd - p);
         if (sLen >= schemeCap) return false;
         memcpy(scheme, p, sLen);
         scheme[sLen] = '\0';
@@ -64,18 +64,18 @@ static bool parseUrl(const char *url, char *scheme, size_t schemeCap,
     const char *colon = strchr(p, ':');
 
     if (colon && (!slash || colon < slash)) {
-        size_t hLen = (size_t)(colon - p);
+        bytes hLen = (bytes)(colon - p);
         if (hLen >= hostCap) return false;
         memcpy(host, p, hLen);
         host[hLen] = '\0';
         *port = atoi(colon + 1);
     } else if (slash) {
-        size_t hLen = (size_t)(slash - p);
+        bytes hLen = (bytes)(slash - p);
         if (hLen >= hostCap) return false;
         memcpy(host, p, hLen);
         host[hLen] = '\0';
     } else {
-        size_t hLen = strlen(p);
+        bytes hLen = strlen(p);
         if (hLen >= hostCap) return false;
         memcpy(host, p, hLen);
         host[hLen] = '\0';
@@ -93,20 +93,20 @@ static bool parseUrl(const char *url, char *scheme, size_t schemeCap,
 }
 
 /** Appends an optional JSON string field while tracking field separators. */
-static bool appendStringField(char *buf, size_t cap, size_t *offset, const char *key, const char *val, bool *first) {
+static bool appendStringField(char *buf, bytes cap, bytes *offset, const char *key, const char *val, bool *first) {
     if (!val) return true;
-    size_t o = *offset;
+    bytes o = *offset;
     if (!(*first)) {
         if (o + 1 >= cap) return false;
         buf[o++] = ',';
     }
     *first = false;
     int n = snprintf(buf + o, cap - o, "\"%s\":", key);
-    if (n < 0 || o + (size_t)n >= cap) return false;
-    o += (size_t)n;
+    if (n < 0 || o + (bytes)n >= cap) return false;
+    o += (bytes)n;
     int64_t w = Json_writeString(buf + o, cap - o, val);
     if (w < 0) return false;
-    o += (size_t)w;
+    o += (bytes)w;
     *offset = o;
     return true;
 }
@@ -126,7 +126,7 @@ bool DiscordWebhook_sendText(const char *webhookUrl, const char *content,
     }
 
     char jsonBuf[4096];
-    size_t offset = 0;
+    bytes offset = 0;
     jsonBuf[offset++] = '{';
     bool first = true;
 
@@ -189,7 +189,7 @@ bool DiscordWebhook_sendEmbed(const char *webhookUrl, const char *content,
     }
 
     char jsonBuf[8192];
-    size_t offset = 0;
+    bytes offset = 0;
     jsonBuf[offset++] = '{';
     bool first = true;
 
@@ -214,7 +214,7 @@ bool DiscordWebhook_sendEmbed(const char *webhookUrl, const char *content,
         first = false;
 
         const char *embedsKey = "\"embeds\":[{";
-        size_t kLen = strlen(embedsKey);
+        bytes kLen = strlen(embedsKey);
         if (offset + kLen >= sizeof(jsonBuf)) return false;
         memcpy(jsonBuf + offset, embedsKey, kLen);
         offset += kLen;
@@ -235,8 +235,8 @@ bool DiscordWebhook_sendEmbed(const char *webhookUrl, const char *content,
             }
             embedFirst = false;
             int n = snprintf(jsonBuf + offset, sizeof(jsonBuf) - offset, "\"color\":%d", (*embed).color);
-            if (n < 0 || offset + (size_t)n >= sizeof(jsonBuf)) return false;
-            offset += (size_t)n;
+            if (n < 0 || offset + (bytes)n >= sizeof(jsonBuf)) return false;
+            offset += (bytes)n;
         }
         if ((*embed).imageUrl) {
             if (!embedFirst) {
@@ -245,14 +245,14 @@ bool DiscordWebhook_sendEmbed(const char *webhookUrl, const char *content,
             }
             embedFirst = false;
             const char *imgKey = "\"image\":{\"url\":";
-            size_t ikLen = strlen(imgKey);
+            bytes ikLen = strlen(imgKey);
             if (offset + ikLen >= sizeof(jsonBuf)) return false;
             memcpy(jsonBuf + offset, imgKey, ikLen);
             offset += ikLen;
 
             int64_t w = Json_writeString(jsonBuf + offset, sizeof(jsonBuf) - offset, (*embed).imageUrl);
             if (w < 0) return false;
-            offset += (size_t)w;
+            offset += (bytes)w;
 
             if (offset + 2 >= sizeof(jsonBuf)) return false;
             jsonBuf[offset++] = '}';

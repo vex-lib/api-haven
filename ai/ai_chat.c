@@ -63,8 +63,8 @@
 // --- static helpers ---------------------------------------------------------
 
 /** Appends a literal and terminator when the remaining output capacity permits. */
-static bool appendLiteral(char *out, size_t cap, size_t *used, const char *s) {
-    const size_t n = strlen(s);
+static bool appendLiteral(char *out, bytes cap, bytes *used, const char *s) {
+    const bytes n = strlen(s);
     if (!out || !used || *used + n + 1 > cap)
         return false;
     memcpy(out + *used, s, n);
@@ -74,11 +74,11 @@ static bool appendLiteral(char *out, size_t cap, size_t *used, const char *s) {
 }
 
 /** Appends one JSON-escaped string to the current bounded output position. */
-static bool appendJsonString(char *out, size_t cap, size_t *used, const char *s) {
+static bool appendJsonString(char *out, bytes cap, bytes *used, const char *s) {
     const int64_t w = Json_writeString(out + *used, cap - *used, s);
     if (w < 0)
         return false;
-    *used += (size_t)w;
+    *used += (bytes)w;
     return true;
 }
 
@@ -110,9 +110,9 @@ AiChat AiChat_2(const char *model, const char *apiKey) {
 // CORE FUNCTIONS
 
 /** Renders the OpenAI-compatible request URL, JSON body, and auth descriptor. */
-bool AiChat_buildRequest(const AiChat *self, const AiMessage *msgs, uint32_t msgCount,
-                         char *bodyBuf, size_t bodyCap,
-                         char *urlBuf, size_t urlCap,
+bool AiChat_buildRequest(const AiChat *self, const AiMessage *msgs, u32 msgCount,
+                         char *bodyBuf, bytes bodyCap,
+                         char *urlBuf, bytes urlCap,
                          ApiAuth *authOut) {
     if (!self || !bodyBuf || !urlBuf || !authOut || !(*self).model)
         return false;
@@ -133,7 +133,7 @@ bool AiChat_buildRequest(const AiChat *self, const AiMessage *msgs, uint32_t msg
     }
 
     const int printed = snprintf(urlBuf, urlCap, "%s/chat/completions", base);
-    if (printed < 0 || (size_t)printed >= urlCap)
+    if (printed < 0 || (bytes)printed >= urlCap)
         return false;
 
     // Credential: peer row may dictate scheme; only Bearer is modeled today.
@@ -143,14 +143,14 @@ bool AiChat_buildRequest(const AiChat *self, const AiMessage *msgs, uint32_t msg
         (*authOut) = ApiAuth_none();
 
     // Render {"model":"...","messages":[{"role":"...","content":"..."},...]}
-    size_t used = 0;
+    bytes used = 0;
     if (!appendLiteral(bodyBuf, bodyCap, &used, "{\"model\":"))
         return false;
     if (!appendJsonString(bodyBuf, bodyCap, &used, (*self).model))
         return false;
     if (!appendLiteral(bodyBuf, bodyCap, &used, ",\"messages\":["))
         return false;
-    for (uint32_t i = 0; i < msgCount; i++) {
+    for (u32 i = 0; i < msgCount; i++) {
         const AiMessage *m = &msgs[i];
         if (i > 0 && !appendLiteral(bodyBuf, bodyCap, &used, ","))
             return false;
@@ -171,8 +171,8 @@ bool AiChat_buildRequest(const AiChat *self, const AiMessage *msgs, uint32_t msg
 }
 
 /** Builds and sends a chat-completion request, returning the REST result. */
-bool AiChat_complete(const AiChat *self, const AiMessage *msgs, uint32_t msgCount,
-                     char *bodyBuf, size_t bodyCap,
+bool AiChat_complete(const AiChat *self, const AiMessage *msgs, u32 msgCount,
+                     char *bodyBuf, bytes bodyCap,
                      HttpResponse *resp) {
     if (!resp)
         return false;

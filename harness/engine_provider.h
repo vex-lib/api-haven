@@ -47,7 +47,7 @@ typedef struct EngineProviderSlot {
 // The table class — a singleton handle; state lives in the static const
 // rows in engine_provider.c.
 typedef struct EngineProvider {
-    uint32_t reserved; // signature/marker; no mutable state
+    u32 reserved; // signature/marker; no mutable state
 } EngineProvider;
 
 // --- Constructor ---
@@ -56,16 +56,16 @@ EngineProvider *EngineProvider_shared(void);
 
 // --- Core functions ---
 // Total rows. Null-safe: 0 on NULL self.
-uint32_t EngineProvider_count(const EngineProvider *self);
+u32 EngineProvider_count(const EngineProvider *self);
 // Row at index i. NULL when out of range.
-const EngineProviderSlot *EngineProvider_at(const EngineProvider *self, uint32_t i);
+const EngineProviderSlot *EngineProvider_at(const EngineProvider *self, u32 i);
 // Row by canonical slug. NULL when absent. Linear scan (20 rows).
 const EngineProviderSlot *EngineProvider_get(const EngineProvider *self, const char *slug);
 // Copies the row's cliName into outBuf (NUL-terminated, dest-last per
 // Rule 9). False on NULL self/slot/buf, zero cap, or truncation.
 bool EngineProvider_resolveCli(const EngineProvider *self,
                                const EngineProviderSlot *slot,
-                               char *outBuf, size_t outCap);
+                               char *outBuf, bytes outCap);
 
 // --- Getters (Rule 24; null-safe; setters omitted — immutable rows) ---
 const char *EngineProvider_getSlug(const EngineProvider *self,

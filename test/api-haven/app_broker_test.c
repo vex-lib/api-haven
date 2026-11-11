@@ -38,13 +38,13 @@ static int sFailures = 0;
 
 // --- stub drivers (in-process; never touch scripts or sockets) ---------------
 static int sRunCalls = 0;
-static uint64_t sLastTimeoutMs = 0;
+static u64 sLastTimeoutMs = 0;
 
 /* Copies the requested action into the bounded output and records successful stub dispatch. */
 static bool stubEcho(void *driverCtx, const AppProviderSlot *target,
                      const char *action, const char *paramsJson,
-                     size_t paramsLen, uint64_t timeoutMs,
-                     char *outBuf, size_t outCap, size_t *outLen) {
+                     bytes paramsLen, u64 timeoutMs,
+                     char *outBuf, bytes outCap, bytes *outLen) {
     (void)driverCtx;
     (void)target;
     (void)paramsJson;
@@ -52,7 +52,7 @@ static bool stubEcho(void *driverCtx, const AppProviderSlot *target,
     sRunCalls++;
     sLastTimeoutMs = timeoutMs;
     const char *reply = action ? action : "";
-    size_t len = strlen(reply);
+    bytes len = strlen(reply);
     if (len + 1 > outCap)
         return false;
     memcpy(outBuf, reply, len + 1);
@@ -64,8 +64,8 @@ static bool stubEcho(void *driverCtx, const AppProviderSlot *target,
 /* Simulates a driver rejection without writing output or changing broker state. */
 static bool stubFail(void *driverCtx, const AppProviderSlot *target,
                      const char *action, const char *paramsJson,
-                     size_t paramsLen, uint64_t timeoutMs,
-                     char *outBuf, size_t outCap, size_t *outLen) {
+                     bytes paramsLen, u64 timeoutMs,
+                     char *outBuf, bytes outCap, bytes *outLen) {
     (void)driverCtx;
     (void)target;
     (void)action;
@@ -161,7 +161,7 @@ int main(int argc, const char **argv) {
     CHECK(AppBroker_getTimeout(&bare) == 100);
     CHECK(!AppBroker_isRunning(&bare));
     char out[128];
-    uint32_t jobId = 0;
+    u32 jobId = 0;
     CHECK(!AppBroker_action(&bare, "list-notes", "{}", 2, out, sizeof(out), &jobId));
     CHECK(AppBroker_getLastStatus(&bare) == APP_STATUS_IDLE);
     CHECK(AppBroker_getJobCount(&bare) == 0);
@@ -204,7 +204,7 @@ int main(int argc, const char **argv) {
     AppDriverTable failTable;
     failTable.runActionFn = stubFail;
     AppBroker_setDriver(&b, &driverCtx, failTable);
-    uint32_t failId = 0;
+    u32 failId = 0;
     CHECK(!AppBroker_action(&b, "doomed", "{}", 2, out, sizeof(out), &failId));
     CHECK(AppBroker_getLastStatus(&b) == APP_STATUS_TIMEOUT);
     CHECK(AppBroker_getJobStatus(&b, failId) == APP_STATUS_TIMEOUT);

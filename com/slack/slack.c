@@ -33,11 +33,11 @@
  */
 
 /** Appends one optional JSON string field, updating the comma state and offset. */
-static bool appendField(char *buf, size_t cap, size_t *offset,
+static bool appendField(char *buf, bytes cap, bytes *offset,
                         const char *key, const char *val, bool *first) {
     if (!val)
         return true;
-    size_t o = *offset;
+    bytes o = *offset;
     if (!(*first)) {
         if (o + 1 >= cap)
             return false;
@@ -45,13 +45,13 @@ static bool appendField(char *buf, size_t cap, size_t *offset,
     }
     *first = false;
     int n = snprintf(buf + o, cap - o, "\"%s\":", key);
-    if (n < 0 || o + (size_t)n >= cap)
+    if (n < 0 || o + (bytes)n >= cap)
         return false;
-    o += (size_t)n;
+    o += (bytes)n;
     int64_t w = Json_writeString(buf + o, cap - o, val);
     if (w < 0)
         return false;
-    o += (size_t)w;
+    o += (bytes)w;
     *offset = o;
     return true;
 }
@@ -65,7 +65,7 @@ bool SlackWebhook_sendText(const char *webhookUrl, const char *text,
     if (!text)
         return false;
     char jsonBuf[4096];
-    size_t offset = 0;
+    bytes offset = 0;
     jsonBuf[offset++] = '{';
     bool first = true;
     if (!appendField(jsonBuf, sizeof(jsonBuf), &offset, "text", text, &first))

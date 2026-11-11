@@ -37,7 +37,7 @@ typedef struct Capture {
     char method[16];
     char path[1024];
     char body[8192];
-    size_t bodyLen;
+    bytes bodyLen;
     int hits;
 } Capture;
 
@@ -55,7 +55,7 @@ static void captureHandler(const HttpExchange *exchange, int clientFd, void *use
     Capture *cap = &g_cap;
     strncpy((*cap).method, (*exchange).method, sizeof((*cap).method) - 1);
     strncpy((*cap).path, (*exchange).path, sizeof((*cap).path) - 1);
-    size_t n = (*exchange).bodyLen;
+    bytes n = (*exchange).bodyLen;
     if (n >= sizeof((*cap).body))
         n = sizeof((*cap).body) - 1;
     if (n > 0 && (*exchange).body)
@@ -80,7 +80,7 @@ static bool bodyHas(const char *body, const char *key, const char *want) {
         return false;
     JsonRef root = Json_root(&doc);
     JsonRef ref = Json_member(&doc, root, key);
-    uint32_t len = 0;
+    u32 len = 0;
     const char *got = Json_string(&doc, ref, &len);
     if (!got)
         return false;

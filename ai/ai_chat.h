@@ -7,7 +7,7 @@
 
 #include "ai/ai_provider.h"
 #include "api/auth.h"
-#include "c23/constructor.h"
+#include "util/constructor.h"
 #include "net/http.h"
 
 // ai/ai_chat.h — OpenAI-compatible chat completion client (L2 behavior).
@@ -42,15 +42,15 @@ AiChat AiChat_2(const char *model, const char *apiKey);
 // Renders the request without sending: OpenAI envelope into bodyBuf,
 // final URL into urlBuf, credential into authOut. dest-last per Rule 9.
 // Everything is caller-owned scratch; fast enough for build-mode reuse.
-bool AiChat_buildRequest(const AiChat *self, const AiMessage *msgs, uint32_t msgCount,
-                         char *bodyBuf, size_t bodyCap,
-                         char *urlBuf, size_t urlCap,
+bool AiChat_buildRequest(const AiChat *self, const AiMessage *msgs, u32 msgCount,
+                         char *bodyBuf, bytes bodyCap,
+                         char *urlBuf, bytes urlCap,
                          ApiAuth *authOut);
 // buildRequest + Rest_postJson through the shared REST core.
 // resp is caller-owned (see net/http.h). No network in tests — use
 // AiChat_buildRequest for headless verification.
-bool AiChat_complete(const AiChat *self, const AiMessage *msgs, uint32_t msgCount,
-                     char *bodyBuf, size_t bodyCap,
+bool AiChat_complete(const AiChat *self, const AiMessage *msgs, u32 msgCount,
+                     char *bodyBuf, bytes bodyCap,
                      HttpResponse *resp);
 
 // --- Setters ---

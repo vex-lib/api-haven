@@ -57,7 +57,7 @@ int main(int argc, const char **argv) {
     // --- directory shape ---------------------------------------------------------
     AssetProvider *dir = AssetProvider_shared();
     CHECK(dir != nullptr);
-    const uint32_t total = AssetProvider_count(dir);
+    const u32 total = AssetProvider_count(dir);
     printf("AssetProvider_count = %u\n", total);
     CHECK(total == 12);
     CHECK(AssetProvider_at(dir, 0) != nullptr);
@@ -84,8 +84,8 @@ int main(int argc, const char **argv) {
 
     // --- directory consistency ------------------------------------------------------------
     const char *names[12];
-    uint32_t nameCount = 0;
-    for (uint32_t i = 0; i < total; i++) {
+    u32 nameCount = 0;
+    for (u32 i = 0; i < total; i++) {
         const AssetProviderSlot *row = AssetProvider_at(dir, i);
         CHECK(row != nullptr);
         CHECK(row && isSlugValid(AssetProvider_getSlug(dir, row)));
@@ -96,7 +96,7 @@ int main(int argc, const char **argv) {
         CHECK(row && AssetProvider_getSampleDownload(dir, row) != nullptr);
         if (row && rowName) {
             int dup = 0;
-            for (uint32_t j = 0; j < nameCount; j++) {
+            for (u32 j = 0; j < nameCount; j++) {
                 if (strcmp(names[j], rowName) == 0)
                     dup = 1;
             }
@@ -128,11 +128,11 @@ int main(int argc, const char **argv) {
     const char *sub = AssetBroker_getCacheSub(&broker);
     CHECK(strcmp(sub, "assets") == 0);
 
-    uint8_t dest[64];
-    uint32_t used = 0;
+    u8 dest[64];
+    u32 used = 0;
     bool truncated = false;
-    const uint8_t c1[4] = {'a', 'b', 'c', 'd'};
-    const uint8_t c2[4] = {'e', 'f', 'g', 'h'};
+    const u8 c1[4] = {'a', 'b', 'c', 'd'};
+    const u8 c2[4] = {'e', 'f', 'g', 'h'};
     CHECK(AssetBroker_copyChunk(&broker, c1, sizeof(c1), dest, sizeof(dest), &used, &truncated));
     CHECK(!truncated && used == 4);
     CHECK(AssetBroker_copyChunk(&broker, c2, sizeof(c2), dest, sizeof(dest), &used, &truncated));
@@ -144,12 +144,12 @@ int main(int argc, const char **argv) {
     CHECK(used == 8);
 
     // --- broker: oversize chunk refused (per-chunk bound, never whole-file) ----------------------------------------
-    uint8_t big[ASSET_BROKER_CHUNK_CAP + 1];
+    u8 big[ASSET_BROKER_CHUNK_CAP + 1];
     memset(big, 0x5a, sizeof(big));
     CHECK(!AssetBroker_copyChunk(&broker, big, sizeof(big), dest, sizeof(dest), &used, &truncated));
 
     // --- broker: dest overflow sets the flag (Rule 35.3) --------------------------------------------------------------------
-    uint8_t fill[56];
+    u8 fill[56];
     memset(fill, 0x31, sizeof(fill));
     CHECK(AssetBroker_copyChunk(&broker, fill, sizeof(fill), dest, sizeof(dest), &used, &truncated));
     CHECK(used == 64);
@@ -180,7 +180,7 @@ int main(int argc, const char **argv) {
     CHECK(!AssetBroker_copyChunk(&broker, c1, sizeof(c1), nullptr, sizeof(dest), &used, &truncated));
     CHECK(!AssetBroker_copyChunk(&broker, c1, sizeof(c1), dest, 0, &used, &truncated));
     CHECK(!AssetBroker_copyChunk(&broker, c1, sizeof(c1), dest, sizeof(dest), nullptr, &truncated));
-    uint32_t badUsed = 99;
+    u32 badUsed = 99;
     CHECK(!AssetBroker_copyChunk(&broker, c1, sizeof(c1), dest, sizeof(dest), &badUsed, &truncated));
     AssetBroker_reset(nullptr);
     AssetBroker_cancel(nullptr);

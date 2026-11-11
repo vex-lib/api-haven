@@ -68,8 +68,8 @@
 // --- static helpers ---------------------------------------------------------
 
 /** Appends a literal and terminator when the remaining output capacity permits. */
-static bool appendLiteral(char *out, size_t cap, size_t *used, const char *s) {
-    const size_t n = strlen(s);
+static bool appendLiteral(char *out, bytes cap, bytes *used, const char *s) {
+    const bytes n = strlen(s);
     if (!out || !used || *used + n + 1 > cap)
         return false;
     memcpy(out + *used, s, n);
@@ -79,11 +79,11 @@ static bool appendLiteral(char *out, size_t cap, size_t *used, const char *s) {
 }
 
 /** Appends one JSON-escaped string to the current bounded output position. */
-static bool appendJsonString(char *out, size_t cap, size_t *used, const char *s) {
+static bool appendJsonString(char *out, bytes cap, bytes *used, const char *s) {
     const int64_t w = Json_writeString(out + *used, cap - *used, s);
     if (w < 0)
         return false;
-    *used += (size_t)w;
+    *used += (bytes)w;
     return true;
 }
 
@@ -128,8 +128,8 @@ AiChatGemini AiChatGemini_2(const char *model, const char *apiKey) {
 
 /** Renders the Gemini generateContent URL, JSON body, and API-key auth descriptor. */
 bool AiChatGemini_buildRequest(const AiChatGemini *self, const AiMessage *msgs,
-                               uint32_t msgCount, char *bodyBuf, size_t bodyCap,
-                               char *urlBuf, size_t urlCap, ApiAuth *authOut) {
+                               u32 msgCount, char *bodyBuf, bytes bodyCap,
+                               char *urlBuf, bytes urlCap, ApiAuth *authOut) {
     if (!self || !bodyBuf || !urlBuf || !authOut || !(*self).model)
         return false;
     if (!msgs && msgCount > 0)
@@ -150,7 +150,7 @@ bool AiChatGemini_buildRequest(const AiChatGemini *self, const AiMessage *msgs,
 
     const int printed = snprintf(urlBuf, urlCap, "%s/v1beta/models/%s:generateContent",
                                  base, (*self).model);
-    if (printed < 0 || (size_t)printed >= urlCap)
+    if (printed < 0 || (bytes)printed >= urlCap)
         return false;
 
     // Credential: Gemini wire takes x-goog-api-key, never Bearer.
@@ -160,10 +160,10 @@ bool AiChatGemini_buildRequest(const AiChatGemini *self, const AiMessage *msgs,
         (*authOut) = ApiAuth_none();
 
     // Render {"contents":[{"role":"...","parts":[{"text":"..."}]},...]}
-    size_t used = 0;
+    bytes used = 0;
     if (!appendLiteral(bodyBuf, bodyCap, &used, "{\"contents\":["))
         return false;
-    for (uint32_t i = 0; i < msgCount; i++) {
+    for (u32 i = 0; i < msgCount; i++) {
         const AiMessage *m = &msgs[i];
         if (i > 0 && !appendLiteral(bodyBuf, bodyCap, &used, ","))
             return false;
@@ -185,7 +185,7 @@ bool AiChatGemini_buildRequest(const AiChatGemini *self, const AiMessage *msgs,
 
 /** Builds and sends a Gemini generateContent request through the REST core. */
 bool AiChatGemini_complete(const AiChatGemini *self, const AiMessage *msgs,
-                            uint32_t msgCount, char *bodyBuf, size_t bodyCap,
+                            u32 msgCount, char *bodyBuf, bytes bodyCap,
                             HttpResponse *resp) {
     if (!resp)
         return false;

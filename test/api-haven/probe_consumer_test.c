@@ -44,7 +44,7 @@ int main(int argc, const char **argv) {
     // --- vexspoke AppDetect through the api_haven seam ------------------------
     AppDetect *detect = AppDetect_shared();
     CHECK(detect != nullptr);
-    const uint32_t appCount = AppDetect_count(detect);
+    const u32 appCount = AppDetect_count(detect);
     printf("AppDetect_count (via api_haven) = %u\n", appCount);
     CHECK(appCount >= 12);
     CHECK(AppDetect_get(detect, "opencode") != nullptr);
@@ -57,7 +57,7 @@ int main(int argc, const char **argv) {
     // --- vexspoke CaptureTool through the seam ---------------------------------
     CaptureTool *tools = CaptureTool_shared();
     CHECK(tools != nullptr);
-    const uint32_t captureCount = CaptureTool_count(tools);
+    const u32 captureCount = CaptureTool_count(tools);
     printf("CaptureTool_count (via api_haven) = %u\n", captureCount);
     CHECK(captureCount >= 12);
     const CaptureSlot *obs = CaptureTool_get(tools, "obs");

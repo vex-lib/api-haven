@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include "c23/constructor.h"
+#include "util/constructor.h"
 
 // api/haven_ws_fanout.h — the HavenWsFanout class (R2 fan-out registry).
 //
@@ -23,8 +23,8 @@
 // when the host explicitly calls the source close fn via detach path).
 typedef struct HavenWsSource {
     bool (*connect)(void *handle);
-    uint32_t (*poll)(void *handle, uint64_t budgetMs);
-    bool (*send)(void *handle, const uint8_t *Bytes, uint32_t len);
+    u32 (*poll)(void *handle, u64 budgetMs);
+    bool (*send)(void *handle, const u8 *Bytes, u32 len);
     void (*close)(void *handle);
 } HavenWsSource;
 
@@ -37,7 +37,7 @@ typedef struct HavenWsSlot {
 
 typedef struct HavenWsFanout {
     HavenWsSlot slots[HAVEN_WS_FANOUT_MAX]; // fixed fan-out rows, no alloc
-    uint32_t count;                         // live rows (0..FANOUT_MAX)
+    u32 count;                         // live rows (0..FANOUT_MAX)
 } HavenWsFanout;
 
 // Empty registry (zero rows).
@@ -60,11 +60,11 @@ bool HavenWsFanout_detach(HavenWsFanout *fanout, void *handle);
 // One caller-driven fan-out step: poll each live slot with an even budget
 // slice (budgetMs / count, min 1ms), summing delivered frames. Returns
 // frames delivered; 0 when empty, NULL, or zero budget.
-uint32_t HavenWsFanout_pollStep(HavenWsFanout *fanout, uint64_t budgetMs);
+u32 HavenWsFanout_pollStep(HavenWsFanout *fanout, u64 budgetMs);
 
 // Getters only (Rule 24; null-safe. Setters omitted — rows are managed
 // by attach/detach, same immutable-row waiver as the provider tables).
-uint32_t HavenWsFanout_getCount(const HavenWsFanout *fanout);
-void *HavenWsFanout_getHandle(const HavenWsFanout *fanout, uint32_t i);
+u32 HavenWsFanout_getCount(const HavenWsFanout *fanout);
+void *HavenWsFanout_getHandle(const HavenWsFanout *fanout, u32 i);
 
 #endif

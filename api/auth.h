@@ -51,6 +51,6 @@ ApiAuth ApiAuth_bearerFn(ApiTokenFn fn, void *userdata);
 // (no header) or the credential is missing. On true, nameOut points at
 // the header name (borrowed) and valueBuf holds the NUL-terminated value.
 bool ApiAuth_apply(const ApiAuth *auth, const char **nameOut,
-                   char *valueBuf, size_t valueCap);
+                   char *valueBuf, bytes valueCap);
 
 #endif

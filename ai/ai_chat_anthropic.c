@@ -37,7 +37,7 @@
  *   const char *model;           // e.g. "claude-sonnet-4-5"; must be set
  *   const char *apiKey;          // x-api-key credential; NULL = no auth
  *   const char *baseUrlOverride; // wins over peer base / family default
- *   uint32_t maxTokens;          // token ceiling (default 1024)
+ *   u32 maxTokens;          // token ceiling (default 1024)
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
@@ -66,8 +66,8 @@
 // --- static helpers ---------------------------------------------------------
 
 /** Appends a literal and terminator when the remaining output capacity permits. */
-static bool appendLiteral(char *out, size_t cap, size_t *used, const char *s) {
-    const size_t n = strlen(s);
+static bool appendLiteral(char *out, bytes cap, bytes *used, const char *s) {
+    const bytes n = strlen(s);
     if (!out || !used || *used + n + 1 > cap)
         return false;
     memcpy(out + *used, s, n);
@@ -77,11 +77,11 @@ static bool appendLiteral(char *out, size_t cap, size_t *used, const char *s) {
 }
 
 /** Appends one JSON-escaped string to the current bounded output position. */
-static bool appendJsonString(char *out, size_t cap, size_t *used, const char *s) {
+static bool appendJsonString(char *out, bytes cap, bytes *used, const char *s) {
     const int64_t w = Json_writeString(out + *used, cap - *used, s);
     if (w < 0)
         return false;
-    *used += (size_t)w;
+    *used += (bytes)w;
     return true;
 }
 
@@ -115,8 +115,8 @@ AiChatAnthropic AiChatAnthropic_2(const char *model, const char *apiKey) {
 
 /** Renders the Anthropic Messages URL, body, and x-api-key auth descriptor. */
 bool AiChatAnthropic_buildRequest(const AiChatAnthropic *self, const AiMessage *msgs,
-                                  uint32_t msgCount, char *bodyBuf, size_t bodyCap,
-                                  char *urlBuf, size_t urlCap, ApiAuth *authOut) {
+                                  u32 msgCount, char *bodyBuf, bytes bodyCap,
+                                  char *urlBuf, bytes urlCap, ApiAuth *authOut) {
     if (!self || !bodyBuf || !urlBuf || !authOut || !(*self).model)
         return false;
     if (!msgs && msgCount > 0)
@@ -138,7 +138,7 @@ bool AiChatAnthropic_buildRequest(const AiChatAnthropic *self, const AiMessage *
     }
 
     const int printed = snprintf(urlBuf, urlCap, "%s/v1/messages", base);
-    if (printed < 0 || (size_t)printed >= urlCap)
+    if (printed < 0 || (bytes)printed >= urlCap)
         return false;
 
     // Credential: Anthropic wire takes x-api-key, never Bearer.
@@ -148,7 +148,7 @@ bool AiChatAnthropic_buildRequest(const AiChatAnthropic *self, const AiMessage *
         (*authOut) = ApiAuth_none();
 
     // Render {"model":"...","max_tokens":N,"messages":[{...},...]}
-    size_t used = 0;
+    bytes used = 0;
     if (!appendLiteral(bodyBuf, bodyCap, &used, "{\"model\":"))
         return false;
     if (!appendJsonString(bodyBuf, bodyCap, &used, (*self).model))
@@ -156,11 +156,11 @@ bool AiChatAnthropic_buildRequest(const AiChatAnthropic *self, const AiMessage *
     char tokenBuf[32];
     const int tw = snprintf(tokenBuf, sizeof(tokenBuf), ",\"max_tokens\":%u,\"messages\":[",
                             (*self).maxTokens);
-    if (tw < 0 || (size_t)tw >= sizeof(tokenBuf))
+    if (tw < 0 || (bytes)tw >= sizeof(tokenBuf))
         return false;
     if (!appendLiteral(bodyBuf, bodyCap, &used, tokenBuf))
         return false;
-    for (uint32_t i = 0; i < msgCount; i++) {
+    for (u32 i = 0; i < msgCount; i++) {
         const AiMessage *m = &msgs[i];
         if (i > 0 && !appendLiteral(bodyBuf, bodyCap, &used, ","))
             return false;
@@ -182,7 +182,7 @@ bool AiChatAnthropic_buildRequest(const AiChatAnthropic *self, const AiMessage *
 
 /** Builds and sends an Anthropic Messages request through the REST core. */
 bool AiChatAnthropic_complete(const AiChatAnthropic *self, const AiMessage *msgs,
-                               uint32_t msgCount, char *bodyBuf, size_t bodyCap,
+                               u32 msgCount, char *bodyBuf, bytes bodyCap,
                                HttpResponse *resp) {
     if (!resp)
         return false;
@@ -227,7 +227,7 @@ void AiChatAnthropic_setBaseUrl(AiChatAnthropic *self, const char *baseUrlOverri
 }
 
 /** Sets the request's maximum token count. */
-void AiChatAnthropic_setMaxTokens(AiChatAnthropic *self, uint32_t maxTokens) {
+void AiChatAnthropic_setMaxTokens(AiChatAnthropic *self, u32 maxTokens) {
     if (self)
         (*self).maxTokens = maxTokens;
 }
@@ -260,7 +260,7 @@ const char *AiChatAnthropic_getBaseUrl(const AiChatAnthropic *self) {
 }
 
 /** Returns the configured token ceiling, or zero for a null receiver. */
-uint32_t AiChatAnthropic_getMaxTokens(const AiChatAnthropic *self) {
+u32 AiChatAnthropic_getMaxTokens(const AiChatAnthropic *self) {
     if (!self)
         return 0;
     return (*self).maxTokens;

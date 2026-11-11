@@ -6,7 +6,7 @@
 #include <stdint.h>
 
 #include "app/app_provider.h"
-#include "c23/constructor.h"
+#include "util/constructor.h"
 
 // app/app_broker.h — bounded app/automation action seam (L2 behavior).
 //
@@ -37,12 +37,12 @@ typedef enum AppStatus {
 // SLOT RECORD — one bounded action slot (Rule 3 co-location). Borrowed
 // target row; output lands in caller-owned dest (dest-last, Rule 9).
 typedef struct AppJob {
-    uint32_t jobId;                  // slot index + 1; stable per slot
+    u32 jobId;                  // slot index + 1; stable per slot
     const AppProviderSlot *target;   // borrowed descriptor row
     AppStatus status;                // lifecycle state
-    uint64_t timeoutMs;              // per-slot bound handed to driver
+    u64 timeoutMs;              // per-slot bound handed to driver
     void *driverHandle;              // opaque driver job; NULL when idle
-    size_t outLen;                   // Bytes written into the caller dest
+    bytes outLen;                   // Bytes written into the caller dest
 } AppJob;
 
 // Driver seam — implemented outside api-haven (vexspoke/R3). The wait
@@ -51,8 +51,8 @@ typedef struct AppJob {
 // per Rule 9; credentials arrive via driver ctx, never the arena.
 typedef bool (*AppRunActionFn)(void *driverCtx, const AppProviderSlot *target,
                                const char *action, const char *paramsJson,
-                               size_t paramsLen, uint64_t timeoutMs,
-                               char *outBuf, size_t outCap, size_t *outLen);
+                               bytes paramsLen, u64 timeoutMs,
+                               char *outBuf, bytes outCap, bytes *outLen);
 
 typedef struct AppDriverTable {
     AppRunActionFn runActionFn; // NULL = driver unbound, actions degrade
@@ -60,8 +60,8 @@ typedef struct AppDriverTable {
 
 typedef struct AppBroker {
     AppJob jobs[APP_MAX_JOBS];       // fixed slots, BitPool discipline
-    uint32_t jobCount;               // slots ever issued, capped at 16
-    uint64_t timeoutMs;              // default bound for new actions
+    u32 jobCount;               // slots ever issued, capped at 16
+    u64 timeoutMs;              // default bound for new actions
     const AppProviderSlot *target;   // bound target row; NULL = unbound
     void *driver;                    // opaque driver ctx, never touched
     AppDriverTable table;            // injected run fn
@@ -70,7 +70,7 @@ typedef struct AppBroker {
 
 // --- Constructors (value structs, zero heap — Harness precedent) ---
 AppBroker AppBroker_0(void);                   // target NULL, 100ms default
-AppBroker AppBroker_1(uint64_t timeoutMs);     // target NULL, given default
+AppBroker AppBroker_1(u64 timeoutMs);     // target NULL, given default
 #define AppBroker(...) CONSTRUCTOR_DISPATCH(AppBroker, __VA_ARGS__)
 
 // --- Core functions ---
@@ -80,28 +80,28 @@ AppBroker AppBroker_1(uint64_t timeoutMs);     // target NULL, given default
 // action, or NULL params degrade to false (lastStatus IDLE) without
 // consuming a slot. outJobId is dest-last per Rule 9 (NULL-tolerant).
 bool AppBroker_action(AppBroker *self, const char *action,
-                      const char *paramsJson, size_t paramsLen,
-                      char *outBuf, size_t outCap, uint32_t *outJobId);
+                      const char *paramsJson, bytes paramsLen,
+                      char *outBuf, bytes outCap, u32 *outJobId);
 // Reports the stored slot verdict (the driver call already completed
 // inside action). IDLE on NULL self or unknown jobId.
-AppStatus AppBroker_poll(AppBroker *self, uint32_t jobId);
+AppStatus AppBroker_poll(AppBroker *self, u32 jobId);
 // Bounded teardown hook per slot (Rule 26): RUNNING to IDLE. False on
 // NULL self, unknown jobId, or a slot not RUNNING.
-bool AppBroker_cancel(AppBroker *self, uint32_t jobId);
+bool AppBroker_cancel(AppBroker *self, u32 jobId);
 
 // --- Setters ---
 void AppBroker_setTarget(AppBroker *self, const AppProviderSlot *target);
 void AppBroker_setDriver(AppBroker *self, void *driver, AppDriverTable table);
-void AppBroker_setTimeout(AppBroker *self, uint64_t timeoutMs);
+void AppBroker_setTimeout(AppBroker *self, u64 timeoutMs);
 
 // --- Getters (Rule 24, null-safe) ---
 const AppProviderSlot *AppBroker_getTarget(const AppBroker *self);
 void *AppBroker_getDriver(const AppBroker *self);
-uint64_t AppBroker_getTimeout(const AppBroker *self);
+u64 AppBroker_getTimeout(const AppBroker *self);
 bool AppBroker_isRunning(const AppBroker *self);
-uint32_t AppBroker_getJobCount(const AppBroker *self);
-const AppJob *AppBroker_getJobAt(const AppBroker *self, uint32_t i);
-AppStatus AppBroker_getJobStatus(const AppBroker *self, uint32_t jobId);
+u32 AppBroker_getJobCount(const AppBroker *self);
+const AppJob *AppBroker_getJobAt(const AppBroker *self, u32 i);
+AppStatus AppBroker_getJobStatus(const AppBroker *self, u32 jobId);
 AppStatus AppBroker_getLastStatus(const AppBroker *self);
 
 #endif

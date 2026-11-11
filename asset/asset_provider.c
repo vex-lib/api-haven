@@ -31,7 +31,7 @@
  * STRUCT FIELDS (Mirroring asset/asset_provider.h — exactly this
  * file's class):
  * ----------------------------------------------------------------------------
- *   uint32_t reserved;   // singleton marker; no mutable state — all data
+ *   u32 reserved;   // singleton marker; no mutable state — all data
  *                        // lives in the static const AssetProviderSlot rows
  *
  * SLOT RECORD (AssetProviderSlot — Rule 3 co-location, zero behavior
@@ -201,8 +201,8 @@ static const AssetProviderSlot kAssetProviders[] = {
     },
 };
 
-static const uint32_t kAssetProviderCount =
-    (uint32_t)(sizeof(kAssetProviders) / sizeof(kAssetProviders[0]));
+static const u32 kAssetProviderCount =
+    (u32)(sizeof(kAssetProviders) / sizeof(kAssetProviders[0]));
 
 static AssetProvider sAssetProviderShared; // zero-init singleton
 
@@ -216,14 +216,14 @@ AssetProvider *AssetProvider_shared(void) {
 // CORE FUNCTIONS
 
 /** Returns the directory row count, or zero for a null receiver. */
-uint32_t AssetProvider_count(const AssetProvider *self) {
+u32 AssetProvider_count(const AssetProvider *self) {
     if (!self)
         return 0;
     return kAssetProviderCount;
 }
 
 /** Returns the row at index i, or nullptr for a null receiver or invalid index. */
-const AssetProviderSlot *AssetProvider_at(const AssetProvider *self, uint32_t i) {
+const AssetProviderSlot *AssetProvider_at(const AssetProvider *self, u32 i) {
     if (!self || i >= kAssetProviderCount)
         return nullptr;
     return &kAssetProviders[i];
@@ -233,7 +233,7 @@ const AssetProviderSlot *AssetProvider_at(const AssetProvider *self, uint32_t i)
 const AssetProviderSlot *AssetProvider_get(const AssetProvider *self, const char *slug) {
     if (!self || !slug || (*slug) == '\0')
         return nullptr;
-    for (uint32_t i = 0; i < kAssetProviderCount; i++) {
+    for (u32 i = 0; i < kAssetProviderCount; i++) {
         if (kAssetProviders[i].slug && strcmp(kAssetProviders[i].slug, slug) == 0)
             return &kAssetProviders[i];
     }

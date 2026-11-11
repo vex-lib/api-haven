@@ -33,11 +33,11 @@ static const HavenWsSource kBinding = {
 
 _Static_assert(_Generic(kBinding.connect, bool (*)(void*) : 1, default : 0),
                "connect must be bool(void*)");
-_Static_assert(_Generic(kBinding.poll, uint32_t (*)(void*, uint64_t) : 1, default : 0),
-               "poll must be uint32_t(void*, uint64_t)");
-_Static_assert(_Generic(kBinding.send, bool (*)(void*, const uint8_t*, uint32_t) : 1,
+_Static_assert(_Generic(kBinding.poll, u32 (*)(void*, u64) : 1, default : 0),
+               "poll must be u32(void*, u64)");
+_Static_assert(_Generic(kBinding.send, bool (*)(void*, const u8*, u32) : 1,
                         default : 0),
-               "send must be bool(void*, const uint8_t*, uint32_t)");
+               "send must be bool(void*, const u8*, u32)");
 _Static_assert(_Generic(kBinding.close, void (*)(void*) : 1, default : 0),
                "close must be void(void*)");
 
@@ -53,35 +53,35 @@ static int g_checks = 0;
         }                                                                       \
     } while (0)
 
-static bool peerWrite(int fd, const void *bytes, size_t length) {
-    const uint8_t *p = (const uint8_t*) bytes;
-    size_t sent = 0u;
+static bool peerWrite(int fd, const void *bytes, bytes length) {
+    const u8 *p = (const u8*) bytes;
+    bytes sent = 0u;
     while (sent < length) {
         ssize_t n = send(fd, p + sent, length - sent, 0);
         if (n <= 0)
             return false;
-        sent += (size_t) n;
+        sent += (bytes) n;
     }
     return true;
 }
 
 /** Server-side frame: never masked, which is what the RFC demands of a peer. */
-static bool peerFrame(int fd, uint8_t opcode, const char *text) {
-    size_t length = strlen(text);
-    uint8_t header[4];
-    header[0] = (uint8_t) (0x80u | opcode);
-    header[1] = (uint8_t) length;
+static bool peerFrame(int fd, u8 opcode, const char *text) {
+    bytes length = strlen(text);
+    u8 header[4];
+    header[0] = (u8) (0x80u | opcode);
+    header[1] = (u8) length;
     return peerWrite(fd, header, 2u) && peerWrite(fd, text, length);
 }
 
 /** Read exactly length Bytes with the peer's bounded timeout. */
-static bool peerReadExact(int peer, uint8_t *dest, size_t length) {
-    size_t got = 0u;
+static bool peerReadExact(int peer, u8 *dest, bytes length) {
+    bytes got = 0u;
     while (got < length) {
         ssize_t n = recv(peer, dest + got, length - got, 0);
         if (n <= 0)
             return false;
-        got += (size_t) n;
+        got += (bytes) n;
     }
     return true;
 }
@@ -122,12 +122,12 @@ static int peerRun(int readyWriteFd) {
     setsockopt(peer, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
 
     char request[4096];
-    size_t used = 0u;
+    bytes used = 0u;
     while (used + 1u < sizeof(request)) {
         ssize_t n = recv(peer, request + used, 1u, 0);
         if (n <= 0)
             break;
-        used += (size_t) n;
+        used += (bytes) n;
         request[used] = '\0';
         if (used >= 4u && strstr(request, "\r\n\r\n") != nullptr)
             break;
@@ -140,7 +140,7 @@ static int peerRun(int readyWriteFd) {
     if (keyEnd == nullptr)
         return 97;
     char value[64];
-    size_t keyLength = (size_t) (keyEnd - key);
+    bytes keyLength = (bytes) (keyEnd - key);
     if (keyLength + 1u > sizeof(value))
         return 98;
     memcpy(value, key, keyLength);
@@ -149,7 +149,7 @@ static int peerRun(int readyWriteFd) {
     Crypto_sha1Init(&digest);
     Crypto_sha1Update(&digest, value, strlen(value));
     Crypto_sha1Update(&digest, WS_HANDSHAKE_GUID, strlen(WS_HANDSHAKE_GUID));
-    uint8_t hash[CRYPTO_SHA1_DIGEST_SIZE];
+    u8 hash[CRYPTO_SHA1_DIGEST_SIZE];
     Crypto_sha1Final(&digest, hash);
     char accept[64];
     if (Url_base64(hash, CRYPTO_SHA1_DIGEST_SIZE, accept, sizeof(accept)) <= 0)
@@ -159,8 +159,8 @@ static int peerRun(int readyWriteFd) {
         "HTTP/1.1 101 Switching Protocols\r\n"
         "Upgrade: websocket\r\nConnection: Upgrade\r\n"
         "Sec-WebSocket-Accept: %s\r\n\r\n", accept);
-    if (written <= 0 || (size_t) written >= sizeof(response) ||
-        !peerWrite(peer, response, (size_t) written))
+    if (written <= 0 || (bytes) written >= sizeof(response) ||
+        !peerWrite(peer, response, (bytes) written))
         return 100;
 
     // Two complete messages, sent separately so the seam delivers one per poll.
@@ -172,24 +172,24 @@ static int peerRun(int readyWriteFd) {
     // The host's send must arrive as one masked TEXT frame. Read it exactly: the
     // client writes its header and its masked payload separately, so a single
     // recv can see only the header and make this owner flap.
-    uint8_t head[2];
+    u8 head[2];
     if (!peerReadExact(peer, head, sizeof(head)))
         return 103;
     if ((head[0] & 0x0Fu) != WEBSOCKET_TEXT)
         return 104;
     if ((head[1] & 0x80u) == 0u)
         return 105; // a client frame must be masked
-    size_t payloadLength = (size_t) (head[1] & 0x7Fu);
+    bytes payloadLength = (bytes) (head[1] & 0x7Fu);
     if (payloadLength > 16u)
         return 106;
-    uint8_t mask[4];
+    u8 mask[4];
     if (!peerReadExact(peer, mask, sizeof(mask)))
         return 107;
-    uint8_t body[16];
+    u8 body[16];
     if (payloadLength > 0u && !peerReadExact(peer, body, payloadLength))
         return 108;
     char decoded[17];
-    for (size_t i = 0u; i < payloadLength; i++)
+    for (bytes i = 0u; i < payloadLength; i++)
         decoded[i] = (char) (body[i] ^ mask[i & 3u]);
     decoded[payloadLength] = '\0';
     if (payloadLength != 4u || strncmp(decoded, "pong", 4u) != 0)
@@ -250,11 +250,11 @@ int main(void) {
     CHECK(second != nullptr && memcmp((*second).payload, "two", 3u) == 0);
 
     // The seam's send reaches the peer as a masked TEXT frame.
-    CHECK(kBinding.send(&handle, (const uint8_t*) "pong", 4u));
+    CHECK(kBinding.send(&handle, (const u8*) "pong", 4u));
     CHECK(!kBinding.send(&handle, nullptr, 4u));      // null payload refused
-    CHECK(!kBinding.send(nullptr, (const uint8_t*) "x", 1u));
+    CHECK(!kBinding.send(nullptr, (const u8*) "x", 1u));
     // A locally rejected payload must not kill a healthy transport.
-    const uint8_t broken[2] = { 0xC3u, 0x28u };
+    const u8 broken[2] = { 0xC3u, 0x28u };
     CHECK(!kBinding.send(&handle, broken, 2u));
     CHECK(VexWsSource_isOpen(&handle));
 
@@ -279,7 +279,7 @@ int main(void) {
     // Null/empty paths on the seam itself.
     CHECK(!VexWsSource_connect(nullptr));
     CHECK(VexWsSource_poll(nullptr, 10u) == 0u);
-    CHECK(!VexWsSource_send(nullptr, (const uint8_t*) "x", 1u));
+    CHECK(!VexWsSource_send(nullptr, (const u8*) "x", 1u));
     VexWsSource_close(nullptr);
     CHECK(VexWsSource_last(nullptr) == nullptr);
     CHECK(VexWsSource_socket(nullptr) == nullptr);

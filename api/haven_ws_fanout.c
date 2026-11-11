@@ -30,7 +30,7 @@
  * ----------------------------------------------------------------------------
  *   HavenWsFanout {
  *     HavenWsSlot slots[HAVEN_WS_FANOUT_MAX]; // 16 fixed rows, no alloc
- *     uint32_t count;                         // live rows (0..FANOUT_MAX)
+ *     u32 count;                         // live rows (0..FANOUT_MAX)
  *   }
  *
  * SLOT RECORD (HavenWsSlot — Rule 3 co-location, zero behavior of its
@@ -89,12 +89,12 @@ bool HavenWsFanout_attach(HavenWsFanout *fanout, void *handle,
                           const HavenWsSource *source) {
     if (!fanout || !handle || !source)
         return false;
-    for (uint32_t i = 0; i < HAVEN_WS_FANOUT_MAX; i++) {
+    for (u32 i = 0; i < HAVEN_WS_FANOUT_MAX; i++) {
         HavenWsSlot *slot = &(*fanout).slots[i];
         if ((*slot).handle == handle)
             return false;
     }
-    for (uint32_t i = 0; i < HAVEN_WS_FANOUT_MAX; i++) {
+    for (u32 i = 0; i < HAVEN_WS_FANOUT_MAX; i++) {
         HavenWsSlot *slot = &(*fanout).slots[i];
         if ((*slot).handle == nullptr) {
             (*slot).handle = handle;
@@ -110,7 +110,7 @@ bool HavenWsFanout_attach(HavenWsFanout *fanout, void *handle,
 bool HavenWsFanout_detach(HavenWsFanout *fanout, void *handle) {
     if (!fanout || !handle)
         return false;
-    for (uint32_t i = 0; i < HAVEN_WS_FANOUT_MAX; i++) {
+    for (u32 i = 0; i < HAVEN_WS_FANOUT_MAX; i++) {
         HavenWsSlot *slot = &(*fanout).slots[i];
         if ((*slot).handle == handle) {
             (*slot).handle = nullptr;
@@ -123,18 +123,18 @@ bool HavenWsFanout_detach(HavenWsFanout *fanout, void *handle) {
 }
 
 /** Polls each attached source once using a slice derived from the supplied budget. */
-uint32_t HavenWsFanout_pollStep(HavenWsFanout *fanout, uint64_t budgetMs) {
+u32 HavenWsFanout_pollStep(HavenWsFanout *fanout, u64 budgetMs) {
     if (!fanout)
         return 0;
     if (budgetMs == 0)
         return 0;
     if ((*fanout).count == 0)
         return 0;
-    uint64_t slice = budgetMs / (*fanout).count;
+    u64 slice = budgetMs / (*fanout).count;
     if (slice == 0)
         slice = 1;
-    uint32_t delivered = 0;
-    for (uint32_t i = 0; i < HAVEN_WS_FANOUT_MAX; i++) {
+    u32 delivered = 0;
+    for (u32 i = 0; i < HAVEN_WS_FANOUT_MAX; i++) {
         HavenWsSlot *slot = &(*fanout).slots[i];
         if ((*slot).handle == nullptr || (*slot).source == nullptr)
             continue;
@@ -149,14 +149,14 @@ uint32_t HavenWsFanout_pollStep(HavenWsFanout *fanout, uint64_t budgetMs) {
 // GETTERS
 
 /** Returns the number of currently attached handles. */
-uint32_t HavenWsFanout_getCount(const HavenWsFanout *fanout) {
+u32 HavenWsFanout_getCount(const HavenWsFanout *fanout) {
     if (!fanout)
         return 0;
     return (*fanout).count;
 }
 
 /** Returns the handle at index i, or nullptr for an invalid slot. */
-void *HavenWsFanout_getHandle(const HavenWsFanout *fanout, uint32_t i) {
+void *HavenWsFanout_getHandle(const HavenWsFanout *fanout, u32 i) {
     if (!fanout)
         return nullptr;
     if (i >= HAVEN_WS_FANOUT_MAX)

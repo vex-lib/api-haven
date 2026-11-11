@@ -31,7 +31,7 @@
  * STRUCT FIELDS (Mirroring harness/engine_provider.h — exactly this
  * file's class):
  * ----------------------------------------------------------------------------
- *   uint32_t reserved;   // singleton marker; no mutable state — all data
+ *   u32 reserved;   // singleton marker; no mutable state — all data
  *                        // lives in the static const EngineProviderSlot rows
  *
  * SLOT RECORD (EngineProviderSlot — Rule 3 co-location, zero behavior of
@@ -133,8 +133,8 @@ static const EngineProviderSlot kEngineProviders[] = {
      "GitHub login via the CLI"},
 };
 
-static const uint32_t kEngineProviderCount =
-    (uint32_t)(sizeof(kEngineProviders) / sizeof(kEngineProviders[0]));
+static const u32 kEngineProviderCount =
+    (u32)(sizeof(kEngineProviders) / sizeof(kEngineProviders[0]));
 
 static EngineProvider sEngineProviderShared; // zero-init singleton
 
@@ -148,14 +148,14 @@ EngineProvider *EngineProvider_shared(void) {
 // CORE FUNCTIONS
 
 /** Returns the directory row count, or zero for a null receiver. */
-uint32_t EngineProvider_count(const EngineProvider *self) {
+u32 EngineProvider_count(const EngineProvider *self) {
     if (!self)
         return 0;
     return kEngineProviderCount;
 }
 
 /** Returns the row at index i, or nullptr for a null receiver or invalid index. */
-const EngineProviderSlot *EngineProvider_at(const EngineProvider *self, uint32_t i) {
+const EngineProviderSlot *EngineProvider_at(const EngineProvider *self, u32 i) {
     if (!self)
         return nullptr;
     if (i >= kEngineProviderCount)
@@ -167,7 +167,7 @@ const EngineProviderSlot *EngineProvider_at(const EngineProvider *self, uint32_t
 const EngineProviderSlot *EngineProvider_get(const EngineProvider *self, const char *slug) {
     if (!self || !slug || (*slug) == '\0')
         return nullptr;
-    for (uint32_t i = 0; i < kEngineProviderCount; i++) {
+    for (u32 i = 0; i < kEngineProviderCount; i++) {
         const EngineProviderSlot *slot = &kEngineProviders[i];
         if ((*slot).slug && strcmp((*slot).slug, slug) == 0)
             return slot;
@@ -178,13 +178,13 @@ const EngineProviderSlot *EngineProvider_get(const EngineProvider *self, const c
 /** Copies the row's CLI executable name into the bounded destination. */
 bool EngineProvider_resolveCli(const EngineProvider *self,
                                const EngineProviderSlot *slot,
-                               char *outBuf, size_t outCap) {
+                               char *outBuf, bytes outCap) {
     if (!self || !slot || !outBuf || outCap == 0)
         return false;
     const char *cli = (*slot).cliName;
     if (!cli)
         return false;
-    size_t len = strlen(cli);
+    bytes len = strlen(cli);
     if (len + 1 > outCap)
         return false;
     memcpy(outBuf, cli, len + 1);

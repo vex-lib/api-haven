@@ -46,7 +46,7 @@
  * STRUCT FIELDS (Mirroring mcp/mcp_server.h — exactly this file's class):
  * ----------------------------------------------------------------------------
  *   char protocolVersion[32]; // negotiated client version or latest
- *   uint32_t initialized;     // 1 after a successful initialize handshake
+ *   u32 initialized;     // 1 after a successful initialize handshake
  *   const char *name;         // "vexgraph-mcp"
  *   const char *version;      // MCP_SERVER_VERSION
  *
@@ -146,7 +146,7 @@
 // One tool handler: writes the plain-text tool body into out (cap Bytes).
 // Return true = success (isError false), false = failure (isError true).
 typedef bool (*McpToolFn)(const JsonDoc *doc, JsonRef args,
-                          char *out, size_t cap);
+                          char *out, bytes cap);
 
 typedef struct McpToolSlot {
     const char *name;
@@ -164,33 +164,33 @@ typedef struct McpResourceSlot {
 
 // --- static tool handler forward declarations ---
 static bool renderAppDetect(const JsonDoc *doc, JsonRef args,
-                            char *out, size_t cap);
+                            char *out, bytes cap);
 static bool renderCaptureStatus(const JsonDoc *doc, JsonRef args,
-                                char *out, size_t cap);
+                                char *out, bytes cap);
 static bool renderAiLookup(const JsonDoc *doc, JsonRef args,
-                           char *out, size_t cap);
+                           char *out, bytes cap);
 static bool renderDbLookup(const JsonDoc *doc, JsonRef args,
-                           char *out, size_t cap);
+                           char *out, bytes cap);
 static bool renderEngineList(const JsonDoc *doc, JsonRef args,
-                             char *out, size_t cap);
+                             char *out, bytes cap);
 static bool renderHarnessRun(const JsonDoc *doc, JsonRef args,
-                             char *out, size_t cap);
+                             char *out, bytes cap);
 static bool renderHarnessPoll(const JsonDoc *doc, JsonRef args,
-                              char *out, size_t cap);
+                              char *out, bytes cap);
 static bool renderAppList(const JsonDoc *doc, JsonRef args,
-                          char *out, size_t cap);
+                          char *out, bytes cap);
 static bool renderAppAction(const JsonDoc *doc, JsonRef args,
-                            char *out, size_t cap);
+                            char *out, bytes cap);
 static bool renderAppPoll(const JsonDoc *doc, JsonRef args,
-                          char *out, size_t cap);
+                          char *out, bytes cap);
 static bool renderSearchList(const JsonDoc *doc, JsonRef args,
-                             char *out, size_t cap);
+                             char *out, bytes cap);
 static bool renderWebSearch(const JsonDoc *doc, JsonRef args,
-                            char *out, size_t cap);
+                            char *out, bytes cap);
 static bool renderAssetLookup(const JsonDoc *doc, JsonRef args,
-                              char *out, size_t cap);
+                              char *out, bytes cap);
 static bool renderAssetDownload(const JsonDoc *doc, JsonRef args,
-                                char *out, size_t cap);
+                                char *out, bytes cap);
 
 // HOSTED TOOLS — the connector surface exposed to AI clients.
 static const McpToolSlot kMcpTools[] = {
@@ -416,18 +416,18 @@ static const McpResourceSlot kMcpResources[] = {
     },
 };
 
-static const size_t kMcpToolCount = sizeof(kMcpTools) / sizeof(kMcpTools[0]);
-static const size_t kMcpResourceCount =
+static const bytes kMcpToolCount = sizeof(kMcpTools) / sizeof(kMcpTools[0]);
+static const bytes kMcpResourceCount =
     sizeof(kMcpResources) / sizeof(kMcpResources[0]);
 
 // --- bounded builders -------------------------------------------------------
 
 /** Appends as much of s as fits and keeps the destination NUL-terminated. */
-static void appendStr(char *buf, size_t cap, size_t *pos, const char *s) {
+static void appendStr(char *buf, bytes cap, bytes *pos, const char *s) {
     if ((*pos) >= cap)
         return;
-    size_t room = cap - (*pos) - 1;
-    size_t take = strlen(s);
+    bytes room = cap - (*pos) - 1;
+    bytes take = strlen(s);
     if (take > room)
         take = room;
     memcpy(buf + (*pos), s, take);
@@ -436,7 +436,7 @@ static void appendStr(char *buf, size_t cap, size_t *pos, const char *s) {
 }
 
 /** Formats text at the current output position, clamping the cursor to capacity. */
-static void appendFmt(char *buf, size_t cap, size_t *pos, const char *fmt, ...) {
+static void appendFmt(char *buf, bytes cap, bytes *pos, const char *fmt, ...) {
     if ((*pos) >= cap)
         return;
     va_list ap;
@@ -444,7 +444,7 @@ static void appendFmt(char *buf, size_t cap, size_t *pos, const char *fmt, ...) 
     int want = vsnprintf(buf + (*pos), cap - (*pos), fmt, ap);
     va_end(ap);
     if (want > 0) {
-        (*pos) += (size_t)want;
+        (*pos) += (bytes)want;
         if ((*pos) > cap - 1)
             (*pos) = cap - 1;
     }
@@ -599,16 +599,16 @@ static const char *searchAuthName(SearchProviderAuth a) {
 // truncation past cap). False on non-string refs or empty caps.
 /** Copies a JSON string node to out, truncating at capacity and terminating it. */
 static bool copyJsonString(const JsonDoc *doc, JsonRef ref,
-                           char *out, size_t cap) {
+                           char *out, bytes cap) {
     if (!out || cap == 0)
         return false;
     out[0] = '\0';
     if (ref < 0 || Json_type(doc, ref) != JSON_STRING)
         return false;
-    uint32_t len = 0;
+    u32 len = 0;
     const char *view = Json_string(doc, ref, &len);
-    if ((size_t)len >= cap)
-        len = (uint32_t)(cap - 1);
+    if ((bytes)len >= cap)
+        len = (u32)(cap - 1);
     memcpy(out, view, len);
     out[len] = '\0';
     return true;
@@ -617,10 +617,10 @@ static bool copyJsonString(const JsonDoc *doc, JsonRef ref,
 // Drop <...> spans in place (MediaWiki search snippets ship HTML).
 // Always NUL-terminated; never grows the text.
 /** Copies source text while removing spans enclosed by angle brackets. */
-static void stripHtmlTags(char *dst, size_t dcap, const char *src) {
+static void stripHtmlTags(char *dst, bytes dcap, const char *src) {
     if (!dst || dcap == 0)
         return;
-    size_t o = 0;
+    bytes o = 0;
     bool inTag = false;
     for (const char *p = src; *p && o + 1 < dcap; p++) {
         if ((*p) == '<') {
@@ -641,11 +641,11 @@ static void stripHtmlTags(char *dst, size_t dcap, const char *src) {
 // everything else becomes %XX (space ⇒ %20, never +). False when out
 // is too small — the caller degrades instead of sending a corrupt URL.
 /** Percent-encodes a URL query component into a bounded output buffer. */
-static bool encodeQueryComponent(const char *src, char *out, size_t cap) {
+static bool encodeQueryComponent(const char *src, char *out, bytes cap) {
     static const char *hex = "0123456789ABCDEF";
     if (!src || !out || cap == 0)
         return false;
-    size_t o = 0;
+    bytes o = 0;
     for (const unsigned char *p = (const unsigned char *)src; *p; p++) {
         unsigned char c = *p;
         bool unreserved = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
@@ -702,14 +702,14 @@ void McpServer_bindAppDriver(void *driverCtx, AppDriverTable table) {
 static bool containsFold(const char *haystack, const char *needle) {
     if (!haystack || !needle)
         return false;
-    const size_t nl = strlen(needle);
+    const bytes nl = strlen(needle);
     if (nl == 0)
         return true;
-    const size_t hl = strlen(haystack);
+    const bytes hl = strlen(haystack);
     if (nl > hl)
         return false;
-    for (size_t i = 0; i + nl <= hl; i++) {
-        size_t j = 0;
+    for (bytes i = 0; i + nl <= hl; i++) {
+        bytes j = 0;
         while (j < nl) {
             char a = haystack[i + j];
             char b = needle[j];
@@ -728,8 +728,8 @@ static bool containsFold(const char *haystack, const char *needle) {
 }
 
 /** Escapes JSON string characters into the supplied output buffer. */
-static void escapeJsonText(const char *src, char *out, size_t cap) {
-    size_t o = 0;
+static void escapeJsonText(const char *src, char *out, bytes cap) {
+    bytes o = 0;
     for (const char *p = src; *p && o + 6 < cap; p++) {
         char c = *p;
         switch (c) {
@@ -748,19 +748,19 @@ static void escapeJsonText(const char *src, char *out, size_t cap) {
 
 /** Compares a parsed JSON string method value with an exact method name. */
 static bool methodIs(const JsonDoc *doc, JsonRef method, const char *want) {
-    uint32_t len = 0;
+    u32 len = 0;
     const char *s = Json_string(doc, method, &len);
     if (!s)
         return false;
-    const size_t wl = strlen(want);
-    return (size_t)len == wl && memcmp(s, want, wl) == 0;
+    const bytes wl = strlen(want);
+    return (bytes)len == wl && memcmp(s, want, wl) == 0;
 }
 
 // Copy one numeric argument from an args subobject. Returns false when
 // the member is absent or not a number (outNum untouched; args < 0 ⇒ false).
 /** Reads a numeric member from an argument object without changing output on failure. */
 static bool readNumberArg(const JsonDoc *doc, JsonRef args,
-                          const char *key, double *outNum) {
+                          const char *key, d64 *outNum) {
     if (args < 0 || !outNum)
         return false;
     JsonRef v = Json_member(doc, args, key);
@@ -774,19 +774,19 @@ static bool readNumberArg(const JsonDoc *doc, JsonRef args,
 // member is absent or not a string (out stays ""). Safe for args < 0.
 /** Copies a string member from an argument object into a bounded buffer. */
 static bool readStringArg(const JsonDoc *doc, JsonRef args,
-                          const char *key, char *out, size_t cap) {
+                          const char *key, char *out, bytes cap) {
     out[0] = '\0';
     if (args < 0 || !out || cap == 0)
         return false;
     JsonRef v = Json_member(doc, args, key);
     if (v < 0)
         return false;
-    uint32_t len = 0;
+    u32 len = 0;
     const char *s = Json_string(doc, v, &len);
     if (!s)
         return false;
     if (len >= cap)
-        len = (uint32_t)(cap - 1);
+        len = (u32)(cap - 1);
     memcpy(out, s, len);
     out[len] = '\0';
     return true;
@@ -797,8 +797,8 @@ static bool readStringArg(const JsonDoc *doc, JsonRef args,
 // "null" literal is copied as-is). Returns false when absent so the caller
 // treats the message as a notification.
 /** Copies the JSON-RPC id token verbatim for echoing in the response. */
-static bool rawIdExtract(const char *line, size_t lineLen,
-                         char *out, size_t cap) {
+static bool rawIdExtract(const char *line, bytes lineLen,
+                         char *out, bytes cap) {
     if (!line || !out || cap == 0)
         return false;
     out[0] = '\0';
@@ -824,7 +824,7 @@ static bool rawIdExtract(const char *line, size_t lineLen,
         p++;
     if (p >= end)
         return false;
-    size_t o = 0;
+    bytes o = 0;
     if ((*p) == '"') {
         // quoted string id — copy through the closing unescaped quote
         if (o + 1 < cap)
@@ -868,8 +868,8 @@ static bool rawIdExtract(const char *line, size_t lineLen,
 
 /** Writes a JSON-RPC error response using the supplied code, message, and id. */
 static void respondError(int code, const char *message, const char *id,
-                         char *out, size_t cap) {
-    size_t pos = 0;
+                         char *out, bytes cap) {
+    bytes pos = 0;
     appendStr(out, cap, &pos, "{\"jsonrpc\":\"2.0\",\"id\":");
     appendStr(out, cap, &pos, id && (*id) != '\0' ? id : "null");
     appendFmt(out, cap, &pos, ",\"error\":{\"code\":%d,\"message\":\"%s\"}}",
@@ -879,20 +879,20 @@ static void respondError(int code, const char *message, const char *id,
 // --- plain responses --------------------------------------------------------
 
 /** Writes the empty successful JSON-RPC response used for ping. */
-static void respondPing(const char *id, char *out, size_t cap) {
-    size_t pos = 0;
+static void respondPing(const char *id, char *out, bytes cap) {
+    bytes pos = 0;
     appendStr(out, cap, &pos, "{\"jsonrpc\":\"2.0\",\"id\":");
     appendStr(out, cap, &pos, id);
     appendStr(out, cap, &pos, ",\"result\":{}}");
 }
 
 /** Serializes the static hosted-tool registry as a JSON-RPC result. */
-static void respondToolsList(const char *id, char *out, size_t cap) {
-    size_t pos = 0;
+static void respondToolsList(const char *id, char *out, bytes cap) {
+    bytes pos = 0;
     appendStr(out, cap, &pos, "{\"jsonrpc\":\"2.0\",\"id\":");
     appendStr(out, cap, &pos, id);
     appendStr(out, cap, &pos, ",\"result\":{\"tools\":[");
-    for (size_t i = 0; i < kMcpToolCount; i++) {
+    for (bytes i = 0; i < kMcpToolCount; i++) {
         if (i > 0)
             appendStr(out, cap, &pos, ",");
         appendStr(out, cap, &pos, "{\"name\":\"");
@@ -907,12 +907,12 @@ static void respondToolsList(const char *id, char *out, size_t cap) {
 }
 
 /** Serializes the static resource registry as a JSON-RPC result. */
-static void respondResourcesList(const char *id, char *out, size_t cap) {
-    size_t pos = 0;
+static void respondResourcesList(const char *id, char *out, bytes cap) {
+    bytes pos = 0;
     appendStr(out, cap, &pos, "{\"jsonrpc\":\"2.0\",\"id\":");
     appendStr(out, cap, &pos, id);
     appendStr(out, cap, &pos, ",\"result\":{\"resources\":[");
-    for (size_t i = 0; i < kMcpResourceCount; i++) {
+    for (bytes i = 0; i < kMcpResourceCount; i++) {
         if (i > 0)
             appendStr(out, cap, &pos, ",");
         appendStr(out, cap, &pos, "{\"uri\":\"");
@@ -928,18 +928,18 @@ static void respondResourcesList(const char *id, char *out, size_t cap) {
 
 /** Negotiates a supported MCP version and emits the initialize response. */
 static bool respondInitializeReal(McpServer *self, const JsonDoc *doc,
-                                  const char *id, char *out, size_t cap) {
+                                  const char *id, char *out, bytes cap) {
     // negotiate: echo a supported client version, else our latest
     JsonRef params = Json_member(doc, Json_root(doc), "params");
     JsonRef pv = params >= 0 ? Json_member(doc, params, "protocolVersion") : -1;
     const char *chosen = MCP_PROTOCOL_LATEST;
     if (pv >= 0) {
-        uint32_t len = 0;
+        u32 len = 0;
         const char *s = Json_string(doc, pv, &len);
         if (s) {
             char buf[40];
             if (len >= sizeof(buf))
-                len = (uint32_t)(sizeof(buf) - 1);
+                len = (u32)(sizeof(buf) - 1);
             memcpy(buf, s, len);
             buf[len] = '\0';
             if (strcmp(buf, "2024-11-05") == 0)
@@ -953,7 +953,7 @@ static bool respondInitializeReal(McpServer *self, const JsonDoc *doc,
     snprintf((*self).protocolVersion, sizeof((*self).protocolVersion), "%s",
              chosen);
     (*self).initialized = 1;
-    size_t pos = 0;
+    bytes pos = 0;
     appendStr(out, cap, &pos, "{\"jsonrpc\":\"2.0\",\"id\":");
     appendStr(out, cap, &pos, id);
     appendFmt(out, cap, &pos,
@@ -968,8 +968,8 @@ static bool respondInitializeReal(McpServer *self, const JsonDoc *doc,
 
 /** Renders known application presence, optionally for one requested app. */
 static bool renderAppDetect(const JsonDoc *doc, JsonRef args,
-                            char *out, size_t cap) {
-    size_t pos = 0;
+                            char *out, bytes cap) {
+    bytes pos = 0;
     AppDetect *detect = AppDetect_shared();
     char name[128];
     const bool haveName = readStringArg(doc, args, "name", name, sizeof(name));
@@ -995,10 +995,10 @@ static bool renderAppDetect(const JsonDoc *doc, JsonRef args,
             appendFmt(out, cap, &pos, "  note: %s\n", note);
         return true;
     }
-    const uint32_t total = AppDetect_count(detect);
+    const u32 total = AppDetect_count(detect);
     appendFmt(out, cap, &pos, "KNOWN APPS (%u) — onPath | appBundle | running\n",
               total);
-    for (uint32_t i = 0; i < total; i++) {
+    for (u32 i = 0; i < total; i++) {
         const AppSlot *slot = AppDetect_at(detect, i);
         const char *nm = AppDetect_getName(detect, slot);
         appendFmt(out, cap, &pos, "- %s | %s | onPath=%d bundle=%d running=%d\n",
@@ -1012,8 +1012,8 @@ static bool renderAppDetect(const JsonDoc *doc, JsonRef args,
 
 /** Renders capture-tool process liveness, optionally filtered by capture kind. */
 static bool renderCaptureStatus(const JsonDoc *doc, JsonRef args,
-                                char *out, size_t cap) {
-    size_t pos = 0;
+                                char *out, bytes cap) {
+    bytes pos = 0;
     CaptureTool *tools = CaptureTool_shared();
     char kind[32];
     const bool haveKind = readStringArg(doc, args, "kind", kind, sizeof(kind));
@@ -1024,16 +1024,16 @@ static bool renderCaptureStatus(const JsonDoc *doc, JsonRef args,
               "CAPTURE STATUS — known capture tools alive now\n"
               "(privacy wall: other apps' screen-capture sessions are not\n"
               "visible to macOS APIs; liveness is the honest contract)\n");
-    const uint32_t total = CaptureTool_count(tools);
+    const u32 total = CaptureTool_count(tools);
     const char *sections[3] = {"SCREEN:", "STREAM:", "AUDIO:"};
     const bool wants[3] = {wantScreen, wantStream, wantAudio};
     const CaptureKind kinds[3] = {CAPTURE_KIND_SCREEN, CAPTURE_KIND_STREAM,
                                   CAPTURE_KIND_AUDIO};
-    for (uint32_t s = 0; s < 3; s++) {
+    for (u32 s = 0; s < 3; s++) {
         if (!wants[s])
             continue;
         appendFmt(out, cap, &pos, "%s\n", sections[s]);
-        for (uint32_t i = 0; i < total; i++) {
+        for (u32 i = 0; i < total; i++) {
             const CaptureSlot *slot = CaptureTool_at(tools, i);
             if (CaptureTool_getKind(tools, slot) != kinds[s])
                 continue;
@@ -1059,8 +1059,8 @@ static bool renderCaptureStatus(const JsonDoc *doc, JsonRef args,
 
 /** Renders an exact AI-provider lookup or a bounded substring result list. */
 static bool renderAiLookup(const JsonDoc *doc, JsonRef args,
-                           char *out, size_t cap) {
-    size_t pos = 0;
+                           char *out, bytes cap) {
+    bytes pos = 0;
     AiProvider *dir = AiProvider_shared();
     char slug[128];
     char query[128];
@@ -1104,10 +1104,10 @@ static bool renderAiLookup(const JsonDoc *doc, JsonRef args,
     }
 
     // substring scan (cap 20 matches, counted)
-    const uint32_t total = AiProvider_count(dir);
-    uint32_t shown = 0;
-    uint32_t hits = 0;
-    for (uint32_t i = 0; i < total; i++) {
+    const u32 total = AiProvider_count(dir);
+    u32 shown = 0;
+    u32 hits = 0;
+    for (u32 i = 0; i < total; i++) {
         const AiProviderSlot *slot = AiProvider_at(dir, i);
         const char *sl = AiProvider_getSlug(dir, slot);
         if (!containsFold(sl, query)) {
@@ -1133,8 +1133,8 @@ static bool renderAiLookup(const JsonDoc *doc, JsonRef args,
 
 /** Renders database-source lookup results by slug, engine, or substring. */
 static bool renderDbLookup(const JsonDoc *doc, JsonRef args,
-                           char *out, size_t cap) {
-    size_t pos = 0;
+                           char *out, bytes cap) {
+    bytes pos = 0;
     DbProvider *dir = DbProvider_shared();
     char slug[128];
     char engine[128];
@@ -1183,8 +1183,8 @@ static bool renderDbLookup(const JsonDoc *doc, JsonRef args,
     }
 
     // bare (or query-filtered) listing of the full 25-row table
-    const uint32_t total = DbProvider_count(dir);
-    for (uint32_t i = 0; i < total; i++) {
+    const u32 total = DbProvider_count(dir);
+    for (u32 i = 0; i < total; i++) {
         const DbProviderSlot *slot = DbProvider_at(dir, i);
         if (haveQuery && (*query) != '\0') {
             const char *sl = DbProvider_getSlug(dir, slot);
@@ -1206,16 +1206,16 @@ static bool renderDbLookup(const JsonDoc *doc, JsonRef args,
 
 /** Renders the engine catalog, optionally filtered by a substring query. */
 static bool renderEngineList(const JsonDoc *doc, JsonRef args,
-                             char *out, size_t cap) {
-    size_t pos = 0;
+                             char *out, bytes cap) {
+    bytes pos = 0;
     EngineProvider *dir = EngineProvider_shared();
     char query[128];
     const bool haveQuery = readStringArg(doc, args, "query", query,
                                          sizeof(query));
-    const uint32_t total = EngineProvider_count(dir);
+    const u32 total = EngineProvider_count(dir);
     appendFmt(out, cap, &pos, "ENGINES (%u) — slug | display | cli | family | auth\n",
               total);
-    for (uint32_t i = 0; i < total; i++) {
+    for (u32 i = 0; i < total; i++) {
         const EngineProviderSlot *slot = EngineProvider_at(dir, i);
         if (haveQuery && (*query) != '\0') {
             const char *sl = EngineProvider_getSlug(dir, slot);
@@ -1237,13 +1237,13 @@ static bool renderEngineList(const JsonDoc *doc, JsonRef args,
 
 /** Admits a bounded harness job and renders its id or an observable rejection. */
 static bool renderHarnessRun(const JsonDoc *doc, JsonRef args,
-                             char *out, size_t cap) {
-    size_t pos = 0;
+                             char *out, bytes cap) {
+    bytes pos = 0;
     ensureSeam();
     EngineProvider *dir = EngineProvider_shared();
     char slug[128];
     static char prompt[32768];
-    double timeoutNum = 0;
+    d64 timeoutNum = 0;
     const bool haveTimeout = readNumberArg(doc, args, "timeoutMs", &timeoutNum);
     if (!readStringArg(doc, args, "engine", slug, sizeof(slug)) ||
         (*slug) == '\0') {
@@ -1261,10 +1261,10 @@ static bool renderHarnessRun(const JsonDoc *doc, JsonRef args,
         return false;
     }
     Harness_setEngine(&sHarnessJobs, slot);
-    uint64_t bound = 0;
+    u64 bound = 0;
     if (haveTimeout && timeoutNum > 0)
-        bound = (uint64_t)timeoutNum;
-    uint32_t jobId = 0;
+        bound = (u64)timeoutNum;
+    u32 jobId = 0;
     if (!Harness_run(&sHarnessJobs, prompt, strlen(prompt), bound, &jobId)) {
         HarnessStatus verdict = Harness_getLastStatus(&sHarnessJobs);
         if (verdict == HARNESS_STATUS_BUSY_FULL) {
@@ -1290,21 +1290,21 @@ static bool renderHarnessRun(const JsonDoc *doc, JsonRef args,
 
 /** Renders the stored status for a previously issued harness job id. */
 static bool renderHarnessPoll(const JsonDoc *doc, JsonRef args,
-                              char *out, size_t cap) {
-    size_t pos = 0;
+                              char *out, bytes cap) {
+    bytes pos = 0;
     ensureSeam();
-    double idNum = 0;
+    d64 idNum = 0;
     if (!readNumberArg(doc, args, "jobId", &idNum) || idNum <= 0 ||
         idNum > HARNESS_MAX_JOBS) {
         appendStr(out, cap, &pos, "unknown job: pass a jobId from harness_run");
         return false;
     }
-    uint32_t jobId = (uint32_t)idNum;
+    u32 jobId = (u32)idNum;
     HarnessStatus st = Harness_poll(&sHarnessJobs, jobId);
     const HarnessJob *job = nullptr;
     if (jobId >= 1) {
-        uint32_t count = Harness_getJobCount(&sHarnessJobs);
-        for (uint32_t i = 0; i < count; i++) {
+        u32 count = Harness_getJobCount(&sHarnessJobs);
+        for (u32 i = 0; i < count; i++) {
             const HarnessJob *cand = Harness_getJobAt(&sHarnessJobs, i);
             if (cand && (*cand).jobId == jobId) {
                 job = cand;
@@ -1326,16 +1326,16 @@ static bool renderHarnessPoll(const JsonDoc *doc, JsonRef args,
 
 /** Renders the app automation catalog, optionally filtered by query. */
 static bool renderAppList(const JsonDoc *doc, JsonRef args,
-                          char *out, size_t cap) {
-    size_t pos = 0;
+                          char *out, bytes cap) {
+    bytes pos = 0;
     AppProvider *dir = AppProvider_shared();
     char query[128];
     const bool haveQuery = readStringArg(doc, args, "query", query,
                                          sizeof(query));
-    const uint32_t total = AppProvider_count(dir);
+    const u32 total = AppProvider_count(dir);
     appendFmt(out, cap, &pos, "APPS (%u) — slug | display | family | auth | target\n",
               total);
-    for (uint32_t i = 0; i < total; i++) {
+    for (u32 i = 0; i < total; i++) {
         const AppProviderSlot *slot = AppProvider_at(dir, i);
         if (haveQuery && (*query) != '\0') {
             const char *sl = AppProvider_getSlug(dir, slot);
@@ -1357,15 +1357,15 @@ static bool renderAppList(const JsonDoc *doc, JsonRef args,
 
 /** Runs a bounded app action and renders its result, output, or rejection. */
 static bool renderAppAction(const JsonDoc *doc, JsonRef args,
-                            char *out, size_t cap) {
-    size_t pos = 0;
+                            char *out, bytes cap) {
+    bytes pos = 0;
     ensureSeam();
     AppProvider *dir = AppProvider_shared();
     char slug[128];
     char action[128];
     static char params[16384];
     static char actionOut[16384];
-    double timeoutNum = 0;
+    d64 timeoutNum = 0;
     const bool haveTimeout = readNumberArg(doc, args, "timeoutMs", &timeoutNum);
     if (!readStringArg(doc, args, "target", slug, sizeof(slug)) ||
         (*slug) == '\0') {
@@ -1388,9 +1388,9 @@ static bool renderAppAction(const JsonDoc *doc, JsonRef args,
     const char *paramsText = (*params) != '\0' ? params : "{}";
     AppBroker_setTarget(&sAppJobs, slot);
     if (haveTimeout && timeoutNum > 0)
-        AppBroker_setTimeout(&sAppJobs, (uint64_t)timeoutNum);
-    uint32_t jobId = 0;
-    size_t outLen = 0;
+        AppBroker_setTimeout(&sAppJobs, (u64)timeoutNum);
+    u32 jobId = 0;
+    bytes outLen = 0;
     bool ok = AppBroker_action(&sAppJobs, action, paramsText, strlen(paramsText),
                                actionOut, sizeof(actionOut), &jobId);
     if (!ok) {
@@ -1414,8 +1414,8 @@ static bool renderAppAction(const JsonDoc *doc, JsonRef args,
         return false;
     }
     const AppJob *job = nullptr;
-    uint32_t count = AppBroker_getJobCount(&sAppJobs);
-    for (uint32_t i = 0; i < count; i++) {
+    u32 count = AppBroker_getJobCount(&sAppJobs);
+    for (u32 i = 0; i < count; i++) {
         const AppJob *cand = AppBroker_getJobAt(&sAppJobs, i);
         if (cand && (*cand).jobId == jobId) {
             job = cand;
@@ -1432,20 +1432,20 @@ static bool renderAppAction(const JsonDoc *doc, JsonRef args,
 
 /** Renders the stored status for a previously issued app action id. */
 static bool renderAppPoll(const JsonDoc *doc, JsonRef args,
-                          char *out, size_t cap) {
-    size_t pos = 0;
+                          char *out, bytes cap) {
+    bytes pos = 0;
     ensureSeam();
-    double idNum = 0;
+    d64 idNum = 0;
     if (!readNumberArg(doc, args, "jobId", &idNum) || idNum <= 0 ||
         idNum > APP_MAX_JOBS) {
         appendStr(out, cap, &pos, "unknown job: pass a jobId from app_action");
         return false;
     }
-    uint32_t jobId = (uint32_t)idNum;
+    u32 jobId = (u32)idNum;
     AppStatus st = AppBroker_poll(&sAppJobs, jobId);
     const AppJob *job = nullptr;
-    uint32_t count = AppBroker_getJobCount(&sAppJobs);
-    for (uint32_t i = 0; i < count; i++) {
+    u32 count = AppBroker_getJobCount(&sAppJobs);
+    for (u32 i = 0; i < count; i++) {
         const AppJob *cand = AppBroker_getJobAt(&sAppJobs, i);
         if (cand && (*cand).jobId == jobId) {
             job = cand;
@@ -1466,17 +1466,17 @@ static bool renderAppPoll(const JsonDoc *doc, JsonRef args,
 
 /** Renders the blessed search-provider catalog, optionally filtered by query. */
 static bool renderSearchList(const JsonDoc *doc, JsonRef args,
-                             char *out, size_t cap) {
-    size_t pos = 0;
+                             char *out, bytes cap) {
+    bytes pos = 0;
     SearchProvider *dir = SearchProvider_shared();
     char query[128];
     const bool haveQuery = readStringArg(doc, args, "query", query,
                                          sizeof(query));
-    const uint32_t total = SearchProvider_count(dir);
+    const u32 total = SearchProvider_count(dir);
     appendFmt(out, cap, &pos,
               "SEARCH PROVIDERS (%u) — slug | display | family | auth | endpoint\n",
               total);
-    for (uint32_t i = 0; i < total; i++) {
+    for (u32 i = 0; i < total; i++) {
         const SearchProviderSlot *slot = SearchProvider_at(dir, i);
         if (haveQuery && (*query) != '\0') {
             const char *sl = SearchProvider_getSlug(dir, slot);
@@ -1498,13 +1498,13 @@ static bool renderSearchList(const JsonDoc *doc, JsonRef args,
 
 /** Queries a configured documented search API and renders bounded result rows. */
 static bool renderWebSearch(const JsonDoc *doc, JsonRef args,
-                            char *out, size_t cap) {
-    size_t pos = 0;
+                            char *out, bytes cap) {
+    bytes pos = 0;
     SearchProvider *dir = SearchProvider_shared();
     static char query[2048];
     char slug[128];
     char base[512];
-    double countNum = 0;
+    d64 countNum = 0;
     if (!readStringArg(doc, args, "query", query, sizeof(query)) ||
         (*query) == '\0') {
         appendStr(out, cap, &pos, "missing query: pass search text");
@@ -1514,7 +1514,7 @@ static bool renderWebSearch(const JsonDoc *doc, JsonRef args,
     readStringArg(doc, args, "provider", slug, sizeof(slug));
     if ((*slug) == '\0') {
         const char *dflt = "searxng";
-        size_t dl = strlen(dflt) + 1;
+        bytes dl = strlen(dflt) + 1;
         if (dl > sizeof(slug))
             dl = sizeof(slug);
         memcpy(slug, dflt, dl);
@@ -1524,9 +1524,9 @@ static bool renderWebSearch(const JsonDoc *doc, JsonRef args,
         appendFmt(out, cap, &pos, "unknown search provider: %s", slug);
         return false;
     }
-    uint32_t want = 5;
+    u32 want = 5;
     if (readNumberArg(doc, args, "count", &countNum) && countNum >= 1) {
-        want = (uint32_t)countNum;
+        want = (u32)countNum;
         if (want > 10)
             want = 10;
     }
@@ -1546,12 +1546,12 @@ static bool renderWebSearch(const JsonDoc *doc, JsonRef args,
         if (readStringArg(doc, args, "base", base, sizeof(base)) &&
             (*base) != '\0')
             ep = base;
-        size_t bl = strlen(ep);
+        bytes bl = strlen(ep);
         while (bl > 0 && ep[bl - 1] == '/')
             bl--;
         int n = snprintf(url, sizeof(url), "%.*s/search?q=%s&format=json",
                          (int)bl, ep, encoded);
-        if (n <= 0 || (size_t)n >= sizeof(url)) {
+        if (n <= 0 || (bytes)n >= sizeof(url)) {
             appendStr(out, cap, &pos, "search URL overflow (2KiB cap)");
             return false;
         }
@@ -1568,7 +1568,7 @@ static bool renderWebSearch(const JsonDoc *doc, JsonRef args,
                          "%s/customsearch/v1?key=%s&cx=%s&q=%s&num=%u",
                          SearchProvider_getEndpoint(dir, slot),
                          key, cx, encoded, want > 10 ? 10 : want);
-        if (n <= 0 || (size_t)n >= sizeof(url)) {
+        if (n <= 0 || (bytes)n >= sizeof(url)) {
             appendStr(out, cap, &pos, "search URL overflow (2KiB cap)");
             return false;
         }
@@ -1578,7 +1578,7 @@ static bool renderWebSearch(const JsonDoc *doc, JsonRef args,
                          "&srlimit=%u&format=json",
                          SearchProvider_getEndpoint(dir, slot),
                          encoded, want);
-        if (n <= 0 || (size_t)n >= sizeof(url)) {
+        if (n <= 0 || (bytes)n >= sizeof(url)) {
             appendStr(out, cap, &pos, "search URL overflow (2KiB cap)");
             return false;
         }
@@ -1639,8 +1639,8 @@ static bool renderWebSearch(const JsonDoc *doc, JsonRef args,
             items = Json_member(&rdoc, q, "search");
         sKey = "snippet";
     }
-    uint32_t total = items >= 0 ? Json_count(&rdoc, items) : 0;
-    uint32_t shown = total < want ? total : want;
+    u32 total = items >= 0 ? Json_count(&rdoc, items) : 0;
+    u32 shown = total < want ? total : want;
     appendFmt(out, cap, &pos, "WEB SEARCH '%s' via %s — %u result%s (showing %u)\n",
               query, SearchProvider_getSlug(dir, slot),
               total, total == 1 ? "" : "s", shown);
@@ -1650,7 +1650,7 @@ static bool renderWebSearch(const JsonDoc *doc, JsonRef args,
     static char link[512];
     static char snippet[1024];
     static char plain[1024];
-    for (uint32_t i = 0; i < shown; i++) {
+    for (u32 i = 0; i < shown; i++) {
         JsonRef item = Json_at(&rdoc, items, i);
         title[0] = '\0';
         link[0] = '\0';
@@ -1679,8 +1679,8 @@ static bool renderWebSearch(const JsonDoc *doc, JsonRef args,
 
 /** Renders asset-source details or a filtered catalog listing. */
 static bool renderAssetLookup(const JsonDoc *doc, JsonRef args,
-                              char *out, size_t cap) {
-    size_t pos = 0;
+                              char *out, bytes cap) {
+    bytes pos = 0;
     AssetProvider *dir = AssetProvider_shared();
     char slug[128];
     char query[128];
@@ -1717,8 +1717,8 @@ static bool renderAssetLookup(const JsonDoc *doc, JsonRef args,
     }
 
     // bare (or query-filtered) listing of the full 12-row table
-    const uint32_t total = AssetProvider_count(dir);
-    for (uint32_t i = 0; i < total; i++) {
+    const u32 total = AssetProvider_count(dir);
+    for (u32 i = 0; i < total; i++) {
         const AssetProviderSlot *slot = AssetProvider_at(dir, i);
         if (haveQuery && (*query) != '\0') {
             const char *sl = AssetProvider_getSlug(dir, slot);
@@ -1740,8 +1740,8 @@ static bool renderAssetLookup(const JsonDoc *doc, JsonRef args,
 
 /** Renders a cache-confined download plan without fetching or executing anything. */
 static bool renderAssetDownload(const JsonDoc *doc, JsonRef args,
-                                char *out, size_t cap) {
-    size_t pos = 0;
+                                char *out, bytes cap) {
+    bytes pos = 0;
     AssetProvider *dir = AssetProvider_shared();
     char slug[128];
     char file[128];
@@ -1761,12 +1761,12 @@ static bool renderAssetDownload(const JsonDoc *doc, JsonRef args,
     if ((*file) == '\0') {
         int n = snprintf(fileName, sizeof(fileName), "%s-sample",
                          AssetProvider_getSlug(dir, slot));
-        if (n <= 0 || (size_t)n >= sizeof(fileName)) {
+        if (n <= 0 || (bytes)n >= sizeof(fileName)) {
             appendStr(out, cap, &pos, "file name overflow (160 cap)");
             return false;
         }
     } else {
-        size_t fl = strlen(file);
+        bytes fl = strlen(file);
         if (fl + 1 > sizeof(fileName)) {
             appendStr(out, cap, &pos, "file name overflow (160 cap)");
             return false;
@@ -1803,7 +1803,7 @@ static bool renderAssetDownload(const JsonDoc *doc, JsonRef args,
 static const McpResourceSlot *findResource(const char *uri) {
     if (!uri)
         return nullptr;
-    for (size_t i = 0; i < kMcpResourceCount; i++) {
+    for (bytes i = 0; i < kMcpResourceCount; i++) {
         if (strcmp(kMcpResources[i].uri, uri) == 0)
             return &kMcpResources[i];
     }
@@ -1813,8 +1813,8 @@ static const McpResourceSlot *findResource(const char *uri) {
 // --- _main dispatch ----------------------------------------------------------
 
 /** Parses one JSON-RPC input line and writes a response when it is a request. */
-bool McpServer_handleLine(McpServer *self, const char *line, size_t lineLen,
-                          char *outBuf, size_t outCap) {
+bool McpServer_handleLine(McpServer *self, const char *line, bytes lineLen,
+                          char *outBuf, bytes outCap) {
     if (!self || !line || !outBuf || outCap < 2)
         return false;
     outBuf[0] = '\0';
@@ -1887,7 +1887,7 @@ bool McpServer_handleLine(McpServer *self, const char *line, size_t lineLen,
         (void)(*res).render(&doc, -1, body, sizeof(body));
         char escaped[131072];
         escapeJsonText(body, escaped, sizeof(escaped));
-        size_t pos = 0;
+        bytes pos = 0;
         appendStr(outBuf, outCap, &pos, "{\"jsonrpc\":\"2.0\",\"id\":");
         appendStr(outBuf, outCap, &pos, idS);
         appendFmt(outBuf, outCap, &pos,
@@ -1905,7 +1905,7 @@ bool McpServer_handleLine(McpServer *self, const char *line, size_t lineLen,
             return true;
         }
         const McpToolSlot *tool = nullptr;
-        for (size_t i = 0; i < kMcpToolCount; i++) {
+        for (bytes i = 0; i < kMcpToolCount; i++) {
             if (strcmp(kMcpTools[i].name, toolName) == 0) {
                 tool = &kMcpTools[i];
                 break;
@@ -1921,7 +1921,7 @@ bool McpServer_handleLine(McpServer *self, const char *line, size_t lineLen,
         const bool ok = (*tool).handle(&doc, args, body, sizeof(body));
         char escaped[131072];
         escapeJsonText(body, escaped, sizeof(escaped));
-        size_t pos = 0;
+        bytes pos = 0;
         appendStr(outBuf, outCap, &pos, "{\"jsonrpc\":\"2.0\",\"id\":");
         appendStr(outBuf, outCap, &pos, idS);
         if (ok)

@@ -8,7 +8,7 @@
 typedef struct DiscordEmbed {
     const char *title;
     const char *description;
-    int32_t     color;
+    i32     color;
     const char *imageUrl;
 } DiscordEmbed;
 

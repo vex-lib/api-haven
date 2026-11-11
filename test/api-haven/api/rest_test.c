@@ -41,11 +41,11 @@ static void statusHandler(const HttpExchange *exchange, int clientFd, void *user
     int n = snprintf(body, sizeof(body), "{\"status\":%d}", status);
     if (n < 0)
         n = 0;
-    Http_respond(clientFd, status, "application/json", body, (size_t) n);
+    Http_respond(clientFd, status, "application/json", body, (bytes) n);
 }
 
 /* One GET into a fresh caller buffer; returns the call result and leaves resp. */
-static bool getStatus(const char *url, const ApiAuth *auth, HttpResponse *resp, char *body, size_t cap) {
+static bool getStatus(const char *url, const ApiAuth *auth, HttpResponse *resp, char *body, bytes cap) {
     memset(resp, 0, sizeof(*resp));
     (*resp).body = body;
     (*resp).bodyCap = cap;

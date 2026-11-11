@@ -50,10 +50,10 @@ int main(void) {
     char response[262144]; // worst case: full capture/app-dump escape
 
     while (fgets(line, (int)kLineCap, stdin) != nullptr) {
-        const size_t len = strlen(line);
+        const bytes len = strlen(line);
         // Strip the trailing newline (MCP framing is newline-delimited;
         // keep CR out of the parser too).
-        size_t lineLen = len;
+        bytes lineLen = len;
         if (lineLen > 0 && line[lineLen - 1] == '\n')
             lineLen--;
         if (lineLen > 0 && line[lineLen - 1] == '\r')

@@ -42,8 +42,8 @@ typedef struct SearchProviderSlot {
     SearchProviderAuth auth;      // credential scheme enum
     const char *endpoint;     // base URL the renderer builds on
     const char *note;         // caveat; NULL when none
-    uint32_t quotaPerDay;     // free-tier requests/day (0 = unknown)
-    uint32_t quotaRemaining;  // free-tier remainder (0 = unknown/exhausted)
+    u32 quotaPerDay;     // free-tier requests/day (0 = unknown)
+    u32 quotaRemaining;  // free-tier remainder (0 = unknown/exhausted)
     int64_t resetUnix;        // quota window reset epoch secs (0 = unknown)
     const char *authKind;     // credential kind label; NULL = see auth enum
     const char *licenseFamily; // license family label; NULL = UNKNOWN
@@ -52,7 +52,7 @@ typedef struct SearchProviderSlot {
 // The table class — a singleton handle; state lives in the static const
 // rows in search_provider.c.
 typedef struct SearchProvider {
-    uint32_t reserved; // signature/marker; no mutable state
+    u32 reserved; // signature/marker; no mutable state
 } SearchProvider;
 
 // --- Constructor ---
@@ -61,16 +61,16 @@ SearchProvider *SearchProvider_shared(void);
 
 // --- Core functions ---
 // Total rows. Null-safe: 0 on NULL self.
-uint32_t SearchProvider_count(const SearchProvider *self);
+u32 SearchProvider_count(const SearchProvider *self);
 // Row at index i. NULL when out of range.
-const SearchProviderSlot *SearchProvider_at(const SearchProvider *self, uint32_t i);
+const SearchProviderSlot *SearchProvider_at(const SearchProvider *self, u32 i);
 // Row by canonical slug. NULL when absent. Linear scan (3 rows).
 const SearchProviderSlot *SearchProvider_get(const SearchProvider *self, const char *slug);
 // Copies the row's endpoint into outBuf (NUL-terminated, dest-last per
 // Rule 9). False on NULL self/slot/buf, zero cap, or truncation.
 bool SearchProvider_resolveEndpoint(const SearchProvider *self,
                                     const SearchProviderSlot *slot,
-                                    char *outBuf, size_t outCap);
+                                    char *outBuf, bytes outCap);
 
 // --- Getters (Rule 24; null-safe; setters omitted — immutable rows) ---
 const char *SearchProvider_getSlug(const SearchProvider *self,
@@ -85,9 +85,9 @@ const char *SearchProvider_getEndpoint(const SearchProvider *self,
                                        const SearchProviderSlot *slot);
 const char *SearchProvider_getNote(const SearchProvider *self,
                                    const SearchProviderSlot *slot);
-uint32_t SearchProvider_getQuotaPerDay(const SearchProvider *self,
+u32 SearchProvider_getQuotaPerDay(const SearchProvider *self,
                                        const SearchProviderSlot *slot);
-uint32_t SearchProvider_getQuotaRemaining(const SearchProvider *self,
+u32 SearchProvider_getQuotaRemaining(const SearchProvider *self,
                                           const SearchProviderSlot *slot);
 int64_t SearchProvider_getResetUnix(const SearchProvider *self,
                                     const SearchProviderSlot *slot);

@@ -6,10 +6,10 @@
 #include <stddef.h>
 
 typedef struct APIClientTelemetry {
-    uint64_t frameCount;
-    int32_t state;
-    int32_t activePipelines;
-    uint64_t totalAllocations;
+    u64 frameCount;
+    i32 state;
+    i32 activePipelines;
+    u64 totalAllocations;
 } APIClientTelemetry;
 
 bool APIClient_sendTelemetry(const char *endpointUrl, const APIClientTelemetry *telemetry);

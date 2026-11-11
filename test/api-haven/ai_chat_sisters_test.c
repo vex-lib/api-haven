@@ -150,8 +150,8 @@ int main(int argc, const char **argv) {
     JsonRef g1 = Json_at(&doc, contents, 1);
     JsonRef r0 = Json_member(&doc, g0, "role");
     JsonRef r1 = Json_member(&doc, g1, "role");
-    uint32_t r0len = 0;
-    uint32_t r1len = 0;
+    u32 r0len = 0;
+    u32 r1len = 0;
     const char *r0v = r0 >= 0 ? Json_string(&doc, r0, &r0len) : "";
     const char *r1v = r1 >= 0 ? Json_string(&doc, r1, &r1len) : "";
     CHECK(r0len == 4 && memcmp(r0v, "user", 4) == 0);

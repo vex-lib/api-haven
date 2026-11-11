@@ -76,7 +76,7 @@ int main(int argc, const char **argv) {
     // --- directory shape ---------------------------------------------------
     AiProvider *dir = AiProvider_shared();
     CHECK(dir != nullptr);
-    const uint32_t total = AiProvider_count(dir);
+    const u32 total = AiProvider_count(dir);
     printf("AiProvider_count = %u\n", total);
     CHECK(total >= 255 && total <= 280);
     CHECK(AiProvider_at(dir, 0) != nullptr);
@@ -112,8 +112,8 @@ int main(int argc, const char **argv) {
 
     // --- directory consistency (every row, generated-data invariants) --------
     const char *names[280];
-    uint32_t nameCount = 0;
-    for (uint32_t i = 0; i < total; i++) {
+    u32 nameCount = 0;
+    for (u32 i = 0; i < total; i++) {
         const AiProviderSlot *row = AiProvider_at(dir, i);
         CHECK(row != nullptr);
         CHECK(row && isSlugValid(AiProvider_getSlug(dir, row)));
@@ -123,7 +123,7 @@ int main(int argc, const char **argv) {
         CHECK(rowName && (*rowName) != '\0');
         if (row && rowName) {
             int dup = 0;
-            for (uint32_t j = 0; j < nameCount; j++) {
+            for (u32 j = 0; j < nameCount; j++) {
                 if (strcmp(names[j], rowName) == 0)
                     dup = 1;
             }
@@ -133,7 +133,7 @@ int main(int argc, const char **argv) {
             if (base) {
                 CHECK(strncmp(base, "https://", 8) == 0 || strncmp(base, "http://", 7) == 0);
                 CHECK(!hasWhitespace(base));
-                size_t baseLen = strlen(base);
+                bytes baseLen = strlen(base);
                 CHECK(baseLen > 0 && base[baseLen - 1] != '/');
             }
         }
@@ -183,7 +183,7 @@ int main(int argc, const char **argv) {
     JsonRef root = Json_root(&doc);
 
     JsonRef model = Json_member(&doc, root, "model");
-    uint32_t modelLen = 0;
+    u32 modelLen = 0;
     const char *modelView = model >= 0 ? Json_string(&doc, model, &modelLen) : "";
     // Note: Json_string views are NUL-terminated only when escaped into
     // scratch — plain views point into src and need the length (memcmp).
@@ -197,7 +197,7 @@ int main(int argc, const char **argv) {
     CHECK(c0 >= 0 && strcmp(Json_string(&doc, c0, nullptr), "say \"hi\" \n to me") == 0);
     JsonRef m1 = Json_at(&doc, msgs, 1);
     JsonRef r1 = Json_member(&doc, m1, "role");
-    uint32_t roleLen = 0;
+    u32 roleLen = 0;
     const char *roleView = r1 >= 0 ? Json_string(&doc, r1, &roleLen) : "";
     CHECK(r1 >= 0 && roleLen == 9 && memcmp(roleView, "assistant", 9) == 0);
 

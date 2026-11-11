@@ -34,7 +34,7 @@ typedef struct AssetProviderSlot {
 // The table class — a singleton handle; state lives in static const rows
 // in asset_provider.c.
 typedef struct AssetProvider {
-    uint32_t reserved; // signature/marker; no mutable state
+    u32 reserved; // signature/marker; no mutable state
 } AssetProvider;
 
 // --- Constructor ---
@@ -43,9 +43,9 @@ AssetProvider *AssetProvider_shared(void);
 
 // --- Core functions ---
 // Total rows. Null-safe: 0 on NULL self.
-uint32_t AssetProvider_count(const AssetProvider *self);
+u32 AssetProvider_count(const AssetProvider *self);
 // Row at index i (source order). NULL when out of range.
-const AssetProviderSlot *AssetProvider_at(const AssetProvider *self, uint32_t i);
+const AssetProviderSlot *AssetProvider_at(const AssetProvider *self, u32 i);
 // Row by canonical slug. NULL when absent. Linear scan (~12 rows).
 const AssetProviderSlot *AssetProvider_get(const AssetProvider *self, const char *slug);
 

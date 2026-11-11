@@ -29,8 +29,8 @@
  * class):
  * ----------------------------------------------------------------------------
  *   HarnessJob jobs[16];               // fixed slots, BitPool discipline
- *   uint32_t jobCount;                 // slots ever issued, capped at 16
- *   uint64_t timeoutMs;                // default bound for new jobs (ms)
+ *   u32 jobCount;                 // slots ever issued, capped at 16
+ *   u64 timeoutMs;                // default bound for new jobs (ms)
  *   const EngineProviderSlot *engine;  // bound engine row; NULL = unbound
  *   void *driver;                      // opaque driver ctx, never touched
  *   HarnessDriverTable table;          // injected spawn/poll/cancel fns
@@ -39,12 +39,12 @@
  * SLOT RECORD (HarnessJob — Rule 3 co-location, zero behavior of its
  * own; all behavior hangs off this class):
  * ----------------------------------------------------------------------------
- *   uint32_t jobId;                    // slot index + 1; stable per slot
+ *   u32 jobId;                    // slot index + 1; stable per slot
  *   const EngineProviderSlot *engine;  // borrowed descriptor row
  *   HarnessStatus status;              // lifecycle state
- *   uint64_t timeoutMs;                // per-slot bound for the driver
+ *   u64 timeoutMs;                // per-slot bound for the driver
  *   void *driverHandle;                // opaque driver job; NULL when idle
- *   size_t outLen;                     // driver-reported output length
+ *   bytes outLen;                     // driver-reported output length
  *
  * PRIVATE HELPERS (none — slot scan is inline in Harness_run):
  * ----------------------------------------------------------------------------
@@ -88,7 +88,7 @@ Harness Harness_0(void) {
 }
 
 /** Creates a harness with no bound driver and the supplied default timeout. */
-Harness Harness_1(uint64_t timeoutMs) {
+Harness Harness_1(u64 timeoutMs) {
     Harness self = { 0 };
     self.timeoutMs = timeoutMs;
     self.lastStatus = HARNESS_STATUS_IDLE;
@@ -98,8 +98,8 @@ Harness Harness_1(uint64_t timeoutMs) {
 // CORE FUNCTIONS
 
 /** Starts a bounded driver job in an available slot and returns its job id. */
-bool Harness_run(Harness *self, const char *prompt, size_t promptLen,
-                 uint64_t timeoutMs, uint32_t *outJobId) {
+bool Harness_run(Harness *self, const char *prompt, bytes promptLen,
+                 u64 timeoutMs, u32 *outJobId) {
     if (!self)
         return false;
     HarnessDriverTable table = (*self).table;
@@ -109,33 +109,33 @@ bool Harness_run(Harness *self, const char *prompt, size_t promptLen,
         (*self).lastStatus = HARNESS_STATUS_IDLE;
         return false;
     }
-    int32_t freeIndex = -1;
-    for (uint32_t i = 0; i < (*self).jobCount; i++) {
+    i32 freeIndex = -1;
+    for (u32 i = 0; i < (*self).jobCount; i++) {
         HarnessJob *job = &(*self).jobs[i];
         if ((*job).status != HARNESS_STATUS_RUNNING) {
-            freeIndex = (int32_t) i;
+            freeIndex = (i32) i;
             break;
         }
     }
     if (freeIndex < 0) {
-        if ((*self).jobCount >= (uint32_t) HARNESS_MAX_JOBS) {
+        if ((*self).jobCount >= (u32) HARNESS_MAX_JOBS) {
             (*self).lastStatus = HARNESS_STATUS_BUSY_FULL;
             return false;
         }
-        freeIndex = (int32_t) (*self).jobCount;
+        freeIndex = (i32) (*self).jobCount;
         (*self).jobCount++;
     }
-    uint64_t bound = timeoutMs != 0 ? timeoutMs : (*self).timeoutMs;
+    u64 bound = timeoutMs != 0 ? timeoutMs : (*self).timeoutMs;
     void *handle = nullptr;
     bool ok = table.spawnFn(driver, engine, prompt, promptLen, bound, &handle);
-    HarnessJob *slot = &(*self).jobs[(uint32_t) freeIndex];
+    HarnessJob *slot = &(*self).jobs[(u32) freeIndex];
     if (!ok) {
         (*slot).status = HARNESS_STATUS_IDLE;
         (*slot).driverHandle = nullptr;
         (*self).lastStatus = HARNESS_STATUS_IDLE;
         return false;
     }
-    (*slot).jobId = (uint32_t) freeIndex + 1;
+    (*slot).jobId = (u32) freeIndex + 1;
     (*slot).engine = engine;
     (*slot).status = HARNESS_STATUS_RUNNING;
     (*slot).timeoutMs = bound;
@@ -148,10 +148,10 @@ bool Harness_run(Harness *self, const char *prompt, size_t promptLen,
 }
 
 /** Polls the selected driver's job and updates the stored slot status. */
-HarnessStatus Harness_poll(Harness *self, uint32_t jobId) {
+HarnessStatus Harness_poll(Harness *self, u32 jobId) {
     if (!self || jobId == 0)
         return HARNESS_STATUS_IDLE;
-    for (uint32_t i = 0; i < (*self).jobCount; i++) {
+    for (u32 i = 0; i < (*self).jobCount; i++) {
         HarnessJob *job = &(*self).jobs[i];
         if ((*job).jobId != jobId)
             continue;
@@ -171,10 +171,10 @@ HarnessStatus Harness_poll(Harness *self, uint32_t jobId) {
 }
 
 /** Cancels a running job through the driver callback and clears its handle. */
-bool Harness_cancel(Harness *self, uint32_t jobId) {
+bool Harness_cancel(Harness *self, u32 jobId) {
     if (!self || jobId == 0)
         return false;
-    for (uint32_t i = 0; i < (*self).jobCount; i++) {
+    for (u32 i = 0; i < (*self).jobCount; i++) {
         HarnessJob *job = &(*self).jobs[i];
         if ((*job).jobId != jobId)
             continue;
@@ -208,7 +208,7 @@ void Harness_setDriver(Harness *self, void *driver, HarnessDriverTable table) {
 }
 
 /** Sets the default timeout used when a run supplies no override. */
-void Harness_setTimeout(Harness *self, uint64_t timeoutMs) {
+void Harness_setTimeout(Harness *self, u64 timeoutMs) {
     if (!self)
         return;
     (*self).timeoutMs = timeoutMs;
@@ -227,7 +227,7 @@ void *Harness_getDriver(const Harness *self) {
 }
 
 /** Returns the default timeout, or zero for a null receiver. */
-uint64_t Harness_getTimeout(const Harness *self) {
+u64 Harness_getTimeout(const Harness *self) {
     if (!self)
         return 0;
     return (*self).timeoutMs;
@@ -237,7 +237,7 @@ uint64_t Harness_getTimeout(const Harness *self) {
 bool Harness_isRunning(const Harness *self) {
     if (!self)
         return false;
-    for (uint32_t i = 0; i < (*self).jobCount; i++) {
+    for (u32 i = 0; i < (*self).jobCount; i++) {
         const HarnessJob *job = &(*self).jobs[i];
         if ((*job).status == HARNESS_STATUS_RUNNING)
             return true;
@@ -246,14 +246,14 @@ bool Harness_isRunning(const Harness *self) {
 }
 
 /** Returns the number of job slots issued so far. */
-uint32_t Harness_getJobCount(const Harness *self) {
+u32 Harness_getJobCount(const Harness *self) {
     if (!self)
         return 0;
     return (*self).jobCount;
 }
 
 /** Returns the job record at index i, or nullptr when out of range. */
-const HarnessJob *Harness_getJobAt(const Harness *self, uint32_t i) {
+const HarnessJob *Harness_getJobAt(const Harness *self, u32 i) {
     if (!self)
         return nullptr;
     if (i >= (*self).jobCount)
@@ -262,10 +262,10 @@ const HarnessJob *Harness_getJobAt(const Harness *self, uint32_t i) {
 }
 
 /** Returns the stored status for jobId, or idle when the id is unknown. */
-HarnessStatus Harness_getJobStatus(const Harness *self, uint32_t jobId) {
+HarnessStatus Harness_getJobStatus(const Harness *self, u32 jobId) {
     if (!self || jobId == 0)
         return HARNESS_STATUS_IDLE;
-    for (uint32_t i = 0; i < (*self).jobCount; i++) {
+    for (u32 i = 0; i < (*self).jobCount; i++) {
         const HarnessJob *job = &(*self).jobs[i];
         if ((*job).jobId == jobId)
             return (*job).status;

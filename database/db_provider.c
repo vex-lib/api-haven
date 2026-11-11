@@ -27,7 +27,7 @@
  * STRUCT FIELDS (Mirroring database/db_provider.h — exactly this file's
  * class):
  * ----------------------------------------------------------------------------
- *   uint32_t reserved;   // singleton marker; no mutable state — all data
+ *   u32 reserved;   // singleton marker; no mutable state — all data
  *                        // lives in the static const DbProviderSlot rows
  *
  * SLOT RECORD (DbProviderSlot — Rule 3 co-location, zero behavior of its
@@ -36,7 +36,7 @@
  *   const char *slug;         // canonical key, e.g. "postgresql"
  *   const char *displayName;  // verbatim source, e.g. "PostgreSQL"
  *   const char *engine;       // driver/engine key, e.g. "postgres"
- *   uint16_t defaultPort;     // canonical wire port; 0 = embedded/SDK-only
+ *   u16 defaultPort;     // canonical wire port; 0 = embedded/SDK-only
  *   DbProviderFamily family;  // coarse wire bucket
  *   const char *note;         // caveat; NULL when none
  *
@@ -69,8 +69,8 @@
 
 #include "database/data/db_providers.inc"
 
-static const uint32_t kDbProviderCount =
-    (uint32_t)(sizeof(kDbProviders) / sizeof(kDbProviders[0]));
+static const u32 kDbProviderCount =
+    (u32)(sizeof(kDbProviders) / sizeof(kDbProviders[0]));
 
 static DbProvider sDbProviderShared; // zero-init singleton
 
@@ -84,14 +84,14 @@ DbProvider *DbProvider_shared(void) {
 // CORE FUNCTIONS
 
 /** Returns the directory row count, or zero for a null receiver. */
-uint32_t DbProvider_count(const DbProvider *self) {
+u32 DbProvider_count(const DbProvider *self) {
     if (!self)
         return 0;
     return kDbProviderCount;
 }
 
 /** Returns the row at index i, or nullptr for a null receiver or invalid index. */
-const DbProviderSlot *DbProvider_at(const DbProvider *self, uint32_t i) {
+const DbProviderSlot *DbProvider_at(const DbProvider *self, u32 i) {
     if (!self || i >= kDbProviderCount)
         return nullptr;
     return &kDbProviders[i];
@@ -101,7 +101,7 @@ const DbProviderSlot *DbProvider_at(const DbProvider *self, uint32_t i) {
 const DbProviderSlot *DbProvider_get(const DbProvider *self, const char *slug) {
     if (!self || !slug || (*slug) == '\0')
         return nullptr;
-    for (uint32_t i = 0; i < kDbProviderCount; i++) {
+    for (u32 i = 0; i < kDbProviderCount; i++) {
         if (kDbProviders[i].slug && strcmp(kDbProviders[i].slug, slug) == 0)
             return &kDbProviders[i];
     }
@@ -113,7 +113,7 @@ const DbProviderSlot *DbProvider_findByEngine(const DbProvider *self,
                                               const char *engine) {
     if (!self || !engine || (*engine) == '\0')
         return nullptr;
-    for (uint32_t i = 0; i < kDbProviderCount; i++) {
+    for (u32 i = 0; i < kDbProviderCount; i++) {
         if (kDbProviders[i].engine && strcmp(kDbProviders[i].engine, engine) == 0)
             return &kDbProviders[i];
     }
@@ -141,7 +141,7 @@ const char *DbProvider_getEngine(const DbProvider *self, const DbProviderSlot *s
 }
 
 /** Returns the slot's canonical wire port, or zero when unavailable. */
-uint16_t DbProvider_getDefaultPort(const DbProvider *self, const DbProviderSlot *slot) {
+u16 DbProvider_getDefaultPort(const DbProvider *self, const DbProviderSlot *slot) {
     if (!self || !slot)
         return 0;
     return (*slot).defaultPort;

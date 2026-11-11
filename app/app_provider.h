@@ -49,7 +49,7 @@ typedef struct AppProviderSlot {
 // The table class — a singleton handle; state lives in the static const
 // rows in app_provider.c.
 typedef struct AppProvider {
-    uint32_t reserved; // signature/marker; no mutable state
+    u32 reserved; // signature/marker; no mutable state
 } AppProvider;
 
 // --- Constructor ---
@@ -58,9 +58,9 @@ AppProvider *AppProvider_shared(void);
 
 // --- Core functions ---
 // Total rows. Null-safe: 0 on NULL self.
-uint32_t AppProvider_count(const AppProvider *self);
+u32 AppProvider_count(const AppProvider *self);
 // Row at index i. NULL when out of range.
-const AppProviderSlot *AppProvider_at(const AppProvider *self, uint32_t i);
+const AppProviderSlot *AppProvider_at(const AppProvider *self, u32 i);
 // Row by canonical slug. NULL when absent. Linear scan (29 rows).
 const AppProviderSlot *AppProvider_get(const AppProvider *self, const char *slug);
 // Copies the row's bundleIdOrScheme into outBuf (NUL-terminated,
@@ -68,7 +68,7 @@ const AppProviderSlot *AppProvider_get(const AppProvider *self, const char *slug
 // truncation.
 bool AppProvider_resolveTarget(const AppProvider *self,
                                const AppProviderSlot *slot,
-                               char *outBuf, size_t outCap);
+                               char *outBuf, bytes outCap);
 
 // --- Getters (Rule 24; null-safe; setters omitted — immutable rows) ---
 const char *AppProvider_getSlug(const AppProvider *self,

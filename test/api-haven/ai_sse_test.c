@@ -31,10 +31,10 @@ static int sFailures = 0;
         }                                                              \
     } while (0)
 
-static uint32_t sPollCalls = 0;
+static u32 sPollCalls = 0;
 
 /* Records a transport poll and returns no frames for the caller-fed SSE test. */
-static uint32_t fakePoll(void *handle, uint64_t budgetMs) {
+static u32 fakePoll(void *handle, u64 budgetMs) {
     (void)handle;
     (void)budgetMs;
     sPollCalls++;
@@ -48,7 +48,7 @@ static bool fakeConnect(void *handle) {
 }
 
 /* Accepts sends without side effects so the test can bind a complete source table. */
-static bool fakeSend(void *handle, const uint8_t *Bytes, uint32_t len) {
+static bool fakeSend(void *handle, const u8 *Bytes, u32 len) {
     (void)handle;
     (void)Bytes;
     (void)len;

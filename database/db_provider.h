@@ -29,7 +29,7 @@ typedef struct DbProviderSlot {
     const char *slug;        // canonical key, e.g. "postgresql"
     const char *displayName; // verbatim source, e.g. "PostgreSQL"
     const char *engine;      // driver/engine key, e.g. "postgres"
-    uint16_t defaultPort;    // canonical wire port; 0 = embedded/SDK-only
+    u16 defaultPort;    // canonical wire port; 0 = embedded/SDK-only
     DbProviderFamily family; // coarse wire bucket
     const char *note;        // caveat; NULL when none
 } DbProviderSlot;
@@ -37,7 +37,7 @@ typedef struct DbProviderSlot {
 // The table class — a singleton handle; state lives in static const
 // rows generated under src/database/data/.
 typedef struct DbProvider {
-    uint32_t reserved; // signature/marker; no mutable state
+    u32 reserved; // signature/marker; no mutable state
 } DbProvider;
 
 // --- Constructor ---
@@ -46,9 +46,9 @@ DbProvider *DbProvider_shared(void);
 
 // --- Core functions ---
 // Total rows. Null-safe: 0 on NULL self.
-uint32_t DbProvider_count(const DbProvider *self);
+u32 DbProvider_count(const DbProvider *self);
 // Row at index i (alphabetical, source order). NULL when out of range.
-const DbProviderSlot *DbProvider_at(const DbProvider *self, uint32_t i);
+const DbProviderSlot *DbProvider_at(const DbProvider *self, u32 i);
 // Row by canonical slug. NULL when absent. Linear scan (~25 rows).
 const DbProviderSlot *DbProvider_get(const DbProvider *self, const char *slug);
 // Row by driver/engine key (e.g. "postgres", "sqlserver" — many rows may
@@ -60,7 +60,7 @@ const DbProviderSlot *DbProvider_findByEngine(const DbProvider *self,
 const char *DbProvider_getSlug(const DbProvider *self, const DbProviderSlot *slot);
 const char *DbProvider_getDisplayName(const DbProvider *self, const DbProviderSlot *slot);
 const char *DbProvider_getEngine(const DbProvider *self, const DbProviderSlot *slot);
-uint16_t DbProvider_getDefaultPort(const DbProvider *self, const DbProviderSlot *slot);
+u16 DbProvider_getDefaultPort(const DbProvider *self, const DbProviderSlot *slot);
 DbProviderFamily DbProvider_getFamily(const DbProvider *self, const DbProviderSlot *slot);
 const char *DbProvider_getNote(const DbProvider *self, const DbProviderSlot *slot);
 

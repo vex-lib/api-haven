@@ -39,15 +39,15 @@
  */
 
 /** Parses the URL into bounded scheme, host, port, and path outputs. */
-static bool parseUrl(const char *url, char *scheme, size_t schemeCap,
-                     char *host, size_t hostCap, int *port,
-                     char *path, size_t pathCap) {
+static bool parseUrl(const char *url, char *scheme, bytes schemeCap,
+                     char *host, bytes hostCap, int *port,
+                     char *path, bytes pathCap) {
     if (!url || url[0] == '\0')
         return false;
     const char *p = url;
     const char *schemeEnd = strstr(p, "://");
     if (schemeEnd) {
-        size_t sLen = (size_t)(schemeEnd - p);
+        bytes sLen = (bytes)(schemeEnd - p);
         if (sLen >= schemeCap)
             return false;
         memcpy(scheme, p, sLen);
@@ -61,20 +61,20 @@ static bool parseUrl(const char *url, char *scheme, size_t schemeCap,
     const char *slash = strchr(p, '/');
     const char *colon = strchr(p, ':');
     if (colon && (!slash || colon < slash)) {
-        size_t hLen = (size_t)(colon - p);
+        bytes hLen = (bytes)(colon - p);
         if (hLen >= hostCap)
             return false;
         memcpy(host, p, hLen);
         host[hLen] = '\0';
         *port = atoi(colon + 1);
     } else if (slash) {
-        size_t hLen = (size_t)(slash - p);
+        bytes hLen = (bytes)(slash - p);
         if (hLen >= hostCap)
             return false;
         memcpy(host, p, hLen);
         host[hLen] = '\0';
     } else {
-        size_t hLen = strlen(p);
+        bytes hLen = strlen(p);
         if (hLen >= hostCap)
             return false;
         memcpy(host, p, hLen);
@@ -97,7 +97,7 @@ static bool statusIsSuccess(int status) {
 
 /** Builds and performs one bounded JSON HTTP request using the shared transport. */
 static bool perform(const char *url, const ApiAuth *auth, const char *method,
-                    const char *body, size_t bodyLen, HttpResponse *resp) {
+                    const char *body, bytes bodyLen, HttpResponse *resp) {
     if (!url || !method || !resp)
         return false;
     char scheme[16] = { 0 };
@@ -109,7 +109,7 @@ static bool perform(const char *url, const ApiAuth *auth, const char *method,
     char authValue[512] = { 0 };
     const char *authName = nullptr;
     HttpHeader headers[3];
-    uint32_t headerCount = 0;
+    u32 headerCount = 0;
     headers[headerCount].name = "Content-Type";
     headers[headerCount].value = "application/json";
     headerCount++;
@@ -149,7 +149,7 @@ static bool perform(const char *url, const ApiAuth *auth, const char *method,
 // CORE FUNCTIONS
 /** Sends a JSON request body and stores the transport result in resp. */
 bool Rest_postJson(const char *url, const ApiAuth *auth,
-                   const char *jsonBody, size_t jsonLen, HttpResponse *resp) {
+                   const char *jsonBody, bytes jsonLen, HttpResponse *resp) {
     return perform(url, auth, "POST", jsonBody, jsonLen, resp);
 }
 

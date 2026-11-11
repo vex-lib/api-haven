@@ -24,10 +24,10 @@
  *
  * STRUCT FIELDS (Mirroring api/client.h):
  * ----------------------------------------------------------------------------
- *   uint64_t frameCount;       // Live rendered frame counter
- *   int32_t state;             // Engine runtime state flags
- *   int32_t activePipelines;   // Count of currently active Vulkan pipelines
- *   uint64_t totalAllocations; // Lifetime allocation counter
+ *   u64 frameCount;       // Live rendered frame counter
+ *   i32 state;             // Engine runtime state flags
+ *   i32 activePipelines;   // Count of currently active Vulkan pipelines
+ *   u64 totalAllocations; // Lifetime allocation counter
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
@@ -38,15 +38,15 @@
 ;;INTENTION("canonical shim for the quarantined attic/APIClient.java: same sendTelemetry contract, vexspoke transports, null-safe degrade (false) — Rule 35 cold-strict")
 
 /** Splits a URL into bounded scheme, host, port, and path outputs. */
-static bool parseUrl(const char *url, char *scheme, size_t schemeCap,
-                     char *host, size_t hostCap, int *port,
-                     char *path, size_t pathCap) {
+static bool parseUrl(const char *url, char *scheme, bytes schemeCap,
+                     char *host, bytes hostCap, int *port,
+                     char *path, bytes pathCap) {
     if (!url || url[0] == '\0') return false;
 
     const char *p = url;
     const char *schemeEnd = strstr(p, "://");
     if (schemeEnd) {
-        size_t sLen = (size_t)(schemeEnd - p);
+        bytes sLen = (bytes)(schemeEnd - p);
         if (sLen >= schemeCap) return false;
         memcpy(scheme, p, sLen);
         scheme[sLen] = '\0';
@@ -62,18 +62,18 @@ static bool parseUrl(const char *url, char *scheme, size_t schemeCap,
     const char *colon = strchr(p, ':');
 
     if (colon && (!slash || colon < slash)) {
-        size_t hLen = (size_t)(colon - p);
+        bytes hLen = (bytes)(colon - p);
         if (hLen >= hostCap) return false;
         memcpy(host, p, hLen);
         host[hLen] = '\0';
         *port = atoi(colon + 1);
     } else if (slash) {
-        size_t hLen = (size_t)(slash - p);
+        bytes hLen = (bytes)(slash - p);
         if (hLen >= hostCap) return false;
         memcpy(host, p, hLen);
         host[hLen] = '\0';
     } else {
-        size_t hLen = strlen(p);
+        bytes hLen = strlen(p);
         if (hLen >= hostCap) return false;
         memcpy(host, p, hLen);
         host[hLen] = '\0';
@@ -112,7 +112,7 @@ bool APIClient_sendTelemetry(const char *endpointUrl, const APIClientTelemetry *
                      (unsigned long long)(*telemetry).frameCount,
                      (*telemetry).activePipelines,
                      (unsigned long long)(*telemetry).totalAllocations);
-    if (n < 0 || (size_t)n >= sizeof(jsonBuf)) {
+    if (n < 0 || (bytes)n >= sizeof(jsonBuf)) {
         return false;
     }
 
@@ -130,7 +130,7 @@ bool APIClient_sendTelemetry(const char *endpointUrl, const APIClientTelemetry *
         .headers = headers,
         .headerCount = 2,
         .body = jsonBuf,
-        .bodyLen = (size_t)n,
+        .bodyLen = (bytes)n,
         .timeoutMs = 5000
     };
 

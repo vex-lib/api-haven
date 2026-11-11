@@ -24,7 +24,7 @@
 // resp.bodyCap.
 
 bool Rest_postJson(const char *url, const ApiAuth *auth,
-                   const char *jsonBody, size_t jsonLen, HttpResponse *resp);
+                   const char *jsonBody, bytes jsonLen, HttpResponse *resp);
 bool Rest_get(const char *url, const ApiAuth *auth, HttpResponse *resp);
 
 #endif

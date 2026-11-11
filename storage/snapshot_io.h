@@ -23,9 +23,9 @@
 #define HAVEN_SNAPSHOT_RETRY 2
 #define HAVEN_SNAPSHOT_REJECT 3
 
-typedef int (*HavenSnapshotPutFn)(void *context, uint64_t key,
-                                const uint8_t *bytes, size_t length, int cancel);
-typedef int (*HavenSnapshotGetFn)(void *context, uint64_t key,
-                                uint8_t *dest, size_t capacity, size_t *outLength);
+typedef int (*HavenSnapshotPutFn)(void *context, u64 key,
+                                const u8 *bytes, bytes length, int cancel);
+typedef int (*HavenSnapshotGetFn)(void *context, u64 key,
+                                u8 *dest, bytes capacity, bytes *outLength);
 
 #endif

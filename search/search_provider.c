@@ -39,7 +39,7 @@
  * STRUCT FIELDS (Mirroring search/search_provider.h — exactly this
  * file's class):
  * ----------------------------------------------------------------------------
- *   uint32_t reserved;   // singleton marker; no mutable state — all data
+ *   u32 reserved;   // singleton marker; no mutable state — all data
  *                        // lives in the static const SearchProviderSlot rows
  *
   * SLOT RECORD (SearchProviderSlot — Rule 3 co-location, zero behavior of
@@ -51,8 +51,8 @@
   *   SearchProviderAuth   auth;   // credential scheme enum
   *   const char *endpoint;        // base URL the renderer builds on
   *   const char *note;            // caveat; NULL when none
-  *   uint32_t quotaPerDay;        // free-tier requests/day (0 = unknown)
-  *   uint32_t quotaRemaining;     // free-tier remainder (0 = unknown)
+  *   u32 quotaPerDay;        // free-tier requests/day (0 = unknown)
+  *   u32 quotaRemaining;     // free-tier remainder (0 = unknown)
   *   int64_t  resetUnix;          // quota window reset epoch secs (0 = unknown)
   *   const char *authKind;        // credential kind label; NULL = see auth
   *   const char *licenseFamily;   // license family label; NULL = UNKNOWN
@@ -107,8 +107,8 @@ static const SearchProviderSlot kSearchProviders[] = {
      0, 0, 0, nullptr, "CC-BY-SA"},
 };
 
-static const uint32_t kSearchProviderCount =
-    (uint32_t)(sizeof(kSearchProviders) / sizeof(kSearchProviders[0]));
+static const u32 kSearchProviderCount =
+    (u32)(sizeof(kSearchProviders) / sizeof(kSearchProviders[0]));
 
 static SearchProvider sSearchProviderShared; // zero-init singleton
 
@@ -122,14 +122,14 @@ SearchProvider *SearchProvider_shared(void) {
 // CORE FUNCTIONS
 
 /** Returns the directory row count, or zero for a null receiver. */
-uint32_t SearchProvider_count(const SearchProvider *self) {
+u32 SearchProvider_count(const SearchProvider *self) {
     if (!self)
         return 0;
     return kSearchProviderCount;
 }
 
 /** Returns the row at index i, or nullptr for a null receiver or invalid index. */
-const SearchProviderSlot *SearchProvider_at(const SearchProvider *self, uint32_t i) {
+const SearchProviderSlot *SearchProvider_at(const SearchProvider *self, u32 i) {
     if (!self)
         return nullptr;
     if (i >= kSearchProviderCount)
@@ -141,7 +141,7 @@ const SearchProviderSlot *SearchProvider_at(const SearchProvider *self, uint32_t
 const SearchProviderSlot *SearchProvider_get(const SearchProvider *self, const char *slug) {
     if (!self || !slug || (*slug) == '\0')
         return nullptr;
-    for (uint32_t i = 0; i < kSearchProviderCount; i++) {
+    for (u32 i = 0; i < kSearchProviderCount; i++) {
         const SearchProviderSlot *slot = &kSearchProviders[i];
         if ((*slot).slug && strcmp((*slot).slug, slug) == 0)
             return slot;
@@ -152,13 +152,13 @@ const SearchProviderSlot *SearchProvider_get(const SearchProvider *self, const c
 /** Copies the provider endpoint into outBuf when it fits including its terminator. */
 bool SearchProvider_resolveEndpoint(const SearchProvider *self,
                                     const SearchProviderSlot *slot,
-                                    char *outBuf, size_t outCap) {
+                                    char *outBuf, bytes outCap) {
     if (!self || !slot || !outBuf || outCap == 0)
         return false;
     const char *ep = (*slot).endpoint;
     if (!ep)
         return false;
-    size_t len = strlen(ep);
+    bytes len = strlen(ep);
     if (len + 1 > outCap)
         return false;
     memcpy(outBuf, ep, len + 1);
@@ -212,7 +212,7 @@ const char *SearchProvider_getNote(const SearchProvider *self,
 }
 
 /** Returns the slot's daily quota value, or zero when unavailable. */
-uint32_t SearchProvider_getQuotaPerDay(const SearchProvider *self,
+u32 SearchProvider_getQuotaPerDay(const SearchProvider *self,
                                        const SearchProviderSlot *slot) {
     if (!self || !slot)
         return 0;
@@ -220,7 +220,7 @@ uint32_t SearchProvider_getQuotaPerDay(const SearchProvider *self,
 }
 
 /** Returns the slot's remaining quota value, or zero when unavailable. */
-uint32_t SearchProvider_getQuotaRemaining(const SearchProvider *self,
+u32 SearchProvider_getQuotaRemaining(const SearchProvider *self,
                                           const SearchProviderSlot *slot) {
     if (!self || !slot)
         return 0;

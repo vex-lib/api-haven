@@ -5,7 +5,7 @@
 
 // ai/ai_provider.h — the AI provider directory (L1 descriptor table).
 //
-// One behavior class owns the whole vexgraph-ecosystem-gitrepo: names, native endpoints,
+// One behavior class owns the whole ecosystem: names, native endpoints,
 // wire-contract families, auth schemes, and region buckets for every
 // provider the engine may talk to. Rows are static const slot records
 // (see ai_provider.c); this header declares the schema and the table API.
@@ -48,8 +48,8 @@ typedef struct AiProviderSlot {
     AiProviderAuth auth;     // credential scheme
     AiProviderRegion region; // bucket
     const char *note;        // caveat / variant note; NULL when none
-    uint32_t quotaPerDay;    // free-tier requests/day (0 = unknown)
-    uint32_t quotaRemaining; // free-tier remainder (0 = unknown/exhausted)
+    u32 quotaPerDay;    // free-tier requests/day (0 = unknown)
+    u32 quotaRemaining; // free-tier remainder (0 = unknown/exhausted)
     int64_t resetUnix;       // quota window reset epoch secs (0 = unknown)
     const char *authKind;    // credential kind label; NULL = see auth enum
     const char *licenseFamily; // license family label; NULL = UNKNOWN
@@ -58,7 +58,7 @@ typedef struct AiProviderSlot {
 // The table class — a singleton handle; state lives in static const rows
 // generated under src/ai/data/ (see ai_provider.c overview).
 typedef struct AiProvider {
-    uint32_t reserved; // signature/marker; no mutable state
+    u32 reserved; // signature/marker; no mutable state
 } AiProvider;
 
 // --- Constructor ---
@@ -67,9 +67,9 @@ AiProvider *AiProvider_shared(void);
 
 // --- Core functions ---
 // Total rows across all region fragments. Null-safe: 0 on NULL self.
-uint32_t AiProvider_count(const AiProvider *self);
+u32 AiProvider_count(const AiProvider *self);
 // Row at flat index i (fragments concatenated). NULL when out of range.
-const AiProviderSlot *AiProvider_at(const AiProvider *self, uint32_t i);
+const AiProviderSlot *AiProvider_at(const AiProvider *self, u32 i);
 // Row by canonical slug. NULL when absent. Linear scan (~260 rows).
 const AiProviderSlot *AiProvider_get(const AiProvider *self, const char *slug);
 // Effective endpoint: verified baseUrl, else the family default
@@ -86,8 +86,8 @@ AiProviderFamily AiProvider_getFamily(const AiProvider *self, const AiProviderSl
 AiProviderAuth AiProvider_getAuth(const AiProvider *self, const AiProviderSlot *slot);
 AiProviderRegion AiProvider_getRegion(const AiProvider *self, const AiProviderSlot *slot);
 const char *AiProvider_getNote(const AiProvider *self, const AiProviderSlot *slot);
-uint32_t AiProvider_getQuotaPerDay(const AiProvider *self, const AiProviderSlot *slot);
-uint32_t AiProvider_getQuotaRemaining(const AiProvider *self, const AiProviderSlot *slot);
+u32 AiProvider_getQuotaPerDay(const AiProvider *self, const AiProviderSlot *slot);
+u32 AiProvider_getQuotaRemaining(const AiProvider *self, const AiProviderSlot *slot);
 int64_t AiProvider_getResetUnix(const AiProvider *self, const AiProviderSlot *slot);
 const char *AiProvider_getAuthKind(const AiProvider *self, const AiProviderSlot *slot);
 const char *AiProvider_getLicenseFamily(const AiProvider *self, const AiProviderSlot *slot);

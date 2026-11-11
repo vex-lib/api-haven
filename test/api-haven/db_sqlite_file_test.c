@@ -31,13 +31,13 @@ static int sFailures = 0;
     } while (0)
 
 /* Implements a bounded fake execution callback and counts valid delegated calls. */
-static bool fakeExec(void *handle, const char *sql, char *out, size_t outCap) {
+static bool fakeExec(void *handle, const char *sql, char *out, bytes outCap) {
     if (!handle || !sql || !out || outCap == 0)
         return false;
     int *calls = (int*) handle;
     (*calls)++;
     const int n = snprintf(out, outCap, "rows for: %s", sql);
-    if (n <= 0 || (size_t)n >= outCap)
+    if (n <= 0 || (bytes)n >= outCap)
         return false;
     return true;
 }

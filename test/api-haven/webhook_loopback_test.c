@@ -29,7 +29,7 @@
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
  * Core Functions:
- *   - main(void)
+ *   - main()
  * ============================================================================
  */
 
@@ -50,8 +50,8 @@ static int g_failures = 0;
 } while (0)
 
 /* Captures loopback request fields/body and returns a deterministic method-specific response. */
-static void captureHandler(const HttpExchange *exchange, int clientFd, void *userdata) {
-    (void)userdata;
+static fn captureHandler(const HttpExchange *exchange, int clientFd, any userdata) {
+    (discard) userdata;
     Capture *cap = &g_cap;
     strncpy((*cap).method, (*exchange).method, sizeof((*cap).method) - 1);
     strncpy((*cap).path, (*exchange).path, sizeof((*cap).path) - 1);
@@ -90,13 +90,13 @@ static bool bodyHas(const char *body, const char *key, const char *want) {
 }
 
 /* Supplies a fixed token for testing callback-based bearer credential formatting. */
-static const char *staticToken(void *userdata) {
-    (void)userdata;
+static const char *staticToken(any userdata) {
+    (discard) userdata;
     return "fn-token-123";
 }
 
 /* Runs Discord, Slack, auth-formatting, and REST-get checks against a local loopback server. */
-int main(void) {
+int main() {
     printf("=== Webhook Loopback Suite (Shape A/B, no accounts) ===\n");
     HttpServer srv = { 0 };
     int port = 0;

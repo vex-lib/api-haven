@@ -28,7 +28,7 @@ typedef enum ApiAuthKind {
 } ApiAuthKind;
 
 // Returns the current bearer token. Must return stable storage.
-typedef const char *(*ApiTokenFn)(void *userdata);
+typedef const char *(*ApiTokenFn)(any userdata);
 
 typedef struct ApiAuth ApiAuth;
 
@@ -37,14 +37,14 @@ struct ApiAuth {
     const char *headerName;   // API_KEY only (e.g. "Api-Key"); else nullptr
     const char *credential;   // API_KEY value / BEARER token; else nullptr
     ApiTokenFn tokenFn;       // BEARER_FN only; else nullptr
-    void *tokenUserdata;      // BEARER_FN only; else nullptr
+    any tokenUserdata;      // BEARER_FN only; else nullptr
 };
 
 // --- Constructors (borrowed pointers, no allocation) ---
-ApiAuth ApiAuth_none(void);
+ApiAuth ApiAuth_none();
 ApiAuth ApiAuth_apiKey(const char *headerName, const char *key);
 ApiAuth ApiAuth_bearer(const char *token);
-ApiAuth ApiAuth_bearerFn(ApiTokenFn fn, void *userdata);
+ApiAuth ApiAuth_bearerFn(ApiTokenFn fn, any userdata);
 
 // --- Core ---
 // Renders the header for one request. Returns false when kind is NONE

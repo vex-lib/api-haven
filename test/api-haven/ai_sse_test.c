@@ -34,30 +34,30 @@ static int sFailures = 0;
 static u32 sPollCalls = 0;
 
 /* Records a transport poll and returns no frames for the caller-fed SSE test. */
-static u32 fakePoll(void *handle, u64 budgetMs) {
-    (void)handle;
-    (void)budgetMs;
+static u32 fakePoll(any handle, u64 budgetMs) {
+    (discard) handle;
+    (discard) budgetMs;
     sPollCalls++;
     return 0;
 }
 
 /* Supplies a successful connection callback without opening a transport. */
-static bool fakeConnect(void *handle) {
-    (void)handle;
+static bool fakeConnect(any handle) {
+    (discard) handle;
     return true;
 }
 
 /* Accepts sends without side effects so the test can bind a complete source table. */
-static bool fakeSend(void *handle, const u8 *Bytes, u32 len) {
-    (void)handle;
-    (void)Bytes;
-    (void)len;
+static bool fakeSend(any handle, const u8 *Bytes, u32 len) {
+    (discard) handle;
+    (discard) Bytes;
+    (discard) len;
     return true;
 }
 
 /* Provides the no-op close callback for the in-process source table. */
-static void fakeClose(void *handle) {
-    (void)handle;
+static fn fakeClose(any handle) {
+    (discard) handle;
 }
 
 static const HavenWsSource sFakeSource = {
@@ -69,8 +69,8 @@ static const HavenWsSource sFakeSource = {
 
 /* Exercises incremental SSE parsing, slot binding, cancellation, timeout, truncation, and null guards. */
 int main(int argc, const char **argv) {
-    (void)argc;
-    (void)argv;
+    (discard) argc;
+    (discard) argv;
 
     // --- single event decode --------------------------------------------------
     AiSse sse = AiSse();

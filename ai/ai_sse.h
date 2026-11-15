@@ -1,12 +1,8 @@
 #ifndef AI_SSE_H
 #define AI_SSE_H
 
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
-
+#include "vex.h"
 #include "api/haven_ws_fanout.h"
-#include "util/constructor.h"
 
 // ai/ai_sse.h — the AiSse class: pure incremental SSE stream decoder
 // (L2 behavior, R2 api-haven).
@@ -27,7 +23,7 @@
 #define AI_SSE_EVENT_CAP 64u
 
 typedef struct AiSse {
-    void *slotHandle;                    // borrowed fanout handle (NULL = unbound)
+    any slotHandle;                    // borrowed fanout handle (NULL = unbound)
     const HavenWsSource *slotSource;     // borrowed fn-table (NULL = unbound)
     u64 timeoutMs;                  // per-slice bound (default AI_SSE_POLL_BUDGET_MS)
     bool cancelled;                      // cancel flag: feed degrades to false
@@ -38,7 +34,7 @@ typedef struct AiSse {
 } AiSse;
 
 // --- Constructor (value struct, no allocation) ---
-AiSse AiSse_0(void);
+AiSse AiSse_0();
 #define AiSse(...) CONSTRUCTOR_DISPATCH(AiSse, __VA_ARGS__)
 
 // --- Core functions ---
@@ -52,20 +48,20 @@ bool AiSse_feed(AiSse *self, const char *Bytes, bytes byteLen,
 // Explicit one-slot binding over the existing WsSource table (Rule 33
 // canonical move): borrows handle + table, never closes/frees (detach
 // via AiSse_unbind before the fanout detaches, per Rule 26).
-bool AiSse_bind(AiSse *self, void *handle, const HavenWsSource *source);
-void AiSse_unbind(AiSse *self);
+bool AiSse_bind(AiSse *self, any handle, const HavenWsSource *source);
+fn AiSse_unbind(AiSse *self);
 // Drop staged state (line/event/done) without unbinding the slot.
-void AiSse_reset(AiSse *self);
+fn AiSse_reset(AiSse *self);
 // Latch the cancel flag (feed degrades to false until reset).
-void AiSse_cancel(AiSse *self);
+fn AiSse_cancel(AiSse *self);
 
 // --- Setters ---
-void AiSse_setTimeout(AiSse *self, u64 timeoutMs);
-void AiSse_setCancelled(AiSse *self, bool cancelled);
-void AiSse_setDone(AiSse *self, bool done);
+fn AiSse_setTimeout(AiSse *self, u64 timeoutMs);
+fn AiSse_setCancelled(AiSse *self, bool cancelled);
+fn AiSse_setDone(AiSse *self, bool done);
 
 // --- Getters (Rule 24, null-safe) ---
-void *AiSse_getSlotHandle(const AiSse *self);
+any AiSse_getSlotHandle(const AiSse *self);
 const HavenWsSource *AiSse_getSlotSource(const AiSse *self);
 u64 AiSse_getTimeout(const AiSse *self);
 bool AiSse_isCancelled(const AiSse *self);

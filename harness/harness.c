@@ -32,7 +32,7 @@
  *   u32 jobCount;                 // slots ever issued, capped at 16
  *   u64 timeoutMs;                // default bound for new jobs (ms)
  *   const EngineProviderSlot *engine;  // bound engine row; NULL = unbound
- *   void *driver;                      // opaque driver ctx, never touched
+ *   any driver;                      // opaque driver ctx, never touched
  *   HarnessDriverTable table;          // injected spawn/poll/cancel fns
  *   HarnessStatus lastStatus;          // verdict of the last run call
  *
@@ -43,7 +43,7 @@
  *   const EngineProviderSlot *engine;  // borrowed descriptor row
  *   HarnessStatus status;              // lifecycle state
  *   u64 timeoutMs;                // per-slot bound for the driver
- *   void *driverHandle;                // opaque driver job; NULL when idle
+ *   any driverHandle;                // opaque driver job; NULL when idle
  *   bytes outLen;                     // driver-reported output length
  *
  * PRIVATE HELPERS (none — slot scan is inline in Harness_run):
@@ -80,7 +80,7 @@
 // CONSTRUCTORS
 
 /** Creates a harness with no bound driver and the default timeout. */
-Harness Harness_0(void) {
+Harness Harness_0() {
     Harness self = { 0 };
     self.timeoutMs = HARNESS_DEFAULT_TIMEOUT_MS;
     self.lastStatus = HARNESS_STATUS_IDLE;
@@ -103,7 +103,7 @@ bool Harness_run(Harness *self, const char *prompt, bytes promptLen,
     if (!self)
         return false;
     HarnessDriverTable table = (*self).table;
-    void *driver = (*self).driver;
+    any driver = (*self).driver;
     const EngineProviderSlot *engine = (*self).engine;
     if (!engine || !driver || !table.spawnFn || !prompt || promptLen == 0) {
         (*self).lastStatus = HARNESS_STATUS_IDLE;
@@ -126,7 +126,7 @@ bool Harness_run(Harness *self, const char *prompt, bytes promptLen,
         (*self).jobCount++;
     }
     u64 bound = timeoutMs != 0 ? timeoutMs : (*self).timeoutMs;
-    void *handle = nullptr;
+    any handle = nullptr;
     bool ok = table.spawnFn(driver, engine, prompt, promptLen, bound, &handle);
     HarnessJob *slot = &(*self).jobs[(u32) freeIndex];
     if (!ok) {
@@ -193,14 +193,14 @@ bool Harness_cancel(Harness *self, u32 jobId) {
 // SETTERS
 
 /** Sets the borrowed engine descriptor used by subsequent runs. */
-void Harness_setEngine(Harness *self, const EngineProviderSlot *engine) {
+fn Harness_setEngine(Harness *self, const EngineProviderSlot *engine) {
     if (!self)
         return;
     (*self).engine = engine;
 }
 
 /** Binds the opaque driver context and spawn/poll/cancel callback table. */
-void Harness_setDriver(Harness *self, void *driver, HarnessDriverTable table) {
+fn Harness_setDriver(Harness *self, any driver, HarnessDriverTable table) {
     if (!self)
         return;
     (*self).driver = driver;
@@ -208,7 +208,7 @@ void Harness_setDriver(Harness *self, void *driver, HarnessDriverTable table) {
 }
 
 /** Sets the default timeout used when a run supplies no override. */
-void Harness_setTimeout(Harness *self, u64 timeoutMs) {
+fn Harness_setTimeout(Harness *self, u64 timeoutMs) {
     if (!self)
         return;
     (*self).timeoutMs = timeoutMs;
@@ -222,7 +222,7 @@ const EngineProviderSlot *Harness_getEngine(const Harness *self) {
 }
 
 /** Returns the opaque driver context, or nullptr for a null receiver. */
-void *Harness_getDriver(const Harness *self) {
+any Harness_getDriver(const Harness *self) {
     return self ? (*self).driver : nullptr;
 }
 

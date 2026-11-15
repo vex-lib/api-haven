@@ -6,6 +6,8 @@
 // frames flow end to end against a forked loopback peer, prove the seam's send
 // reaches the peer as a masked text frame, and prove the null/empty paths.
 // No live network, no TLS, no wss://, no Discord gateway: the peer is scripted.
+
+#include "vex.h"
 #include "api/haven_ws_fanout.h"
 #include "net/vex_ws_source.h"
 
@@ -31,15 +33,15 @@ static const HavenWsSource kBinding = {
     .close = VexWsSource_close,
 };
 
-_Static_assert(_Generic(kBinding.connect, bool (*)(void*) : 1, default : 0),
-               "connect must be bool(void*)");
-_Static_assert(_Generic(kBinding.poll, u32 (*)(void*, u64) : 1, default : 0),
-               "poll must be u32(void*, u64)");
-_Static_assert(_Generic(kBinding.send, bool (*)(void*, const u8*, u32) : 1,
+_Static_assert(_Generic(kBinding.connect, bool (*)(any) : 1, default : 0),
+               "connect must be bool(any)");
+_Static_assert(_Generic(kBinding.poll, u32 (*)(any, u64) : 1, default : 0),
+               "poll must be u32(any, u64)");
+_Static_assert(_Generic(kBinding.send, bool (*)(any, const u8*, u32) : 1,
                         default : 0),
-               "send must be bool(void*, const u8*, u32)");
-_Static_assert(_Generic(kBinding.close, void (*)(void*) : 1, default : 0),
-               "close must be void(void*)");
+               "send must be bool(any, const u8*, u32)");
+_Static_assert(_Generic(kBinding.close, fn (*)(any) : 1, default : 0),
+               "close must be fn(any)");
 
 static int g_failures = 0;
 static int g_checks = 0;
@@ -53,8 +55,8 @@ static int g_checks = 0;
         }                                                                       \
     } while (0)
 
-static bool peerWrite(int fd, const void *bytes, bytes length) {
-    const u8 *p = (const u8*) bytes;
+static bool peerWrite(int fd, const_any data, bytes length) {
+    const u8 *p = (const u8*) data;
     bytes sent = 0u;
     while (sent < length) {
         ssize_t n = send(fd, p + sent, length - sent, 0);
@@ -199,7 +201,7 @@ static int peerRun(int readyWriteFd) {
     return 0;
 }
 
-int main(void) {
+int main() {
     printf("=== WebSocket WsSource binding ===\n");
     signal(SIGPIPE, SIG_IGN);
 
@@ -235,7 +237,7 @@ int main(void) {
 
     CHECK(HavenWsFanout_attach(fanout, &handle, &kBinding));
     CHECK(HavenWsFanout_getCount(fanout) == 1u);
-    CHECK(HavenWsFanout_getHandle(fanout, 0u) == (void*) &handle);
+    CHECK(HavenWsFanout_getHandle(fanout, 0u) == (any) &handle);
 
     // One message per step, in order, with nothing dropped in between.
     CHECK(HavenWsFanout_pollStep(fanout, 500u) == 1u);

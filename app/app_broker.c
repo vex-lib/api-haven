@@ -34,7 +34,7 @@
  *   u32 jobCount;              // slots ever issued, capped at 16
  *   u64 timeoutMs;             // default bound for new actions (ms)
  *   const AppProviderSlot *target;  // bound target row; nullptr = unbound
- *   void *driver;                   // opaque driver ctx, never touched
+ *   any driver;                   // opaque driver ctx, never touched
  *   AppDriverTable table;           // injected run fn
  *   AppStatus lastStatus;           // verdict of the last action call
  *
@@ -45,7 +45,7 @@
  *   const AppProviderSlot *target;  // borrowed descriptor row
  *   AppStatus status;               // lifecycle state
  *   u64 timeoutMs;             // per-slot bound for the driver
- *   void *driverHandle;             // opaque driver job; nullptr when idle
+ *   any driverHandle;             // opaque driver job; nullptr when idle
  *   bytes outLen;                  // Bytes written into the caller dest
  *
  * PRIVATE HELPERS (none — slot scan is inline in AppBroker_action):
@@ -109,7 +109,7 @@ bool AppBroker_action(AppBroker *self, const char *action,
     if (!self)
         return false;
     AppDriverTable table = (*self).table;
-    void *driver = (*self).driver;
+    any driver = (*self).driver;
     const AppProviderSlot *target = (*self).target;
     if (!target || !driver || !table.runActionFn || !action || (*action) == '\0') {
         (*self).lastStatus = APP_STATUS_IDLE;
@@ -190,14 +190,14 @@ bool AppBroker_cancel(AppBroker *self, u32 jobId) {
 // SETTERS
 
 /** Sets the borrowed automation target row used for subsequent actions. */
-void AppBroker_setTarget(AppBroker *self, const AppProviderSlot *target) {
+fn AppBroker_setTarget(AppBroker *self, const AppProviderSlot *target) {
     if (!self)
         return;
     (*self).target = target;
 }
 
 /** Binds the opaque driver context and its action callback table. */
-void AppBroker_setDriver(AppBroker *self, void *driver, AppDriverTable table) {
+fn AppBroker_setDriver(AppBroker *self, any driver, AppDriverTable table) {
     if (!self)
         return;
     (*self).driver = driver;
@@ -205,7 +205,7 @@ void AppBroker_setDriver(AppBroker *self, void *driver, AppDriverTable table) {
 }
 
 /** Sets the default per-action timeout in milliseconds. */
-void AppBroker_setTimeout(AppBroker *self, u64 timeoutMs) {
+fn AppBroker_setTimeout(AppBroker *self, u64 timeoutMs) {
     if (!self)
         return;
     (*self).timeoutMs = timeoutMs;
@@ -219,7 +219,7 @@ const AppProviderSlot *AppBroker_getTarget(const AppBroker *self) {
 }
 
 /** Returns the opaque driver context, or nullptr for a null receiver. */
-void *AppBroker_getDriver(const AppBroker *self) {
+any AppBroker_getDriver(const AppBroker *self) {
     return self ? (*self).driver : nullptr;
 }
 

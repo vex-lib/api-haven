@@ -40,7 +40,7 @@ typedef struct McpServer {
 
 // --- Constructor ---
 // Returns the shared engine handle (static, zero-init, never NULL).
-McpServer *McpServer_shared(void);
+McpServer *McpServer_shared();
 
 // --- Driver seam (Rule 17: exec lives in vexspoke/R3, injected here) ---
 // Binds the Harness/AppBroker driver tables hosted by this server's
@@ -49,8 +49,8 @@ McpServer *McpServer_shared(void);
 // honest UNBOUND_DRIVER error instead of spawning. An R3 host binds
 // before serving. NULL table fns unbind (degrade path). Null-safe.
 // Timeout bounds come per-call (timeoutMs arg) or per-seam default.
-void McpServer_bindHarnessDriver(void *driverCtx, HarnessDriverTable table);
-void McpServer_bindAppDriver(void *driverCtx, AppDriverTable table);
+fn McpServer_bindHarnessDriver(any driverCtx, HarnessDriverTable table);
+fn McpServer_bindAppDriver(any driverCtx, AppDriverTable table);
 
 // --- Core functions ---
 // Feed one JSON-RPC line (may span any length <= cap handling) and render

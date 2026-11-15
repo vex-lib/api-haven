@@ -30,8 +30,8 @@ static int g_failures = 0;
 /* Counts requests and answers "/status/NNN" with that status, else 200. */
 static int g_hits;
 
-static void statusHandler(const HttpExchange *exchange, int clientFd, void *userdata) {
-    (void) userdata;
+static fn statusHandler(const HttpExchange *exchange, int clientFd, any userdata) {
+    (discard) userdata;
     g_hits++;
     int status = 200;
     const char *path = (*exchange).path;
@@ -53,7 +53,7 @@ static bool getStatus(const char *url, const ApiAuth *auth, HttpResponse *resp, 
     return Rest_get(url, auth, resp);
 }
 
-int main(void) {
+int main() {
     printf("=== Rest core owner suite (loopback) ===\n");
     HttpServer srv = { 0 };
     int port = 0;

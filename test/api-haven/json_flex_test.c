@@ -6,7 +6,7 @@ static int sFail = 0;
 #define CHECK(c) do { if (!(c)) { printf("FAIL %d: %s\n", __LINE__, #c); sFail++; } } while (0)
 
 /* Checks flexible JSON path reads and bounded writer output, including overflow and parse round-trip. */
-int main(void) {
+int main() {
     // --- path + defaults over a mixed doc ---
     const char *text = "{\"a\":{\"b.sh\":[{\"c\":\"hi\"},42]},\"t\":true,\"n\":3.5}";
     JsonNode nodes[64];

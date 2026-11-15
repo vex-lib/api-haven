@@ -42,7 +42,7 @@ typedef struct DbProvider {
 
 // --- Constructor ---
 // Returns the shared directory handle (static, zero-init, never NULL).
-DbProvider *DbProvider_shared(void);
+DbProvider *DbProvider_shared();
 
 // --- Core functions ---
 // Total rows. Null-safe: 0 on NULL self.

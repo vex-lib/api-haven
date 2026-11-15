@@ -208,7 +208,7 @@ static AppProvider sAppProviderShared; // zero-init singleton
 // CONSTRUCTORS
 
 /** Returns the process-wide immutable app/automation directory handle. */
-AppProvider *AppProvider_shared(void) {
+AppProvider *AppProvider_shared() {
     return &sAppProviderShared;
 }
 
@@ -263,14 +263,14 @@ bool AppProvider_resolveTarget(const AppProvider *self,
 /** Returns the slot's canonical slug, or nullptr when no slot is supplied. */
 const char *AppProvider_getSlug(const AppProvider *self,
                                 const AppProviderSlot *slot) {
-    (void)self;
+    (discard) self;
     return slot ? (*slot).slug : nullptr;
 }
 
 /** Returns the slot's display label, or nullptr when no slot is supplied. */
 const char *AppProvider_getDisplayName(const AppProvider *self,
                                        const AppProviderSlot *slot) {
-    (void)self;
+    (discard) self;
     return slot ? (*slot).displayName : nullptr;
 }
 
@@ -293,13 +293,13 @@ AppProviderAuth AppProvider_getAuth(const AppProvider *self,
 /** Returns the slot's bundle identifier, CLI name, or URL target string. */
 const char *AppProvider_getBundleIdOrScheme(const AppProvider *self,
                                             const AppProviderSlot *slot) {
-    (void)self;
+    (discard) self;
     return slot ? (*slot).bundleIdOrScheme : nullptr;
 }
 
 /** Returns the slot's optional provider caveat. */
 const char *AppProvider_getNote(const AppProvider *self,
                                 const AppProviderSlot *slot) {
-    (void)self;
+    (discard) self;
     return slot ? (*slot).note : nullptr;
 }

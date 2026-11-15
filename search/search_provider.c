@@ -115,7 +115,7 @@ static SearchProvider sSearchProviderShared; // zero-init singleton
 // CONSTRUCTORS
 
 /** Returns the process-wide immutable web-search directory handle. */
-SearchProvider *SearchProvider_shared(void) {
+SearchProvider *SearchProvider_shared() {
     return &sSearchProviderShared;
 }
 
@@ -170,14 +170,14 @@ bool SearchProvider_resolveEndpoint(const SearchProvider *self,
 /** Returns the slot's canonical slug, or nullptr when no slot is supplied. */
 const char *SearchProvider_getSlug(const SearchProvider *self,
                                    const SearchProviderSlot *slot) {
-    (void)self;
+    (discard) self;
     return slot ? (*slot).slug : nullptr;
 }
 
 /** Returns the slot's display label, or nullptr when no slot is supplied. */
 const char *SearchProvider_getDisplayName(const SearchProvider *self,
                                           const SearchProviderSlot *slot) {
-    (void)self;
+    (discard) self;
     return slot ? (*slot).displayName : nullptr;
 }
 
@@ -200,14 +200,14 @@ SearchProviderAuth SearchProvider_getAuth(const SearchProvider *self,
 /** Returns the slot's configured search endpoint, if any. */
 const char *SearchProvider_getEndpoint(const SearchProvider *self,
                                        const SearchProviderSlot *slot) {
-    (void)self;
+    (discard) self;
     return slot ? (*slot).endpoint : nullptr;
 }
 
 /** Returns the slot's optional provider note. */
 const char *SearchProvider_getNote(const SearchProvider *self,
                                    const SearchProviderSlot *slot) {
-    (void)self;
+    (discard) self;
     return slot ? (*slot).note : nullptr;
 }
 
@@ -238,13 +238,13 @@ int64_t SearchProvider_getResetUnix(const SearchProvider *self,
 /** Returns the slot's optional human-readable credential-kind label. */
 const char *SearchProvider_getAuthKind(const SearchProvider *self,
                                        const SearchProviderSlot *slot) {
-    (void)self;
+    (discard) self;
     return slot ? (*slot).authKind : nullptr;
 }
 
 /** Returns the slot's optional license-family label. */
 const char *SearchProvider_getLicenseFamily(const SearchProvider *self,
                                             const SearchProviderSlot *slot) {
-    (void)self;
+    (discard) self;
     return slot ? (*slot).licenseFamily : nullptr;
 }

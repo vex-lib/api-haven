@@ -63,7 +63,7 @@ typedef struct AiProvider {
 
 // --- Constructor ---
 // Returns the shared directory handle (static, zero-init, never NULL).
-AiProvider *AiProvider_shared(void);
+AiProvider *AiProvider_shared();
 
 // --- Core functions ---
 // Total rows across all region fragments. Null-safe: 0 on NULL self.

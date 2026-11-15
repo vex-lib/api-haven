@@ -50,8 +50,8 @@ static int isSlugValid(const char *slug) {
 
 /* Checks database-provider lookups, directory-wide row invariants, and nullable accessor defaults. */
 int main(int argc, const char **argv) {
-    (void)argc;
-    (void)argv;
+    (discard) argc;
+    (discard) argv;
 
     DbProvider *db = DbProvider_shared();
     CHECK(db != nullptr);

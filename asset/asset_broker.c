@@ -69,7 +69,7 @@
 // CONSTRUCTORS
 
 /** Creates a broker value using the default cache subdirectory and budget. */
-AssetBroker AssetBroker_0(void) {
+AssetBroker AssetBroker_0() {
     AssetBroker broker;
     memset(&broker, 0, sizeof(broker));
     const char *dflt = "assets";
@@ -152,7 +152,7 @@ bool AssetBroker_cachePath(const AssetBroker *self, const char *fileName,
 }
 
 /** Clears cancellation and the accumulated copied-byte count. */
-void AssetBroker_reset(AssetBroker *self) {
+fn AssetBroker_reset(AssetBroker *self) {
     if (self == nullptr)
         return;
     (*self).cancelled = false;
@@ -160,7 +160,7 @@ void AssetBroker_reset(AssetBroker *self) {
 }
 
 /** Marks future chunk copies as cancelled. */
-void AssetBroker_cancel(AssetBroker *self) {
+fn AssetBroker_cancel(AssetBroker *self) {
     if (self == nullptr)
         return;
     (*self).cancelled = true;
@@ -187,21 +187,21 @@ bool AssetBroker_setCacheSub(AssetBroker *self, const char *sub, bool *outTrunca
 }
 
 /** Sets the per-chunk time budget used by the broker contract. */
-void AssetBroker_setChunkBudget(AssetBroker *self, u64 chunkBudgetMs) {
+fn AssetBroker_setChunkBudget(AssetBroker *self, u64 chunkBudgetMs) {
     if (self == nullptr)
         return;
     (*self).chunkBudgetMs = chunkBudgetMs;
 }
 
 /** Sets the broker's cancellation flag. */
-void AssetBroker_setCancelled(AssetBroker *self, bool cancelled) {
+fn AssetBroker_setCancelled(AssetBroker *self, bool cancelled) {
     if (self == nullptr)
         return;
     (*self).cancelled = cancelled;
 }
 
 /** Sets the reported cumulative number of bytes copied. */
-void AssetBroker_setBytesCopied(AssetBroker *self, u32 bytesCopied) {
+fn AssetBroker_setBytesCopied(AssetBroker *self, u32 bytesCopied) {
     if (self == nullptr)
         return;
     (*self).bytesCopied = bytesCopied;

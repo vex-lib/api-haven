@@ -36,7 +36,7 @@ typedef struct MockTransport {
 } MockTransport;
 
 /* Records each assigned poll budget and returns the mock transport's queued frame count. */
-static u32 mockPoll(void *handle, u64 budgetMs) {
+static u32 mockPoll(any handle, u64 budgetMs) {
     if (!handle)
         return 0;
     MockTransport *mock = (MockTransport*) handle;
@@ -46,22 +46,22 @@ static u32 mockPoll(void *handle, u64 budgetMs) {
 }
 
 /* Supplies successful connect behavior for the fanout source table. */
-static bool mockConnect(void *handle) {
-    (void)handle;
+static bool mockConnect(any handle) {
+    (discard) handle;
     return true;
 }
 
 /* Accepts outbound bytes without network activity for the mock source table. */
-static bool mockSend(void *handle, const u8 *Bytes, u32 len) {
-    (void)handle;
-    (void)Bytes;
-    (void)len;
+static bool mockSend(any handle, const u8 *Bytes, u32 len) {
+    (discard) handle;
+    (discard) Bytes;
+    (discard) len;
     return true;
 }
 
 /* Supplies the no-op close callback for mock transports. */
-static void mockClose(void *handle) {
-    (void)handle;
+static fn mockClose(any handle) {
+    (discard) handle;
 }
 
 static const HavenWsSource sMockSource = {
@@ -73,8 +73,8 @@ static const HavenWsSource sMockSource = {
 
 /* Exercises fanout attachment, fair bounded polling, slot reuse, saturation, and null safety. */
 int main(int argc, const char **argv) {
-    (void)argc;
-    (void)argv;
+    (discard) argc;
+    (discard) argv;
 
     // --- 1. Creation and Initial State ---------------------------------------
     HavenWsFanout *fanout = HavenWsFanout();

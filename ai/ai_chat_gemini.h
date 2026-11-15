@@ -1,14 +1,10 @@
 #ifndef AI_CHAT_GEMINI_H
 #define AI_CHAT_GEMINI_H
 
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
-
+#include "vex.h"
 #include "ai/ai_chat.h"
 #include "ai/ai_provider.h"
 #include "api/auth.h"
-#include "util/constructor.h"
 #include "net/http.h"
 
 // ai/ai_chat_gemini.h — Gemini generateContent chat client (L2 behavior).
@@ -32,7 +28,7 @@ typedef struct AiChatGemini {
 } AiChatGemini;
 
 // --- Constructors (value structs, no allocation — ApiAuth precedent) ---
-AiChatGemini AiChatGemini_0(void);              // everything NULL
+AiChatGemini AiChatGemini_0();              // everything NULL
 AiChatGemini AiChatGemini_1(const char *model); // shared table default
 AiChatGemini AiChatGemini_2(const char *model, const char *apiKey);
 #define AiChatGemini(...) CONSTRUCTOR_DISPATCH(AiChatGemini, __VA_ARGS__)
@@ -52,11 +48,11 @@ bool AiChatGemini_complete(const AiChatGemini *self, const AiMessage *msgs,
                             HttpResponse *resp);
 
 // --- Setters ---
-void AiChatGemini_setProvider(AiChatGemini *self, const AiProvider *provider);
-void AiChatGemini_setPeer(AiChatGemini *self, const AiProviderSlot *peer);
-void AiChatGemini_setModel(AiChatGemini *self, const char *model);
-void AiChatGemini_setApiKey(AiChatGemini *self, const char *apiKey);
-void AiChatGemini_setBaseUrl(AiChatGemini *self, const char *baseUrlOverride);
+fn AiChatGemini_setProvider(AiChatGemini *self, const AiProvider *provider);
+fn AiChatGemini_setPeer(AiChatGemini *self, const AiProviderSlot *peer);
+fn AiChatGemini_setModel(AiChatGemini *self, const char *model);
+fn AiChatGemini_setApiKey(AiChatGemini *self, const char *apiKey);
+fn AiChatGemini_setBaseUrl(AiChatGemini *self, const char *baseUrlOverride);
 
 // --- Getters (Rule 24, null-safe) ---
 const AiProvider *AiChatGemini_getProvider(const AiChatGemini *self);

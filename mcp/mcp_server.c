@@ -423,7 +423,7 @@ static const bytes kMcpResourceCount =
 // --- bounded builders -------------------------------------------------------
 
 /** Appends as much of s as fits and keeps the destination NUL-terminated. */
-static void appendStr(char *buf, bytes cap, bytes *pos, const char *s) {
+static fn appendStr(char *buf, bytes cap, bytes *pos, const char *s) {
     if ((*pos) >= cap)
         return;
     bytes room = cap - (*pos) - 1;
@@ -436,7 +436,7 @@ static void appendStr(char *buf, bytes cap, bytes *pos, const char *s) {
 }
 
 /** Formats text at the current output position, clamping the cursor to capacity. */
-static void appendFmt(char *buf, bytes cap, bytes *pos, const char *fmt, ...) {
+static fn appendFmt(char *buf, bytes cap, bytes *pos, const char *fmt, ...) {
     if ((*pos) >= cap)
         return;
     va_list ap;
@@ -617,7 +617,7 @@ static bool copyJsonString(const JsonDoc *doc, JsonRef ref,
 // Drop <...> spans in place (MediaWiki search snippets ship HTML).
 // Always NUL-terminated; never grows the text.
 /** Copies source text while removing spans enclosed by angle brackets. */
-static void stripHtmlTags(char *dst, bytes dcap, const char *src) {
+static fn stripHtmlTags(char *dst, bytes dcap, const char *src) {
     if (!dst || dcap == 0)
         return;
     bytes o = 0;
@@ -676,7 +676,7 @@ static AppBroker sAppJobs;
 static bool sSeamReady;
 
 /** Lazily initializes the file-static harness and app broker instances once. */
-static void ensureSeam(void) {
+static fn ensureSeam() {
     if (sSeamReady)
         return;
     sHarnessJobs = Harness();
@@ -685,13 +685,13 @@ static void ensureSeam(void) {
 }
 
 /** Binds the host-provided driver context and callbacks for harness jobs. */
-void McpServer_bindHarnessDriver(void *driverCtx, HarnessDriverTable table) {
+fn McpServer_bindHarnessDriver(any driverCtx, HarnessDriverTable table) {
     ensureSeam();
     Harness_setDriver(&sHarnessJobs, driverCtx, table);
 }
 
 /** Binds the host-provided driver context and callbacks for app actions. */
-void McpServer_bindAppDriver(void *driverCtx, AppDriverTable table) {
+fn McpServer_bindAppDriver(any driverCtx, AppDriverTable table) {
     ensureSeam();
     AppBroker_setDriver(&sAppJobs, driverCtx, table);
 }
@@ -728,7 +728,7 @@ static bool containsFold(const char *haystack, const char *needle) {
 }
 
 /** Escapes JSON string characters into the supplied output buffer. */
-static void escapeJsonText(const char *src, char *out, bytes cap) {
+static fn escapeJsonText(const char *src, char *out, bytes cap) {
     bytes o = 0;
     for (const char *p = src; *p && o + 6 < cap; p++) {
         char c = *p;
@@ -867,7 +867,7 @@ static bool rawIdExtract(const char *line, bytes lineLen,
 // --- error envelope ---------------------------------------------------------
 
 /** Writes a JSON-RPC error response using the supplied code, message, and id. */
-static void respondError(int code, const char *message, const char *id,
+static fn respondError(int code, const char *message, const char *id,
                          char *out, bytes cap) {
     bytes pos = 0;
     appendStr(out, cap, &pos, "{\"jsonrpc\":\"2.0\",\"id\":");
@@ -879,7 +879,7 @@ static void respondError(int code, const char *message, const char *id,
 // --- plain responses --------------------------------------------------------
 
 /** Writes the empty successful JSON-RPC response used for ping. */
-static void respondPing(const char *id, char *out, bytes cap) {
+static fn respondPing(const char *id, char *out, bytes cap) {
     bytes pos = 0;
     appendStr(out, cap, &pos, "{\"jsonrpc\":\"2.0\",\"id\":");
     appendStr(out, cap, &pos, id);
@@ -887,7 +887,7 @@ static void respondPing(const char *id, char *out, bytes cap) {
 }
 
 /** Serializes the static hosted-tool registry as a JSON-RPC result. */
-static void respondToolsList(const char *id, char *out, bytes cap) {
+static fn respondToolsList(const char *id, char *out, bytes cap) {
     bytes pos = 0;
     appendStr(out, cap, &pos, "{\"jsonrpc\":\"2.0\",\"id\":");
     appendStr(out, cap, &pos, id);
@@ -907,7 +907,7 @@ static void respondToolsList(const char *id, char *out, bytes cap) {
 }
 
 /** Serializes the static resource registry as a JSON-RPC result. */
-static void respondResourcesList(const char *id, char *out, bytes cap) {
+static fn respondResourcesList(const char *id, char *out, bytes cap) {
     bytes pos = 0;
     appendStr(out, cap, &pos, "{\"jsonrpc\":\"2.0\",\"id\":");
     appendStr(out, cap, &pos, id);
@@ -1425,7 +1425,7 @@ static bool renderAppAction(const JsonDoc *doc, JsonRef args,
     }
     appendFmt(out, cap, &pos, "job %u DONE target=%s action=%s outLen=%zu\n",
               jobId, AppProvider_getSlug(dir, slot), action, outLen);
-    (void)job;
+    (discard) job;
     appendStr(out, cap, &pos, actionOut);
     return true;
 }
@@ -1884,7 +1884,7 @@ bool McpServer_handleLine(McpServer *self, const char *line, bytes lineLen,
         }
         char body[65536];
         body[0] = '\0';
-        (void)(*res).render(&doc, -1, body, sizeof(body));
+        (discard) (*res).render(&doc, -1, body, sizeof(body));
         char escaped[131072];
         escapeJsonText(body, escaped, sizeof(escaped));
         bytes pos = 0;
@@ -1941,7 +1941,7 @@ bool McpServer_handleLine(McpServer *self, const char *line, bytes lineLen,
 // CONSTRUCTORS
 
 /** Returns the shared server instance with its static identity initialized. */
-McpServer *McpServer_shared(void) {
+McpServer *McpServer_shared() {
     static McpServer sServerShared; // zero-init singleton
     sServerShared.name = "vexgraph-mcp";
     sServerShared.version = MCP_SERVER_VERSION;

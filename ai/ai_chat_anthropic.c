@@ -88,7 +88,7 @@ static bool appendJsonString(char *out, bytes cap, bytes *used, const char *s) {
 // CONSTRUCTORS
 
 /** Returns a cleared Anthropic chat value with the default token limit. */
-AiChatAnthropic AiChatAnthropic_0(void) {
+AiChatAnthropic AiChatAnthropic_0() {
     AiChatAnthropic chat;
     memset(&chat, 0, sizeof(chat));
     chat.maxTokens = AI_CHAT_ANTHROPIC_DEFAULT_MAX_TOKENS;
@@ -197,37 +197,37 @@ bool AiChatAnthropic_complete(const AiChatAnthropic *self, const AiMessage *msgs
 // SETTERS
 
 /** Sets the borrowed provider directory used to resolve the selected peer. */
-void AiChatAnthropic_setProvider(AiChatAnthropic *self, const AiProvider *provider) {
+fn AiChatAnthropic_setProvider(AiChatAnthropic *self, const AiProvider *provider) {
     if (self)
         (*self).provider = provider;
 }
 
 /** Selects the borrowed provider row for endpoint resolution. */
-void AiChatAnthropic_setPeer(AiChatAnthropic *self, const AiProviderSlot *peer) {
+fn AiChatAnthropic_setPeer(AiChatAnthropic *self, const AiProviderSlot *peer) {
     if (self)
         (*self).peer = peer;
 }
 
 /** Sets the borrowed model identifier used in the request envelope. */
-void AiChatAnthropic_setModel(AiChatAnthropic *self, const char *model) {
+fn AiChatAnthropic_setModel(AiChatAnthropic *self, const char *model) {
     if (self)
         (*self).model = model;
 }
 
 /** Sets the borrowed x-api-key credential, or nullptr to omit authentication. */
-void AiChatAnthropic_setApiKey(AiChatAnthropic *self, const char *apiKey) {
+fn AiChatAnthropic_setApiKey(AiChatAnthropic *self, const char *apiKey) {
     if (self)
         (*self).apiKey = apiKey;
 }
 
 /** Sets an optional borrowed endpoint override. */
-void AiChatAnthropic_setBaseUrl(AiChatAnthropic *self, const char *baseUrlOverride) {
+fn AiChatAnthropic_setBaseUrl(AiChatAnthropic *self, const char *baseUrlOverride) {
     if (self)
         (*self).baseUrlOverride = baseUrlOverride;
 }
 
 /** Sets the request's maximum token count. */
-void AiChatAnthropic_setMaxTokens(AiChatAnthropic *self, u32 maxTokens) {
+fn AiChatAnthropic_setMaxTokens(AiChatAnthropic *self, u32 maxTokens) {
     if (self)
         (*self).maxTokens = maxTokens;
 }

@@ -57,7 +57,7 @@ typedef struct SearchProvider {
 
 // --- Constructor ---
 // Returns the shared directory handle (static, zero-init, never NULL).
-SearchProvider *SearchProvider_shared(void);
+SearchProvider *SearchProvider_shared();
 
 // --- Core functions ---
 // Total rows. Null-safe: 0 on NULL self.

@@ -39,7 +39,7 @@ typedef struct AssetProvider {
 
 // --- Constructor ---
 // Returns the shared directory handle (static, zero-init, never NULL).
-AssetProvider *AssetProvider_shared(void);
+AssetProvider *AssetProvider_shared();
 
 // --- Core functions ---
 // Total rows. Null-safe: 0 on NULL self.

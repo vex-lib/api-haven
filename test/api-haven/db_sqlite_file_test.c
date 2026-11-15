@@ -31,7 +31,7 @@ static int sFailures = 0;
     } while (0)
 
 /* Implements a bounded fake execution callback and counts valid delegated calls. */
-static bool fakeExec(void *handle, const char *sql, char *out, bytes outCap) {
+static bool fakeExec(any handle, const char *sql, char *out, bytes outCap) {
     if (!handle || !sql || !out || outCap == 0)
         return false;
     int *calls = (int*) handle;
@@ -46,8 +46,8 @@ static const DbSqliteExec sFakeTable = { fakeExec };
 
 /* Exercises descriptor defaults, callback binding/delegation, setters, and rejection guards without SQLite. */
 int main(int argc, const char **argv) {
-    (void)argc;
-    (void)argv;
+    (discard) argc;
+    (discard) argv;
 
     // --- read-only defaults ----------------------------------------------------------
     DbSqliteFile bare = DbSqliteFile();

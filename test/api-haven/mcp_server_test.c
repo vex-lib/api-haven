@@ -28,7 +28,7 @@
 static int sFailures = 0;
 
 /* Counts a failed protocol assertion and prints its concise diagnostic. */
-static void check(int ok, const char *what) {
+static fn check(int ok, const char *what) {
     if (!ok) {
         sFailures++;
         fprintf(stderr, "FAIL: %s\n", what);
@@ -46,7 +46,7 @@ static const char *run(McpServer *srv, const char *line, char *out,
 }
 
 /* Exercises MCP negotiation, tools/resources, error classes, notifications, and parse failures. */
-int main(void) {
+int main() {
     McpServer *srv = McpServer_shared();
     char out[262144];
 

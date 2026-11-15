@@ -25,7 +25,7 @@ typedef struct DbSqliteFile DbSqliteFile;
 // read path here. Handles are borrowed views (detach-only, never
 // freed by this class — unbind first per Rule 26).
 typedef struct DbSqliteExec {
-    bool (*exec)(void *handle, const char *sql, char *out, bytes outCap);
+    bool (*exec)(any handle, const char *sql, char *out, bytes outCap);
 } DbSqliteExec;
 
 struct DbSqliteFile {
@@ -33,20 +33,20 @@ struct DbSqliteFile {
     u32 caps;                 // capability bits (DB_SQLITE_CAP_* )
     u64 maxBytes;             // read bound (0 = unknown)
     bool readOnly;                 // always true on _0/_1; no writer exists
-    void *execHandle;              // borrowed owner handle (NULL = unbound)
+    any execHandle;              // borrowed owner handle (NULL = unbound)
     const DbSqliteExec *execTable; // borrowed fn-table (NULL = unbound)
 };
 
 // --- Constructors (value structs, no allocation) ---
-DbSqliteFile DbSqliteFile_0(void);           // undescribed, read-only
+DbSqliteFile DbSqliteFile_0();           // undescribed, read-only
 DbSqliteFile DbSqliteFile_1(const char *path); // described path, read-only
 #define DbSqliteFile(...) CONSTRUCTOR_DISPATCH(DbSqliteFile, __VA_ARGS__)
 
 // --- Core functions ---
 // Bind the owner's read path (borrowed handle + table, never owned).
 // False on NULL self/handle/table or when already bound (unbind first).
-bool DbSqliteFile_bind(DbSqliteFile *self, void *handle, const DbSqliteExec *table);
-void DbSqliteFile_unbind(DbSqliteFile *self);
+bool DbSqliteFile_bind(DbSqliteFile *self, any handle, const DbSqliteExec *table);
+fn DbSqliteFile_unbind(DbSqliteFile *self);
 // Render "sqlite file: path=... readOnly=1 caps=.. maxBytes=.." into
 // caller-owned out (NUL always). False on NULL args, zero cap, undescribed
 // path, or overflow. Dest-last per Rule 9.
@@ -58,17 +58,17 @@ bool DbSqliteFile_exec(const DbSqliteFile *self, const char *sql,
                        char *out, bytes outCap);
 
 // --- Setters ---
-void DbSqliteFile_setPath(DbSqliteFile *self, const char *path);
-void DbSqliteFile_setCaps(DbSqliteFile *self, u32 caps);
-void DbSqliteFile_setMaxBytes(DbSqliteFile *self, u64 maxBytes);
-void DbSqliteFile_setReadOnly(DbSqliteFile *self, bool readOnly);
+fn DbSqliteFile_setPath(DbSqliteFile *self, const char *path);
+fn DbSqliteFile_setCaps(DbSqliteFile *self, u32 caps);
+fn DbSqliteFile_setMaxBytes(DbSqliteFile *self, u64 maxBytes);
+fn DbSqliteFile_setReadOnly(DbSqliteFile *self, bool readOnly);
 
 // --- Getters (Rule 24, null-safe) ---
 const char *DbSqliteFile_getPath(const DbSqliteFile *self);
 u32 DbSqliteFile_getCaps(const DbSqliteFile *self);
 u64 DbSqliteFile_getMaxBytes(const DbSqliteFile *self);
 bool DbSqliteFile_isReadOnly(const DbSqliteFile *self);
-void *DbSqliteFile_getExecHandle(const DbSqliteFile *self);
+any DbSqliteFile_getExecHandle(const DbSqliteFile *self);
 const DbSqliteExec *DbSqliteFile_getExecTable(const DbSqliteFile *self);
 
 #endif

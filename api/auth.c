@@ -28,7 +28,7 @@
  *   const char *headerName;     // API_KEY header name; else nullptr
  *   const char *credential;     // API_KEY value / BEARER token; else nullptr
  *   ApiTokenFn tokenFn;         // BEARER_FN callback; else nullptr
- *   void *tokenUserdata;        // BEARER_FN userdata; else nullptr
+ *   any tokenUserdata;        // BEARER_FN userdata; else nullptr
  *
  * PRIVATE HELPERS: None.
  *
@@ -47,7 +47,7 @@
 
 // CONSTRUCTORS
 /** Creates an authentication descriptor that adds no credential header. */
-ApiAuth ApiAuth_none(void) {
+ApiAuth ApiAuth_none() {
     ApiAuth auth = { 0 };
     auth.kind = API_AUTH_NONE;
     return auth;
@@ -71,7 +71,7 @@ ApiAuth ApiAuth_bearer(const char *token) {
 }
 
 /** Creates a bearer descriptor whose token is obtained from the supplied callback. */
-ApiAuth ApiAuth_bearerFn(ApiTokenFn fn, void *userdata) {
+ApiAuth ApiAuth_bearerFn(ApiTokenFn fn, any userdata) {
     ApiAuth auth = { 0 };
     auth.kind = API_AUTH_BEARER_FN;
     auth.tokenFn = fn;

@@ -102,7 +102,7 @@ static const char *mapRole(const char *role) {
 // CONSTRUCTORS
 
 /** Returns an AiChatGemini value with all fields cleared. */
-AiChatGemini AiChatGemini_0(void) {
+AiChatGemini AiChatGemini_0() {
     AiChatGemini chat;
     memset(&chat, 0, sizeof(chat));
     return chat;
@@ -200,31 +200,31 @@ bool AiChatGemini_complete(const AiChatGemini *self, const AiMessage *msgs,
 // SETTERS
 
 /** Sets the borrowed provider directory used to resolve the selected peer. */
-void AiChatGemini_setProvider(AiChatGemini *self, const AiProvider *provider) {
+fn AiChatGemini_setProvider(AiChatGemini *self, const AiProvider *provider) {
     if (self)
         (*self).provider = provider;
 }
 
 /** Selects the borrowed provider row for endpoint resolution. */
-void AiChatGemini_setPeer(AiChatGemini *self, const AiProviderSlot *peer) {
+fn AiChatGemini_setPeer(AiChatGemini *self, const AiProviderSlot *peer) {
     if (self)
         (*self).peer = peer;
 }
 
 /** Sets the borrowed model identifier used in the request URL. */
-void AiChatGemini_setModel(AiChatGemini *self, const char *model) {
+fn AiChatGemini_setModel(AiChatGemini *self, const char *model) {
     if (self)
         (*self).model = model;
 }
 
 /** Sets the borrowed x-goog-api-key credential, or nullptr to omit authentication. */
-void AiChatGemini_setApiKey(AiChatGemini *self, const char *apiKey) {
+fn AiChatGemini_setApiKey(AiChatGemini *self, const char *apiKey) {
     if (self)
         (*self).apiKey = apiKey;
 }
 
 /** Sets an optional borrowed endpoint override. */
-void AiChatGemini_setBaseUrl(AiChatGemini *self, const char *baseUrlOverride) {
+fn AiChatGemini_setBaseUrl(AiChatGemini *self, const char *baseUrlOverride) {
     if (self)
         (*self).baseUrlOverride = baseUrlOverride;
 }

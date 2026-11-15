@@ -85,7 +85,7 @@ static bool appendJsonString(char *out, bytes cap, bytes *used, const char *s) {
 // CONSTRUCTORS
 
 /** Returns an AiChat value with all fields cleared. */
-AiChat AiChat_0(void) {
+AiChat AiChat_0() {
     AiChat chat;
     memset(&chat, 0, sizeof(chat));
     return chat;
@@ -187,31 +187,31 @@ bool AiChat_complete(const AiChat *self, const AiMessage *msgs, u32 msgCount,
 // SETTERS
 
 /** Sets the borrowed provider directory used to resolve the selected peer. */
-void AiChat_setProvider(AiChat *self, const AiProvider *provider) {
+fn AiChat_setProvider(AiChat *self, const AiProvider *provider) {
     if (self)
         (*self).provider = provider;
 }
 
 /** Selects the borrowed provider row for endpoint resolution. */
-void AiChat_setPeer(AiChat *self, const AiProviderSlot *peer) {
+fn AiChat_setPeer(AiChat *self, const AiProviderSlot *peer) {
     if (self)
         (*self).peer = peer;
 }
 
 /** Sets the borrowed model identifier used in the request envelope. */
-void AiChat_setModel(AiChat *self, const char *model) {
+fn AiChat_setModel(AiChat *self, const char *model) {
     if (self)
         (*self).model = model;
 }
 
 /** Sets the borrowed bearer credential, or nullptr to omit authentication. */
-void AiChat_setApiKey(AiChat *self, const char *apiKey) {
+fn AiChat_setApiKey(AiChat *self, const char *apiKey) {
     if (self)
         (*self).apiKey = apiKey;
 }
 
 /** Sets an optional borrowed endpoint override. */
-void AiChat_setBaseUrl(AiChat *self, const char *baseUrlOverride) {
+fn AiChat_setBaseUrl(AiChat *self, const char *baseUrlOverride) {
     if (self)
         (*self).baseUrlOverride = baseUrlOverride;
 }

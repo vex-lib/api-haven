@@ -70,8 +70,8 @@ static int hasWhitespace(const char *s) {
 
 /* Validates provider-directory invariants and parses generated AiChat request bodies without network access. */
 int main(int argc, const char **argv) {
-    (void)argc;
-    (void)argv;
+    (discard) argc;
+    (discard) argv;
 
     // --- directory shape ---------------------------------------------------
     AiProvider *dir = AiProvider_shared();

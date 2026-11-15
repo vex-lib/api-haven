@@ -52,7 +52,7 @@ typedef struct EngineProvider {
 
 // --- Constructor ---
 // Returns the shared directory handle (static, zero-init, never NULL).
-EngineProvider *EngineProvider_shared(void);
+EngineProvider *EngineProvider_shared();
 
 // --- Core functions ---
 // Total rows. Null-safe: 0 on NULL self.

@@ -141,7 +141,7 @@ static EngineProvider sEngineProviderShared; // zero-init singleton
 // CONSTRUCTORS
 
 /** Returns the process-wide immutable engine directory handle. */
-EngineProvider *EngineProvider_shared(void) {
+EngineProvider *EngineProvider_shared() {
     return &sEngineProviderShared;
 }
 
@@ -196,21 +196,21 @@ bool EngineProvider_resolveCli(const EngineProvider *self,
 /** Returns the slot's canonical slug, or nullptr when no slot is supplied. */
 const char *EngineProvider_getSlug(const EngineProvider *self,
                                    const EngineProviderSlot *slot) {
-    (void)self;
+    (discard) self;
     return slot ? (*slot).slug : nullptr;
 }
 
 /** Returns the slot's display label, or nullptr when no slot is supplied. */
 const char *EngineProvider_getDisplayName(const EngineProvider *self,
                                           const EngineProviderSlot *slot) {
-    (void)self;
+    (discard) self;
     return slot ? (*slot).displayName : nullptr;
 }
 
 /** Returns the slot's CLI executable name, or nullptr when absent. */
 const char *EngineProvider_getCliName(const EngineProvider *self,
                                       const EngineProviderSlot *slot) {
-    (void)self;
+    (discard) self;
     return slot ? (*slot).cliName : nullptr;
 }
 
@@ -233,6 +233,6 @@ EngineProviderAuth EngineProvider_getAuth(const EngineProvider *self,
 /** Returns the slot's optional provider note. */
 const char *EngineProvider_getNote(const EngineProvider *self,
                                    const EngineProviderSlot *slot) {
-    (void)self;
+    (discard) self;
     return slot ? (*slot).note : nullptr;
 }

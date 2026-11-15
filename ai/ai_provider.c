@@ -104,7 +104,7 @@ static AiProvider sAiProviderShared; // zero-init singleton
 // CONSTRUCTORS
 
 /** Returns the process-wide immutable AI-provider directory handle. */
-AiProvider *AiProvider_shared(void) {
+AiProvider *AiProvider_shared() {
     return &sAiProviderShared;
 }
 
@@ -169,19 +169,19 @@ const char *AiProvider_resolveBaseUrl(const AiProvider *self,
 
 /** Returns the slot's canonical slug, or nullptr when no slot is supplied. */
 const char *AiProvider_getSlug(const AiProvider *self, const AiProviderSlot *slot) {
-    (void)self;
+    (discard) self;
     return slot ? (*slot).slug : nullptr;
 }
 
 /** Returns the slot's display label, or nullptr when no slot is supplied. */
 const char *AiProvider_getDisplayName(const AiProvider *self, const AiProviderSlot *slot) {
-    (void)self;
+    (discard) self;
     return slot ? (*slot).displayName : nullptr;
 }
 
 /** Returns the slot's explicitly configured endpoint, if any. */
 const char *AiProvider_getBaseUrl(const AiProvider *self, const AiProviderSlot *slot) {
-    (void)self;
+    (discard) self;
     return slot ? (*slot).baseUrl : nullptr;
 }
 
@@ -208,7 +208,7 @@ AiProviderRegion AiProvider_getRegion(const AiProvider *self, const AiProviderSl
 
 /** Returns the slot's optional note, or nullptr when absent. */
 const char *AiProvider_getNote(const AiProvider *self, const AiProviderSlot *slot) {
-    (void)self;
+    (discard) self;
     return slot ? (*slot).note : nullptr;
 }
 
@@ -235,12 +235,12 @@ int64_t AiProvider_getResetUnix(const AiProvider *self, const AiProviderSlot *sl
 
 /** Returns the slot's optional human-readable credential-kind label. */
 const char *AiProvider_getAuthKind(const AiProvider *self, const AiProviderSlot *slot) {
-    (void)self;
+    (discard) self;
     return slot ? (*slot).authKind : nullptr;
 }
 
 /** Returns the slot's optional license-family label. */
 const char *AiProvider_getLicenseFamily(const AiProvider *self, const AiProviderSlot *slot) {
-    (void)self;
+    (discard) self;
     return slot ? (*slot).licenseFamily : nullptr;
 }

@@ -209,7 +209,7 @@ static AssetProvider sAssetProviderShared; // zero-init singleton
 // CONSTRUCTORS
 
 /** Returns the process-wide immutable asset-source directory handle. */
-AssetProvider *AssetProvider_shared(void) {
+AssetProvider *AssetProvider_shared() {
     return &sAssetProviderShared;
 }
 
@@ -244,54 +244,54 @@ const AssetProviderSlot *AssetProvider_get(const AssetProvider *self, const char
 
 /** Returns the slot's canonical slug, or nullptr when no slot is supplied. */
 const char *AssetProvider_getSlug(const AssetProvider *self, const AssetProviderSlot *slot) {
-    (void)self;
+    (discard) self;
     return slot ? (*slot).slug : nullptr;
 }
 
 /** Returns the slot's display label, or nullptr when no slot is supplied. */
 const char *AssetProvider_getDisplayName(const AssetProvider *self, const AssetProviderSlot *slot) {
-    (void)self;
+    (discard) self;
     return slot ? (*slot).displayName : nullptr;
 }
 
 /** Returns the slot's public search API base, if configured. */
 const char *AssetProvider_getApiBase(const AssetProvider *self, const AssetProviderSlot *slot) {
-    (void)self;
+    (discard) self;
     return slot ? (*slot).apiBase : nullptr;
 }
 
 /** Returns the slot's license-family label. */
 const char *AssetProvider_getLicenseFamily(const AssetProvider *self, const AssetProviderSlot *slot) {
-    (void)self;
+    (discard) self;
     return slot ? (*slot).licenseFamily : nullptr;
 }
 
 /** Returns the title of the slot's curated sample asset. */
 const char *AssetProvider_getSampleTitle(const AssetProvider *self, const AssetProviderSlot *slot) {
-    (void)self;
+    (discard) self;
     return slot ? (*slot).sampleTitle : nullptr;
 }
 
 /** Returns the attribution author for the curated sample asset. */
 const char *AssetProvider_getSampleAuthor(const AssetProvider *self, const AssetProviderSlot *slot) {
-    (void)self;
+    (discard) self;
     return slot ? (*slot).sampleAuthor : nullptr;
 }
 
 /** Returns the curated sample's preview URL. */
 const char *AssetProvider_getSamplePreview(const AssetProvider *self, const AssetProviderSlot *slot) {
-    (void)self;
+    (discard) self;
     return slot ? (*slot).samplePreview : nullptr;
 }
 
 /** Returns the curated sample's download URL. */
 const char *AssetProvider_getSampleDownload(const AssetProvider *self, const AssetProviderSlot *slot) {
-    (void)self;
+    (discard) self;
     return slot ? (*slot).sampleDownload : nullptr;
 }
 
 /** Returns the slot's optional provider caveat. */
 const char *AssetProvider_getNote(const AssetProvider *self, const AssetProviderSlot *slot) {
-    (void)self;
+    (discard) self;
     return slot ? (*slot).note : nullptr;
 }

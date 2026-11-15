@@ -40,7 +40,7 @@
 #define kLineCap 65536u
 
 /** Runs the newline-framed MCP stdio loop until stdin reaches EOF. */
-int main(void) {
+int main() {
     // Banner to stderr — never stdout (Rule: stdout is the JSON-RPC wire).
     fprintf(stderr, "vexgraph-mcp %s (stdio JSON-RPC; logs to stderr)\n",
             MCP_SERVER_VERSION);

@@ -31,7 +31,7 @@
  *
  * STRUCT FIELDS (Mirroring ai/ai_sse.h — exactly this file's class):
  * ----------------------------------------------------------------------------
- *   void *slotHandle;                // borrowed fanout handle (NULL = unbound)
+ *   any slotHandle;                // borrowed fanout handle (NULL = unbound)
  *   const HavenWsSource *slotSource; // borrowed fn-table (NULL = unbound)
  *   u64 timeoutMs;              // per-slice bound (default 100)
  *   bool cancelled;                  // cancel flag: feed degrades to false
@@ -73,7 +73,7 @@
 // --- static helpers ---------------------------------------------------------
 
 /** Restores the default SSE event name in the parser's event buffer. */
-static void setDefaultEvent(AiSse *self) {
+static fn setDefaultEvent(AiSse *self) {
     const char *dflt = "message";
     bytes n = strlen(dflt);
     memcpy((*self).eventBuf, dflt, n + 1);
@@ -149,7 +149,7 @@ static bool dispatchLine(AiSse *self, const char *line, bytes lineLen,
 // CONSTRUCTORS
 
 /** Returns an empty SSE decoder with its default polling timeout and event name. */
-AiSse AiSse_0(void) {
+AiSse AiSse_0() {
     AiSse sse;
     memset(&sse, 0, sizeof(sse));
     sse.timeoutMs = AI_SSE_POLL_BUDGET_MS;
@@ -208,7 +208,7 @@ bool AiSse_feed(AiSse *self, const char *Bytes, bytes byteLen,
 }
 
 /** Binds the decoder to one borrowed fan-out handle and source table. */
-bool AiSse_bind(AiSse *self, void *handle, const HavenWsSource *source) {
+bool AiSse_bind(AiSse *self, any handle, const HavenWsSource *source) {
     if (self == nullptr)
         return false;
     if (handle == nullptr || source == nullptr)
@@ -221,7 +221,7 @@ bool AiSse_bind(AiSse *self, void *handle, const HavenWsSource *source) {
 }
 
 /** Clears the borrowed slot binding without closing its transport. */
-void AiSse_unbind(AiSse *self) {
+fn AiSse_unbind(AiSse *self) {
     if (self == nullptr)
         return;
     (*self).slotHandle = nullptr;
@@ -229,7 +229,7 @@ void AiSse_unbind(AiSse *self) {
 }
 
 /** Clears stream progress and completion state while retaining binding/configuration. */
-void AiSse_reset(AiSse *self) {
+fn AiSse_reset(AiSse *self) {
     if (self == nullptr)
         return;
     (*self).cancelled = false;
@@ -239,7 +239,7 @@ void AiSse_reset(AiSse *self) {
 }
 
 /** Marks the decoder cancelled so subsequent feed calls reject input. */
-void AiSse_cancel(AiSse *self) {
+fn AiSse_cancel(AiSse *self) {
     if (self == nullptr)
         return;
     (*self).cancelled = true;
@@ -248,21 +248,21 @@ void AiSse_cancel(AiSse *self) {
 // SETTERS
 
 /** Sets the timeout value associated with the bound polling slice. */
-void AiSse_setTimeout(AiSse *self, u64 timeoutMs) {
+fn AiSse_setTimeout(AiSse *self, u64 timeoutMs) {
     if (self == nullptr)
         return;
     (*self).timeoutMs = timeoutMs;
 }
 
 /** Sets the decoder's cancellation state. */
-void AiSse_setCancelled(AiSse *self, bool cancelled) {
+fn AiSse_setCancelled(AiSse *self, bool cancelled) {
     if (self == nullptr)
         return;
     (*self).cancelled = cancelled;
 }
 
 /** Sets whether the stream has reached its terminal event. */
-void AiSse_setDone(AiSse *self, bool done) {
+fn AiSse_setDone(AiSse *self, bool done) {
     if (self == nullptr)
         return;
     (*self).done = done;
@@ -271,7 +271,7 @@ void AiSse_setDone(AiSse *self, bool done) {
 // GETTERS
 
 /** Returns the borrowed fan-out handle, or nullptr for an unbound decoder. */
-void *AiSse_getSlotHandle(const AiSse *self) {
+any AiSse_getSlotHandle(const AiSse *self) {
     if (self == nullptr)
         return nullptr;
     return (*self).slotHandle;

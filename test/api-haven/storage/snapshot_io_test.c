@@ -1,17 +1,19 @@
 /* Header-only provider vocabulary owner. Proves all result constants and both
  * callback signatures as a real C23 client. No network/backend is implemented. */
+
+#include "vex.h"
 #include "storage/snapshot_io.h"
 #include <assert.h>
 #include <string.h>
 
 /* Mocks provider upload outcomes, distinguishing cancellation from ordinary pending work. */
-static int put(void *context, u64 key, const u8 *bytes, bytes length, int cancel) {
-    assert(context == nullptr && key == 1 && length == 1 && bytes[0] == 42);
+static int put(any context, u64 key, const u8 *data, bytes length, int cancel) {
+    assert(context == nullptr && key == 1 && length == 1 && data[0] == 42);
     return cancel ? HAVEN_SNAPSHOT_REJECT : HAVEN_SNAPSHOT_PENDING;
 }
 
 /* Mocks bounded snapshot retrieval and preserves outputs when key or capacity is invalid. */
-static int get(void *context, u64 key, u8 *dest, bytes capacity, bytes *outLength) {
+static int get(any context, u64 key, u8 *dest, bytes capacity, bytes *outLength) {
     assert(context == nullptr);
     if (key != 1 || capacity < 1)
         return HAVEN_SNAPSHOT_REJECT;
@@ -21,7 +23,7 @@ static int get(void *context, u64 key, u8 *dest, bytes capacity, bytes *outLengt
 }
 
 /* Compiles and exercises the header-only callback vocabulary and its result/status contract. */
-int main(void) {
+int main() {
     _Static_assert(HAVEN_SNAPSHOT_DONE != HAVEN_SNAPSHOT_PENDING);
     _Static_assert(HAVEN_SNAPSHOT_PENDING != HAVEN_SNAPSHOT_RETRY);
     _Static_assert(HAVEN_SNAPSHOT_RETRY != HAVEN_SNAPSHOT_REJECT);

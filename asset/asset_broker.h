@@ -34,7 +34,7 @@ typedef struct AssetBroker {
 } AssetBroker;
 
 // --- Constructors (value structs, no allocation) ---
-AssetBroker AssetBroker_0(void);                    // "assets" sub, 100ms
+AssetBroker AssetBroker_0();                    // "assets" sub, 100ms
 AssetBroker AssetBroker_1(const char *cacheSub);    // named cache slot
 #define AssetBroker(...) CONSTRUCTOR_DISPATCH(AssetBroker, __VA_ARGS__)
 
@@ -54,17 +54,17 @@ bool AssetBroker_copyChunk(AssetBroker *self, const u8 *srcChunk, bytes chunkLen
 bool AssetBroker_cachePath(const AssetBroker *self, const char *fileName,
                            char *out, bytes outCap);
 // Drop the cancel latch and zero the byte counter (slot stays bound).
-void AssetBroker_reset(AssetBroker *self);
+fn AssetBroker_reset(AssetBroker *self);
 // Latch the cancel flag (copies degrade to false until reset).
-void AssetBroker_cancel(AssetBroker *self);
+fn AssetBroker_cancel(AssetBroker *self);
 
 // --- Setters ---
 // Cache slot copy with a loud truncation flag (Rule 35.3): false +
 // flag when sub overflows the slot (slot keeps its old value).
 bool AssetBroker_setCacheSub(AssetBroker *self, const char *sub, bool *outTruncated);
-void AssetBroker_setChunkBudget(AssetBroker *self, u64 chunkBudgetMs);
-void AssetBroker_setCancelled(AssetBroker *self, bool cancelled);
-void AssetBroker_setBytesCopied(AssetBroker *self, u32 bytesCopied);
+fn AssetBroker_setChunkBudget(AssetBroker *self, u64 chunkBudgetMs);
+fn AssetBroker_setCancelled(AssetBroker *self, bool cancelled);
+fn AssetBroker_setBytesCopied(AssetBroker *self, u32 bytesCopied);
 
 // --- Getters (Rule 24, null-safe) ---
 // Borrowed cache slot, valid until the slot changes or the broker is destroyed.

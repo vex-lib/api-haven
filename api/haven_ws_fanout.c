@@ -17,7 +17,7 @@
  * CLASS: HavenWsFanout (api/haven_ws_fanout)
  * ============================================================================
  * A fixed fan-out table over opaque socket handles for the R2 layer: at
- * most 16 slots, each pairing a borrowed void* handle with its WsSource
+ * most 16 slots, each pairing a borrowed any handle with its WsSource
  * fn-table {connect, poll, send, close}. A host caller drives delivery by
  * calling HavenWsFanout_pollStep per tick with a millisecond budget —
  * zero pthread_*, zero socket syscalls in this file. The supplied callbacks
@@ -36,7 +36,7 @@
  * SLOT RECORD (HavenWsSlot — Rule 3 co-location, zero behavior of its
  * own; all behavior hangs off this table class):
  * ----------------------------------------------------------------------------
- *   void *handle;                // borrowed transport handle (NULL = free)
+ *   any handle;                // borrowed transport handle (NULL = free)
  *   const HavenWsSource *source; // fn-table bound at attach (NULL = free)
  *
  * FUNCTION REGISTRY:
@@ -67,7 +67,7 @@
 // CONSTRUCTORS
 
 /** Allocates and initializes an empty fixed-capacity fan-out registry. */
-HavenWsFanout *HavenWsFanout_0(void) {
+HavenWsFanout *HavenWsFanout_0() {
     HavenWsFanout *fanout = (HavenWsFanout*) calloc(1, sizeof(HavenWsFanout));
     if (!fanout)
         return nullptr;
@@ -78,14 +78,14 @@ HavenWsFanout *HavenWsFanout_0(void) {
 // CORE FUNCTIONS
 
 /** Releases the registry allocation; attached handles remain caller-owned. */
-void HavenWsFanout_free(HavenWsFanout *fanout) {
+fn HavenWsFanout_free(HavenWsFanout *fanout) {
     if (!fanout)
         return;
     free(fanout);
 }
 
 /** Attaches a unique borrowed handle and source table into an available slot. */
-bool HavenWsFanout_attach(HavenWsFanout *fanout, void *handle,
+bool HavenWsFanout_attach(HavenWsFanout *fanout, any handle,
                           const HavenWsSource *source) {
     if (!fanout || !handle || !source)
         return false;
@@ -107,7 +107,7 @@ bool HavenWsFanout_attach(HavenWsFanout *fanout, void *handle,
 }
 
 /** Detaches a previously attached handle and clears its registry slot. */
-bool HavenWsFanout_detach(HavenWsFanout *fanout, void *handle) {
+bool HavenWsFanout_detach(HavenWsFanout *fanout, any handle) {
     if (!fanout || !handle)
         return false;
     for (u32 i = 0; i < HAVEN_WS_FANOUT_MAX; i++) {
@@ -156,7 +156,7 @@ u32 HavenWsFanout_getCount(const HavenWsFanout *fanout) {
 }
 
 /** Returns the handle at index i, or nullptr for an invalid slot. */
-void *HavenWsFanout_getHandle(const HavenWsFanout *fanout, u32 i) {
+any HavenWsFanout_getHandle(const HavenWsFanout *fanout, u32 i) {
     if (!fanout)
         return nullptr;
     if (i >= HAVEN_WS_FANOUT_MAX)

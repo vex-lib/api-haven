@@ -51,8 +51,8 @@ static int isSlugValid(const char *slug) {
 
 /* Checks provider catalog invariants and bounded AssetBroker copy, cancellation, and path contracts. */
 int main(int argc, const char **argv) {
-    (void)argc;
-    (void)argv;
+    (discard) argc;
+    (discard) argv;
 
     // --- directory shape ---------------------------------------------------------
     AssetProvider *dir = AssetProvider_shared();

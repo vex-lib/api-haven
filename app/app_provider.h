@@ -54,7 +54,7 @@ typedef struct AppProvider {
 
 // --- Constructor ---
 // Returns the shared directory handle (static, zero-init, never NULL).
-AppProvider *AppProvider_shared(void);
+AppProvider *AppProvider_shared();
 
 // --- Core functions ---
 // Total rows. Null-safe: 0 on NULL self.

@@ -1,15 +1,12 @@
 #ifndef API_HAVEN_WS_FANOUT_H
 #define API_HAVEN_WS_FANOUT_H
 
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
-#include "util/constructor.h"
+#include "vex.h"
 
 // api/haven_ws_fanout.h — the HavenWsFanout class (R2 fan-out registry).
 //
 // A fixed fan-out table over opaque socket handles: at most 16 slots,
-// each pairing a borrowed void* handle with its WsSource fn-table
+// each pairing a borrowed any handle with its WsSource fn-table
 // {connect, poll, send, close}. A host caller invokes HavenWsFanout_pollStep
 // with a millisecond budget — zero pthread_*, zero socket syscalls in this
 // file. A real socket adapter is not implemented in this workspace.
@@ -22,16 +19,16 @@
 // (detach-only, never freed or closed by the registry — close runs only
 // when the host explicitly calls the source close fn via detach path).
 typedef struct HavenWsSource {
-    bool (*connect)(void *handle);
-    u32 (*poll)(void *handle, u64 budgetMs);
-    bool (*send)(void *handle, const u8 *Bytes, u32 len);
-    void (*close)(void *handle);
+    bool (*connect)(any handle);
+    u32 (*poll)(any handle, u64 budgetMs);
+    bool (*send)(any handle, const u8 *Bytes, u32 len);
+    fn (*close)(any handle);
 } HavenWsSource;
 
 // SLOT RECORD — one fan-out row (Rule 3 co-location, zero behavior of
 // its own; all behavior hangs off the HavenWsFanout table class).
 typedef struct HavenWsSlot {
-    void *handle;                 // borrowed transport handle (NULL = free)
+    any handle;                 // borrowed transport handle (NULL = free)
     const HavenWsSource *source;  // fn-table bound at attach (NULL = free)
 } HavenWsSlot;
 
@@ -41,21 +38,21 @@ typedef struct HavenWsFanout {
 } HavenWsFanout;
 
 // Empty registry (zero rows).
-HavenWsFanout *HavenWsFanout_0(void);
+HavenWsFanout *HavenWsFanout_0();
 #define HavenWsFanout(...) CONSTRUCTOR_DISPATCH(HavenWsFanout, __VA_ARGS__)
 
 // Release the registry block (null-safe no-op; handles are borrowed —
 // detach first per Rule 26, never freed here).
-void HavenWsFanout_free(HavenWsFanout *fanout);
+fn HavenWsFanout_free(HavenWsFanout *fanout);
 
 // Bind a borrowed handle + source table into a free slot. False on NULL
 // args, full table, or duplicate handle.
-bool HavenWsFanout_attach(HavenWsFanout *fanout, void *handle,
+bool HavenWsFanout_attach(HavenWsFanout *fanout, any handle,
                           const HavenWsSource *source);
 
 // Unbind a handle (slot freed, handle NOT closed/freed — borrowed view).
 // False on NULL args or unknown handle.
-bool HavenWsFanout_detach(HavenWsFanout *fanout, void *handle);
+bool HavenWsFanout_detach(HavenWsFanout *fanout, any handle);
 
 // One caller-driven fan-out step: poll each live slot with an even budget
 // slice (budgetMs / count, min 1ms), summing delivered frames. Returns
@@ -65,6 +62,6 @@ u32 HavenWsFanout_pollStep(HavenWsFanout *fanout, u64 budgetMs);
 // Getters only (Rule 24; null-safe. Setters omitted — rows are managed
 // by attach/detach, same immutable-row waiver as the provider tables).
 u32 HavenWsFanout_getCount(const HavenWsFanout *fanout);
-void *HavenWsFanout_getHandle(const HavenWsFanout *fanout, u32 i);
+any HavenWsFanout_getHandle(const HavenWsFanout *fanout, u32 i);
 
 #endif

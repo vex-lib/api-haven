@@ -44,37 +44,37 @@ static HarnessStatus sPollVerdict = HARNESS_STATUS_RUNNING;
 static u64 sLastTimeoutMs = 0;
 
 /* Records launches and returns a synthetic handle for each accepted job. */
-static bool stubSpawn(void *driverCtx, const EngineProviderSlot *engine,
+static bool stubSpawn(any driverCtx, const EngineProviderSlot *engine,
                       const char *prompt, bytes promptLen,
-                      u64 timeoutMs, void **outHandle) {
-    (void)driverCtx;
-    (void)engine;
-    (void)prompt;
-    (void)promptLen;
+                      u64 timeoutMs, any *outHandle) {
+    (discard) driverCtx;
+    (discard) engine;
+    (discard) prompt;
+    (discard) promptLen;
     sSpawnCalls++;
     sLastTimeoutMs = timeoutMs;
     if (outHandle)
-        (*outHandle) = (void*) (uintptr_t) (0x1000 + (uintptr_t) sSpawnCalls);
+        (*outHandle) = (any) (pointer) (0x1000 + (pointer) sSpawnCalls);
     return true;
 }
 
 /* Returns the test-selected poll verdict for a synthetic job handle. */
-static HarnessStatus stubPoll(void *driverCtx, void *handle, u64 timeoutMs) {
-    (void)driverCtx;
-    (void)handle;
-    (void)timeoutMs;
+static HarnessStatus stubPoll(any driverCtx, any handle, u64 timeoutMs) {
+    (discard) driverCtx;
+    (discard) handle;
+    (discard) timeoutMs;
     return sPollVerdict;
 }
 
 /* Counts cancellation callbacks for the harness lifecycle assertions. */
-static void stubCancel(void *driverCtx, void *handle) {
-    (void)driverCtx;
-    (void)handle;
+static fn stubCancel(any driverCtx, any handle) {
+    (discard) driverCtx;
+    (discard) handle;
     sCancelCalls++;
 }
 
 /* Builds the in-process spawn/poll/cancel table used by the owner test. */
-static HarnessDriverTable stubTable(void) {
+static HarnessDriverTable stubTable() {
     HarnessDriverTable table;
     table.spawnFn = stubSpawn;
     table.pollFn = stubPoll;
@@ -84,8 +84,8 @@ static HarnessDriverTable stubTable(void) {
 
 /* Verifies provider lookup and Harness job admission, capacity, polling, cancellation, and timeout behavior. */
 int main(int argc, const char **argv) {
-    (void)argc;
-    (void)argv;
+    (discard) argc;
+    (discard) argv;
 
     // --- EngineProvider directory shape ------------------------------------
     EngineProvider *dir = EngineProvider_shared();

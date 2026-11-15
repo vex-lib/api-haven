@@ -1,14 +1,10 @@
 #ifndef AI_CHAT_ANTHROPIC_H
 #define AI_CHAT_ANTHROPIC_H
 
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
-
+#include "vex.h"
 #include "ai/ai_chat.h"
 #include "ai/ai_provider.h"
 #include "api/auth.h"
-#include "util/constructor.h"
 #include "net/http.h"
 
 // ai/ai_chat_anthropic.h — Anthropic Messages chat client (L2 behavior).
@@ -33,7 +29,7 @@ typedef struct AiChatAnthropic {
 } AiChatAnthropic;
 
 // --- Constructors (value structs, no allocation — ApiAuth precedent) ---
-AiChatAnthropic AiChatAnthropic_0(void);              // everything NULL/0
+AiChatAnthropic AiChatAnthropic_0();              // everything NULL/0
 AiChatAnthropic AiChatAnthropic_1(const char *model); // shared table default
 AiChatAnthropic AiChatAnthropic_2(const char *model, const char *apiKey);
 #define AiChatAnthropic(...) CONSTRUCTOR_DISPATCH(AiChatAnthropic, __VA_ARGS__)
@@ -53,12 +49,12 @@ bool AiChatAnthropic_complete(const AiChatAnthropic *self, const AiMessage *msgs
                                HttpResponse *resp);
 
 // --- Setters ---
-void AiChatAnthropic_setProvider(AiChatAnthropic *self, const AiProvider *provider);
-void AiChatAnthropic_setPeer(AiChatAnthropic *self, const AiProviderSlot *peer);
-void AiChatAnthropic_setModel(AiChatAnthropic *self, const char *model);
-void AiChatAnthropic_setApiKey(AiChatAnthropic *self, const char *apiKey);
-void AiChatAnthropic_setBaseUrl(AiChatAnthropic *self, const char *baseUrlOverride);
-void AiChatAnthropic_setMaxTokens(AiChatAnthropic *self, u32 maxTokens);
+fn AiChatAnthropic_setProvider(AiChatAnthropic *self, const AiProvider *provider);
+fn AiChatAnthropic_setPeer(AiChatAnthropic *self, const AiProviderSlot *peer);
+fn AiChatAnthropic_setModel(AiChatAnthropic *self, const char *model);
+fn AiChatAnthropic_setApiKey(AiChatAnthropic *self, const char *apiKey);
+fn AiChatAnthropic_setBaseUrl(AiChatAnthropic *self, const char *baseUrlOverride);
+fn AiChatAnthropic_setMaxTokens(AiChatAnthropic *self, u32 maxTokens);
 
 // --- Getters (Rule 24, null-safe) ---
 const AiProvider *AiChatAnthropic_getProvider(const AiChatAnthropic *self);

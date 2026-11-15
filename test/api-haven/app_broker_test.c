@@ -41,14 +41,14 @@ static int sRunCalls = 0;
 static u64 sLastTimeoutMs = 0;
 
 /* Copies the requested action into the bounded output and records successful stub dispatch. */
-static bool stubEcho(void *driverCtx, const AppProviderSlot *target,
+static bool stubEcho(any driverCtx, const AppProviderSlot *target,
                      const char *action, const char *paramsJson,
                      bytes paramsLen, u64 timeoutMs,
                      char *outBuf, bytes outCap, bytes *outLen) {
-    (void)driverCtx;
-    (void)target;
-    (void)paramsJson;
-    (void)paramsLen;
+    (discard) driverCtx;
+    (discard) target;
+    (discard) paramsJson;
+    (discard) paramsLen;
     sRunCalls++;
     sLastTimeoutMs = timeoutMs;
     const char *reply = action ? action : "";
@@ -62,26 +62,26 @@ static bool stubEcho(void *driverCtx, const AppProviderSlot *target,
 }
 
 /* Simulates a driver rejection without writing output or changing broker state. */
-static bool stubFail(void *driverCtx, const AppProviderSlot *target,
+static bool stubFail(any driverCtx, const AppProviderSlot *target,
                      const char *action, const char *paramsJson,
                      bytes paramsLen, u64 timeoutMs,
                      char *outBuf, bytes outCap, bytes *outLen) {
-    (void)driverCtx;
-    (void)target;
-    (void)action;
-    (void)paramsJson;
-    (void)paramsLen;
-    (void)timeoutMs;
-    (void)outBuf;
-    (void)outCap;
-    (void)outLen;
+    (discard) driverCtx;
+    (discard) target;
+    (discard) action;
+    (discard) paramsJson;
+    (discard) paramsLen;
+    (discard) timeoutMs;
+    (discard) outBuf;
+    (discard) outCap;
+    (discard) outLen;
     return false;
 }
 
 /* Verifies app-provider lookup and broker behavior for unbound, successful, and failed actions. */
 int main(int argc, const char **argv) {
-    (void)argc;
-    (void)argv;
+    (discard) argc;
+    (discard) argv;
 
     // --- AppProvider allowlist ----------------------------------------------
     AppProvider *dir = AppProvider_shared();

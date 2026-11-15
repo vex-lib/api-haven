@@ -1,13 +1,9 @@
 #ifndef AI_CHAT_H
 #define AI_CHAT_H
 
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
-
+#include "vex.h"
 #include "ai/ai_provider.h"
 #include "api/auth.h"
-#include "util/constructor.h"
 #include "net/http.h"
 
 // ai/ai_chat.h — OpenAI-compatible chat completion client (L2 behavior).
@@ -33,7 +29,7 @@ typedef struct AiChat {
 } AiChat;
 
 // --- Constructors (value structs, no allocation — ApiAuth precedent) ---
-AiChat AiChat_0(void);                       // everything NULL
+AiChat AiChat_0();                       // everything NULL
 AiChat AiChat_1(const char *model);          // shared table, gateway default
 AiChat AiChat_2(const char *model, const char *apiKey);
 #define AiChat(...) CONSTRUCTOR_DISPATCH(AiChat, __VA_ARGS__)
@@ -54,11 +50,11 @@ bool AiChat_complete(const AiChat *self, const AiMessage *msgs, u32 msgCount,
                      HttpResponse *resp);
 
 // --- Setters ---
-void AiChat_setProvider(AiChat *self, const AiProvider *provider);
-void AiChat_setPeer(AiChat *self, const AiProviderSlot *peer);
-void AiChat_setModel(AiChat *self, const char *model);
-void AiChat_setApiKey(AiChat *self, const char *apiKey);
-void AiChat_setBaseUrl(AiChat *self, const char *baseUrlOverride);
+fn AiChat_setProvider(AiChat *self, const AiProvider *provider);
+fn AiChat_setPeer(AiChat *self, const AiProviderSlot *peer);
+fn AiChat_setModel(AiChat *self, const char *model);
+fn AiChat_setApiKey(AiChat *self, const char *apiKey);
+fn AiChat_setBaseUrl(AiChat *self, const char *baseUrlOverride);
 
 // --- Getters (Rule 24, null-safe) ---
 const AiProvider *AiChat_getProvider(const AiChat *self);

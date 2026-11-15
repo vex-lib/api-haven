@@ -77,7 +77,7 @@ static DbProvider sDbProviderShared; // zero-init singleton
 // CONSTRUCTORS
 
 /** Returns the process-wide immutable database-source directory handle. */
-DbProvider *DbProvider_shared(void) {
+DbProvider *DbProvider_shared() {
     return &sDbProviderShared;
 }
 
@@ -124,19 +124,19 @@ const DbProviderSlot *DbProvider_findByEngine(const DbProvider *self,
 
 /** Returns the slot's canonical slug, or nullptr when no slot is supplied. */
 const char *DbProvider_getSlug(const DbProvider *self, const DbProviderSlot *slot) {
-    (void)self;
+    (discard) self;
     return slot ? (*slot).slug : nullptr;
 }
 
 /** Returns the slot's display label, or nullptr when no slot is supplied. */
 const char *DbProvider_getDisplayName(const DbProvider *self, const DbProviderSlot *slot) {
-    (void)self;
+    (discard) self;
     return slot ? (*slot).displayName : nullptr;
 }
 
 /** Returns the slot's driver/engine key, or nullptr when no slot is supplied. */
 const char *DbProvider_getEngine(const DbProvider *self, const DbProviderSlot *slot) {
-    (void)self;
+    (discard) self;
     return slot ? (*slot).engine : nullptr;
 }
 
@@ -156,6 +156,6 @@ DbProviderFamily DbProvider_getFamily(const DbProvider *self, const DbProviderSl
 
 /** Returns the slot's optional provider note. */
 const char *DbProvider_getNote(const DbProvider *self, const DbProviderSlot *slot) {
-    (void)self;
+    (discard) self;
     return slot ? (*slot).note : nullptr;
 }

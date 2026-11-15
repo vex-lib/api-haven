@@ -1,9 +1,7 @@
 #ifndef API_REST_H
 #define API_REST_H
 
-#include <stdbool.h>
-#include <stddef.h>
-
+#include "vex.h"
 #include "api/auth.h"
 #include "net/http.h"
 

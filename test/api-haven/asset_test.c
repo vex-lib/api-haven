@@ -22,7 +22,7 @@
  * ============================================================================
  */
 
-static int sFailures = 0;
+static i32 sFailures = 0;
 
 #define CHECK(cond)                                                    \
     do {                                                               \
@@ -33,12 +33,12 @@ static int sFailures = 0;
     } while (0)
 
 // [a-z0-9]+(-[a-z0-9]+)* — canonical slug grammar (provider tables).
-static int isSlugValid(const char *slug) {
+static i32 isSlugValid(const char *slug) {
     if (!slug || (*slug) == '\0')
         return 0;
     for (const char *p = slug; *p; p++) {
         char c = *p;
-        int isAlnum = (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9');
+        i32 isAlnum = (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9');
         if (c == '-') {
             if (p == slug || *(p + 1) == '\0' || *(p + 1) == '-')
                 return 0;
@@ -50,7 +50,7 @@ static int isSlugValid(const char *slug) {
 }
 
 /* Checks provider catalog invariants and bounded AssetBroker copy, cancellation, and path contracts. */
-int main(int argc, const char **argv) {
+i32 main(i32 argc, const char **argv) {
     (discard) argc;
     (discard) argv;
 
@@ -95,7 +95,7 @@ int main(int argc, const char **argv) {
         CHECK(row && AssetProvider_getLicenseFamily(dir, row) != nullptr);
         CHECK(row && AssetProvider_getSampleDownload(dir, row) != nullptr);
         if (row && rowName) {
-            int dup = 0;
+            i32 dup = 0;
             for (u32 j = 0; j < nameCount; j++) {
                 if (strcmp(names[j], rowName) == 0)
                     dup = 1;

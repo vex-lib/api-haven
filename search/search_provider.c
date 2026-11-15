@@ -52,7 +52,7 @@
   *   const char *note;            // caveat; NULL when none
   *   u32 quotaPerDay;        // free-tier requests/day (0 = unknown)
   *   u32 quotaRemaining;     // free-tier remainder (0 = unknown)
-  *   int64_t  resetUnix;          // quota window reset epoch secs (0 = unknown)
+  *   i64  resetUnix;          // quota window reset epoch secs (0 = unknown)
   *   const char *authKind;        // credential kind label; NULL = see auth
   *   const char *licenseFamily;   // license family label; NULL = UNKNOWN
   *
@@ -227,7 +227,7 @@ u32 SearchProvider_getQuotaRemaining(const SearchProvider *self,
 }
 
 /** Returns the slot's quota-reset Unix time, or zero when unavailable. */
-int64_t SearchProvider_getResetUnix(const SearchProvider *self,
+i64 SearchProvider_getResetUnix(const SearchProvider *self,
                                     const SearchProviderSlot *slot) {
     if (!self || !slot)
         return 0;

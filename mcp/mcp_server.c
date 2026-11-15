@@ -441,7 +441,7 @@ static fn appendFmt(char *buf, bytes cap, bytes *pos, const char *fmt, ...) {
         return;
     va_list ap;
     va_start(ap, fmt);
-    int want = vsnprintf(buf + (*pos), cap - (*pos), fmt, ap);
+    i32 want = vsnprintf(buf + (*pos), cap - (*pos), fmt, ap);
     va_end(ap);
     if (want > 0) {
         (*pos) += (bytes)want;
@@ -646,8 +646,8 @@ static bool encodeQueryComponent(const char *src, char *out, bytes cap) {
     if (!src || !out || cap == 0)
         return false;
     bytes o = 0;
-    for (const unsigned char *p = (const unsigned char *)src; *p; p++) {
-        unsigned char c = *p;
+    for (const u8 *p = (const u8 *)src; *p; p++) {
+        u8 c = *p;
         bool unreserved = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
                           (c >= '0' && c <= '9') || c == '-' || c == '_' ||
                           c == '.' || c == '~';
@@ -867,7 +867,7 @@ static bool rawIdExtract(const char *line, bytes lineLen,
 // --- error envelope ---------------------------------------------------------
 
 /** Writes a JSON-RPC error response using the supplied code, message, and id. */
-static fn respondError(int code, const char *message, const char *id,
+static fn respondError(i32 code, const char *message, const char *id,
                          char *out, bytes cap) {
     bytes pos = 0;
     appendStr(out, cap, &pos, "{\"jsonrpc\":\"2.0\",\"id\":");
@@ -1549,8 +1549,8 @@ static bool renderWebSearch(const JsonDoc *doc, JsonRef args,
         bytes bl = strlen(ep);
         while (bl > 0 && ep[bl - 1] == '/')
             bl--;
-        int n = snprintf(url, sizeof(url), "%.*s/search?q=%s&format=json",
-                         (int)bl, ep, encoded);
+        i32 n = snprintf(url, sizeof(url), "%.*s/search?q=%s&format=json",
+                         (i32)bl, ep, encoded);
         if (n <= 0 || (bytes)n >= sizeof(url)) {
             appendStr(out, cap, &pos, "search URL overflow (2KiB cap)");
             return false;
@@ -1564,7 +1564,7 @@ static bool renderWebSearch(const JsonDoc *doc, JsonRef args,
                       "(never the repo, never the arena) and retry");
             return false;
         }
-        int n = snprintf(url, sizeof(url),
+        i32 n = snprintf(url, sizeof(url),
                          "%s/customsearch/v1?key=%s&cx=%s&q=%s&num=%u",
                          SearchProvider_getEndpoint(dir, slot),
                          key, cx, encoded, want > 10 ? 10 : want);
@@ -1573,7 +1573,7 @@ static bool renderWebSearch(const JsonDoc *doc, JsonRef args,
             return false;
         }
     } else {
-        int n = snprintf(url, sizeof(url),
+        i32 n = snprintf(url, sizeof(url),
                          "%s/w/api.php?action=query&list=search&srsearch=%s"
                          "&srlimit=%u&format=json",
                          SearchProvider_getEndpoint(dir, slot),
@@ -1759,7 +1759,7 @@ static bool renderAssetDownload(const JsonDoc *doc, JsonRef args,
     readStringArg(doc, args, "file", file, sizeof(file));
     char fileName[160];
     if ((*file) == '\0') {
-        int n = snprintf(fileName, sizeof(fileName), "%s-sample",
+        i32 n = snprintf(fileName, sizeof(fileName), "%s-sample",
                          AssetProvider_getSlug(dir, slot));
         if (n <= 0 || (bytes)n >= sizeof(fileName)) {
             appendStr(out, cap, &pos, "file name overflow (160 cap)");

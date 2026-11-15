@@ -44,11 +44,11 @@ static bool appendField(char *buf, bytes cap, bytes *offset,
         buf[o++] = ',';
     }
     *first = false;
-    int n = snprintf(buf + o, cap - o, "\"%s\":", key);
+    i32 n = snprintf(buf + o, cap - o, "\"%s\":", key);
     if (n < 0 || o + (bytes)n >= cap)
         return false;
     o += (bytes)n;
-    int64_t w = Json_writeString(buf + o, cap - o, val);
+    i64 w = Json_writeString(buf + o, cap - o, val);
     if (w < 0)
         return false;
     o += (bytes)w;

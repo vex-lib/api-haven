@@ -21,7 +21,7 @@
 #include "api/rest.h"
 #include "net/http.h"
 
-static int g_failures = 0;
+static i32 g_failures = 0;
 
 #define CHECK(name, cond) do {                                  \
     if (cond) { printf("[rest] PASS %s\n", name); }             \
@@ -29,17 +29,17 @@ static int g_failures = 0;
 } while (0)
 
 /* Counts requests and answers "/status/NNN" with that status, else 200. */
-static int g_hits;
+static i32 g_hits;
 
-static fn statusHandler(const HttpExchange *exchange, int clientFd, any userdata) {
+static fn statusHandler(const HttpExchange *exchange, i32 clientFd, any userdata) {
     (discard) userdata;
     g_hits++;
-    int status = 200;
+    i32 status = 200;
     const char *path = (*exchange).path;
     if (strncmp(path, "/status/", 8) == 0)
         status = atoi(path + 8);
     char body[64];
-    int n = snprintf(body, sizeof(body), "{\"status\":%d}", status);
+    i32 n = snprintf(body, sizeof(body), "{\"status\":%d}", status);
     if (n < 0)
         n = 0;
     Http_respond(clientFd, status, "application/json", body, (bytes) n);
@@ -54,10 +54,10 @@ static bool getStatus(const char *url, const ApiAuth *auth, HttpResponse *resp, 
     return Rest_get(url, auth, resp);
 }
 
-int main() {
+i32 main() {
     printf("=== Rest core owner suite (loopback) ===\n");
     HttpServer srv = { 0 };
-    int port = 0;
+    i32 port = 0;
     if (!HttpServer_start(&srv, 0, statusHandler, nullptr, &port)) {
         fprintf(stderr, "rest_test: SKIP (loopback server unavailable)\n");
         return B_TEST_SKIP;
@@ -109,7 +109,7 @@ int main() {
     CHECK("500 -> error body preserved", strstr(body, "500") != nullptr);
 
     // Public request via nullptr auth is allowed and reaches the server.
-    int before = g_hits;
+    i32 before = g_hits;
     CHECK("null auth -> sent", getStatus(url200, nullptr, &resp, body, sizeof(body)) && g_hits == before + 1);
 
     // A required credential that cannot be rendered must not send anything.

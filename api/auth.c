@@ -104,7 +104,7 @@ bool ApiAuth_apply(const ApiAuth *auth, const char **nameOut,
         token = (*auth).tokenFn((*auth).tokenUserdata);
     if (!token)
         return false;
-    int n = snprintf(valueBuf, valueCap, "Bearer %s", token);
+    i32 n = snprintf(valueBuf, valueCap, "Bearer %s", token);
     if (n < 0 || (bytes)n >= valueCap)
         return false;
     *nameOut = "Authorization";

@@ -26,7 +26,7 @@
  * ============================================================================
  */
 
-static int sFailures = 0;
+static i32 sFailures = 0;
 
 #define CHECK(cond)                                                    \
     do {                                                               \
@@ -37,7 +37,7 @@ static int sFailures = 0;
     } while (0)
 
 // --- stub drivers (in-process; never touch scripts or sockets) ---------------
-static int sRunCalls = 0;
+static i32 sRunCalls = 0;
 static u64 sLastTimeoutMs = 0;
 
 /* Copies the requested action into the bounded output and records successful stub dispatch. */
@@ -79,7 +79,7 @@ static bool stubFail(any driverCtx, const AppProviderSlot *target,
 }
 
 /* Verifies app-provider lookup and broker behavior for unbound, successful, and failed actions. */
-int main(int argc, const char **argv) {
+i32 main(i32 argc, const char **argv) {
     (discard) argc;
     (discard) argv;
 
@@ -171,7 +171,7 @@ int main(int argc, const char **argv) {
     AppBroker noTarget = AppBroker();
     AppDriverTable echoTable;
     echoTable.runActionFn = stubEcho;
-    int driverCtx = 3;
+    i32 driverCtx = 3;
     AppBroker_setDriver(&noTarget, &driverCtx, echoTable);
     CHECK(!AppBroker_action(&noTarget, "x", "{}", 2, out, sizeof(out), &jobId));
 

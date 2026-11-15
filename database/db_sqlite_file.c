@@ -115,9 +115,9 @@ bool DbSqliteFile_describe(const DbSqliteFile *self, char *out, bytes outCap) {
     const char *path = (*self).path;
     if (path == nullptr || (*path) == '\0')
         return false;
-    const int n = snprintf(out, outCap, "sqlite file: path=%s readOnly=%d caps=%u maxBytes=%llu",
+    const i32 n = snprintf(out, outCap, "sqlite file: path=%s readOnly=%d caps=%u maxBytes=%llu",
                            path, (*self).readOnly ? 1 : 0,
-                           (*self).caps, (unsigned long long)(*self).maxBytes);
+                           (*self).caps, (u64)(*self).maxBytes);
     if (n <= 0 || (bytes)n >= outCap)
         return false;
     return true;

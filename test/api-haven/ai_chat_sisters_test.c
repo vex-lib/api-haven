@@ -24,7 +24,7 @@
  * ============================================================================
  */
 
-static int sFailures = 0;
+static i32 sFailures = 0;
 
 #define CHECK(cond)                                                    \
     do {                                                               \
@@ -40,7 +40,7 @@ static const AiMessage sMessages[2] = {
 };
 
 /* Checks both provider request encodings, authentication, guards, and null-safe accessors without HTTP. */
-int main(int argc, const char **argv) {
+i32 main(i32 argc, const char **argv) {
     (discard) argc;
     (discard) argv;
 

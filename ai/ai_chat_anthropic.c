@@ -78,7 +78,7 @@ static bool appendLiteral(char *out, bytes cap, bytes *used, const char *s) {
 
 /** Appends one JSON-escaped string to the current bounded output position. */
 static bool appendJsonString(char *out, bytes cap, bytes *used, const char *s) {
-    const int64_t w = Json_writeString(out + *used, cap - *used, s);
+    const i64 w = Json_writeString(out + *used, cap - *used, s);
     if (w < 0)
         return false;
     *used += (bytes)w;
@@ -137,7 +137,7 @@ bool AiChatAnthropic_buildRequest(const AiChatAnthropic *self, const AiMessage *
             base = resolved;
     }
 
-    const int printed = snprintf(urlBuf, urlCap, "%s/v1/messages", base);
+    const i32 printed = snprintf(urlBuf, urlCap, "%s/v1/messages", base);
     if (printed < 0 || (bytes)printed >= urlCap)
         return false;
 
@@ -154,7 +154,7 @@ bool AiChatAnthropic_buildRequest(const AiChatAnthropic *self, const AiMessage *
     if (!appendJsonString(bodyBuf, bodyCap, &used, (*self).model))
         return false;
     char tokenBuf[32];
-    const int tw = snprintf(tokenBuf, sizeof(tokenBuf), ",\"max_tokens\":%u,\"messages\":[",
+    const i32 tw = snprintf(tokenBuf, sizeof(tokenBuf), ",\"max_tokens\":%u,\"messages\":[",
                             (*self).maxTokens);
     if (tw < 0 || (bytes)tw >= sizeof(tokenBuf))
         return false;

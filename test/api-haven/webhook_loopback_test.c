@@ -38,11 +38,11 @@ typedef struct Capture {
     char path[1024];
     char body[8192];
     bytes bodyLen;
-    int hits;
+    i32 hits;
 } Capture;
 
 static Capture g_cap;
-static int g_failures = 0;
+static i32 g_failures = 0;
 
 #define CHECK(name, cond) do { \
     if (cond) { printf("[loopback] PASS %s\n", name); } \
@@ -50,7 +50,7 @@ static int g_failures = 0;
 } while (0)
 
 /* Captures loopback request fields/body and returns a deterministic method-specific response. */
-static fn captureHandler(const HttpExchange *exchange, int clientFd, any userdata) {
+static fn captureHandler(const HttpExchange *exchange, i32 clientFd, any userdata) {
     (discard) userdata;
     Capture *cap = &g_cap;
     strncpy((*cap).method, (*exchange).method, sizeof((*cap).method) - 1);
@@ -96,10 +96,10 @@ static const char *staticToken(any userdata) {
 }
 
 /* Runs Discord, Slack, auth-formatting, and REST-get checks against a local loopback server. */
-int main() {
+i32 main() {
     printf("=== Webhook Loopback Suite (Shape A/B, no accounts) ===\n");
     HttpServer srv = { 0 };
-    int port = 0;
+    i32 port = 0;
     if (!HttpServer_start(&srv, 0, captureHandler, nullptr, &port)) {
         printf("[loopback] FAIL server start\n");
         return 1;

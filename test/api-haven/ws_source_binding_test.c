@@ -43,8 +43,8 @@ _Static_assert(_Generic(kBinding.send, bool (*)(any, const u8*, u32) : 1,
 _Static_assert(_Generic(kBinding.close, fn (*)(any) : 1, default : 0),
                "close must be fn(any)");
 
-static int g_failures = 0;
-static int g_checks = 0;
+static i32 g_failures = 0;
+static i32 g_checks = 0;
 
 #define CHECK(condition)                                                        \
     do {                                                                        \
@@ -55,7 +55,7 @@ static int g_checks = 0;
         }                                                                       \
     } while (0)
 
-static bool peerWrite(int fd, const_any data, bytes length) {
+static bool peerWrite(i32 fd, const_any data, bytes length) {
     const u8 *p = (const u8*) data;
     bytes sent = 0u;
     while (sent < length) {
@@ -68,7 +68,7 @@ static bool peerWrite(int fd, const_any data, bytes length) {
 }
 
 /** Server-side frame: never masked, which is what the RFC demands of a peer. */
-static bool peerFrame(int fd, u8 opcode, const char *text) {
+static bool peerFrame(i32 fd, u8 opcode, const char *text) {
     bytes length = strlen(text);
     u8 header[4];
     header[0] = (u8) (0x80u | opcode);
@@ -77,7 +77,7 @@ static bool peerFrame(int fd, u8 opcode, const char *text) {
 }
 
 /** Read exactly length Bytes with the peer's bounded timeout. */
-static bool peerReadExact(int peer, u8 *dest, bytes length) {
+static bool peerReadExact(i32 peer, u8 *dest, bytes length) {
     bytes got = 0u;
     while (got < length) {
         ssize_t n = recv(peer, dest + got, length - got, 0);
@@ -92,11 +92,11 @@ static bool peerReadExact(int peer, u8 *dest, bytes length) {
  * The scripted peer: accept, answer the handshake, send two text frames, then
  * require one masked TEXT frame back. Its exit status is the assertion.
  */
-static int peerRun(int readyWriteFd) {
-    int listener = socket(AF_INET, SOCK_STREAM, 0);
+static i32 peerRun(i32 readyWriteFd) {
+    i32 listener = socket(AF_INET, SOCK_STREAM, 0);
     if (listener < 0)
         return 90;
-    int reuse = 1;
+    i32 reuse = 1;
     setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
     struct sockaddr_in address;
     memset(&address, 0, sizeof(address));
@@ -110,14 +110,14 @@ static int peerRun(int readyWriteFd) {
         return 92;
     if (listen(listener, 1) != 0)
         return 93;
-    int port = ntohs(address.sin_port);
+    i32 port = ntohs(address.sin_port);
     if (write(readyWriteFd, &port, sizeof(port)) != (ssize_t) sizeof(port))
         return 94;
     close(readyWriteFd);
 
     struct timeval timeout = { .tv_sec = 5, .tv_usec = 0 };
     setsockopt(listener, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
-    int peer = accept(listener, nullptr, nullptr);
+    i32 peer = accept(listener, nullptr, nullptr);
     if (peer < 0)
         return 95;
     setsockopt(peer, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
@@ -157,7 +157,7 @@ static int peerRun(int readyWriteFd) {
     if (Url_base64(hash, CRYPTO_SHA1_DIGEST_SIZE, accept, sizeof(accept)) <= 0)
         return 99;
     char response[256];
-    int written = snprintf(response, sizeof(response),
+    i32 written = snprintf(response, sizeof(response),
         "HTTP/1.1 101 Switching Protocols\r\n"
         "Upgrade: websocket\r\nConnection: Upgrade\r\n"
         "Sec-WebSocket-Accept: %s\r\n\r\n", accept);
@@ -201,11 +201,11 @@ static int peerRun(int readyWriteFd) {
     return 0;
 }
 
-int main() {
+i32 main() {
     printf("=== WebSocket WsSource binding ===\n");
     signal(SIGPIPE, SIG_IGN);
 
-    int fds[2];
+    i32 fds[2];
     if (pipe(fds) != 0) {
         printf("pipe failed\n");
         return 1;
@@ -216,7 +216,7 @@ int main() {
         _exit(peerRun(fds[1]));
     }
     close(fds[1]);
-    int port = 0;
+    i32 port = 0;
     if (read(fds[0], &port, sizeof(port)) != (ssize_t) sizeof(port)) {
         printf("peer never reported a port\n");
         return 1;
@@ -295,7 +295,7 @@ int main() {
     CHECK(HavenWsFanout_getCount(fanout) == 0u);
     HavenWsFanout_free(fanout);
 
-    int status = 0;
+    i32 status = 0;
     CHECK(waitpid(child, &status, 0) == child);
     CHECK(WIFEXITED(status) && WEXITSTATUS(status) == 0);
 

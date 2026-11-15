@@ -24,7 +24,7 @@
  * ============================================================================
  */
 
-static int sFailures = 0;
+static i32 sFailures = 0;
 
 #define CHECK(cond)                                                    \
     do {                                                               \
@@ -40,12 +40,12 @@ static const AiMessage sMessages[2] = {
 };
 
 // [a-z0-9]+(-[a-z0-9]+)* — canonical slug grammar (generator-enforced).
-static int isSlugValid(const char *slug) {
+static i32 isSlugValid(const char *slug) {
     if (!slug || (*slug) == '\0')
         return 0;
     for (const char *p = slug; *p; p++) {
         char c = *p;
-        int isAlnum = (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9');
+        i32 isAlnum = (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9');
         if (c == '-') {
             if (p == slug || *(p + 1) == '\0' || *(p + 1) == '-')
                 return 0;
@@ -57,7 +57,7 @@ static int isSlugValid(const char *slug) {
 }
 
 /* Returns whether a provider identifier contains whitespace forbidden by the slug contract. */
-static int hasWhitespace(const char *s) {
+static i32 hasWhitespace(const char *s) {
     if (!s)
         return 0;
     for (const char *p = s; *p; p++) {
@@ -69,7 +69,7 @@ static int hasWhitespace(const char *s) {
 }
 
 /* Validates provider-directory invariants and parses generated AiChat request bodies without network access. */
-int main(int argc, const char **argv) {
+i32 main(i32 argc, const char **argv) {
     (discard) argc;
     (discard) argv;
 
@@ -122,7 +122,7 @@ int main(int argc, const char **argv) {
         const char *rowName = row ? AiProvider_getDisplayName(dir, row) : nullptr;
         CHECK(rowName && (*rowName) != '\0');
         if (row && rowName) {
-            int dup = 0;
+            i32 dup = 0;
             for (u32 j = 0; j < nameCount; j++) {
                 if (strcmp(names[j], rowName) == 0)
                     dup = 1;

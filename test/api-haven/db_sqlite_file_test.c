@@ -20,7 +20,7 @@
  * ============================================================================
  */
 
-static int sFailures = 0;
+static i32 sFailures = 0;
 
 #define CHECK(cond)                                                    \
     do {                                                               \
@@ -34,9 +34,9 @@ static int sFailures = 0;
 static bool fakeExec(any handle, const char *sql, char *out, bytes outCap) {
     if (!handle || !sql || !out || outCap == 0)
         return false;
-    int *calls = (int*) handle;
+    i32 *calls = (i32*) handle;
     (*calls)++;
-    const int n = snprintf(out, outCap, "rows for: %s", sql);
+    const i32 n = snprintf(out, outCap, "rows for: %s", sql);
     if (n <= 0 || (bytes)n >= outCap)
         return false;
     return true;
@@ -45,7 +45,7 @@ static bool fakeExec(any handle, const char *sql, char *out, bytes outCap) {
 static const DbSqliteExec sFakeTable = { fakeExec };
 
 /* Exercises descriptor defaults, callback binding/delegation, setters, and rejection guards without SQLite. */
-int main(int argc, const char **argv) {
+i32 main(i32 argc, const char **argv) {
     (discard) argc;
     (discard) argv;
 
@@ -81,7 +81,7 @@ int main(int argc, const char **argv) {
     CHECK(!DbSqliteFile_exec(&file, "SELECT 1", out, sizeof(out)));
 
     // --- bind + delegated exec ----------------------------------------------------------------------------
-    int calls = 0;
+    i32 calls = 0;
     CHECK(DbSqliteFile_getExecHandle(&file) == nullptr);
     CHECK(DbSqliteFile_bind(&file, &calls, &sFakeTable));
     CHECK(DbSqliteFile_getExecHandle(&file) == &calls);
@@ -90,7 +90,7 @@ int main(int argc, const char **argv) {
     CHECK(calls == 1);
     CHECK(strcmp(out, "rows for: SELECT 1") == 0);
     CHECK(!DbSqliteFile_bind(&file, &calls, &sFakeTable)); // rebind refused
-    int other = 0;
+    i32 other = 0;
     CHECK(!DbSqliteFile_bind(&file, &other, &sFakeTable)); // unbind first
     DbSqliteFile_unbind(&file);
     CHECK(DbSqliteFile_getExecHandle(&file) == nullptr);

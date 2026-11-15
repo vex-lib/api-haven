@@ -21,7 +21,7 @@
  * ============================================================================
  */
 
-static int sFailures = 0;
+static i32 sFailures = 0;
 
 #define CHECK(cond)                                                    \
     do {                                                               \
@@ -68,7 +68,7 @@ static const HavenWsSource sFakeSource = {
 };
 
 /* Exercises incremental SSE parsing, slot binding, cancellation, timeout, truncation, and null guards. */
-int main(int argc, const char **argv) {
+i32 main(i32 argc, const char **argv) {
     (discard) argc;
     (discard) argv;
 
@@ -120,13 +120,13 @@ int main(int argc, const char **argv) {
 
     // --- explicit one-slot binding ------------------------------------------------
     AiSse bound = AiSse();
-    int fakeHandle = 7;
+    i32 fakeHandle = 7;
     CHECK(AiSse_getSlotHandle(&bound) == nullptr);
     CHECK(AiSse_bind(&bound, &fakeHandle, &sFakeSource));
     CHECK(AiSse_getSlotHandle(&bound) == &fakeHandle);
     CHECK(AiSse_getSlotSource(&bound) == &sFakeSource);
     CHECK(!AiSse_bind(&bound, &fakeHandle, &sFakeSource)); // rebind refused
-    int otherHandle = 9;
+    i32 otherHandle = 9;
     CHECK(!AiSse_bind(&bound, &otherHandle, &sFakeSource)); // unbind first
     AiSse_unbind(&bound);
     CHECK(AiSse_getSlotHandle(&bound) == nullptr);

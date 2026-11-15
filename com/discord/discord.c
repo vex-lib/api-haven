@@ -41,7 +41,7 @@
 
 /** Splits a webhook URL into bounded scheme, host, port, and path outputs. */
 static bool parseUrl(const char *url, char *scheme, bytes schemeCap,
-                     char *host, bytes hostCap, int *port,
+                     char *host, bytes hostCap, i32 *port,
                      char *path, bytes pathCap) {
     if (!url || url[0] == '\0') return false;
 
@@ -101,10 +101,10 @@ static bool appendStringField(char *buf, bytes cap, bytes *offset, const char *k
         buf[o++] = ',';
     }
     *first = false;
-    int n = snprintf(buf + o, cap - o, "\"%s\":", key);
+    i32 n = snprintf(buf + o, cap - o, "\"%s\":", key);
     if (n < 0 || o + (bytes)n >= cap) return false;
     o += (bytes)n;
-    int64_t w = Json_writeString(buf + o, cap - o, val);
+    i64 w = Json_writeString(buf + o, cap - o, val);
     if (w < 0) return false;
     o += (bytes)w;
     *offset = o;
@@ -119,7 +119,7 @@ bool DiscordWebhook_sendText(const char *webhookUrl, const char *content,
     char scheme[16] = {0};
     char host[256] = {0};
     char path[512] = {0};
-    int port = 80;
+    i32 port = 80;
 
     if (!parseUrl(webhookUrl, scheme, sizeof(scheme), host, sizeof(host), &port, path, sizeof(path))) {
         return false;
@@ -182,7 +182,7 @@ bool DiscordWebhook_sendEmbed(const char *webhookUrl, const char *content,
     char scheme[16] = {0};
     char host[256] = {0};
     char path[512] = {0};
-    int port = 80;
+    i32 port = 80;
 
     if (!parseUrl(webhookUrl, scheme, sizeof(scheme), host, sizeof(host), &port, path, sizeof(path))) {
         return false;
@@ -234,7 +234,7 @@ bool DiscordWebhook_sendEmbed(const char *webhookUrl, const char *content,
                 jsonBuf[offset++] = ',';
             }
             embedFirst = false;
-            int n = snprintf(jsonBuf + offset, sizeof(jsonBuf) - offset, "\"color\":%d", (*embed).color);
+            i32 n = snprintf(jsonBuf + offset, sizeof(jsonBuf) - offset, "\"color\":%d", (*embed).color);
             if (n < 0 || offset + (bytes)n >= sizeof(jsonBuf)) return false;
             offset += (bytes)n;
         }
@@ -250,7 +250,7 @@ bool DiscordWebhook_sendEmbed(const char *webhookUrl, const char *content,
             memcpy(jsonBuf + offset, imgKey, ikLen);
             offset += ikLen;
 
-            int64_t w = Json_writeString(jsonBuf + offset, sizeof(jsonBuf) - offset, (*embed).imageUrl);
+            i64 w = Json_writeString(jsonBuf + offset, sizeof(jsonBuf) - offset, (*embed).imageUrl);
             if (w < 0) return false;
             offset += (bytes)w;
 

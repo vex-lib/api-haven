@@ -39,7 +39,7 @@
 
 /** Splits a URL into bounded scheme, host, port, and path outputs. */
 static bool parseUrl(const char *url, char *scheme, bytes schemeCap,
-                     char *host, bytes hostCap, int *port,
+                     char *host, bytes hostCap, i32 *port,
                      char *path, bytes pathCap) {
     if (!url || url[0] == '\0') return false;
 
@@ -99,19 +99,19 @@ bool APIClient_sendTelemetry(const char *endpointUrl, const APIClientTelemetry *
     char scheme[16] = {0};
     char host[256] = {0};
     char path[512] = {0};
-    int port = 80;
+    i32 port = 80;
 
     if (!parseUrl(endpointUrl, scheme, sizeof(scheme), host, sizeof(host), &port, path, sizeof(path))) {
         return false;
     }
 
     char jsonBuf[512];
-    int n = snprintf(jsonBuf, sizeof(jsonBuf),
+    i32 n = snprintf(jsonBuf, sizeof(jsonBuf),
                      "{\"state\":%d,\"frameCount\":%llu,\"activePipelines\":%d,\"totalAllocations\":%llu}",
                      (*telemetry).state,
-                     (unsigned long long)(*telemetry).frameCount,
+                     (u64)(*telemetry).frameCount,
                      (*telemetry).activePipelines,
-                     (unsigned long long)(*telemetry).totalAllocations);
+                     (u64)(*telemetry).totalAllocations);
     if (n < 0 || (bytes)n >= sizeof(jsonBuf)) {
         return false;
     }

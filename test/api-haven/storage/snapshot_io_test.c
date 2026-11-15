@@ -7,13 +7,13 @@
 #include <string.h>
 
 /* Mocks provider upload outcomes, distinguishing cancellation from ordinary pending work. */
-static int put(any context, u64 key, const u8 *data, bytes length, int cancel) {
+static i32 put(any context, u64 key, const u8 *data, bytes length, i32 cancel) {
     assert(context == nullptr && key == 1 && length == 1 && data[0] == 42);
     return cancel ? HAVEN_SNAPSHOT_REJECT : HAVEN_SNAPSHOT_PENDING;
 }
 
 /* Mocks bounded snapshot retrieval and preserves outputs when key or capacity is invalid. */
-static int get(any context, u64 key, u8 *dest, bytes capacity, bytes *outLength) {
+static i32 get(any context, u64 key, u8 *dest, bytes capacity, bytes *outLength) {
     assert(context == nullptr);
     if (key != 1 || capacity < 1)
         return HAVEN_SNAPSHOT_REJECT;
@@ -23,7 +23,7 @@ static int get(any context, u64 key, u8 *dest, bytes capacity, bytes *outLength)
 }
 
 /* Compiles and exercises the header-only callback vocabulary and its result/status contract. */
-int main() {
+i32 main() {
     _Static_assert(HAVEN_SNAPSHOT_DONE != HAVEN_SNAPSHOT_PENDING);
     _Static_assert(HAVEN_SNAPSHOT_PENDING != HAVEN_SNAPSHOT_RETRY);
     _Static_assert(HAVEN_SNAPSHOT_RETRY != HAVEN_SNAPSHOT_REJECT);

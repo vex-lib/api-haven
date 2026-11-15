@@ -26,7 +26,7 @@
  * ============================================================================
  */
 
-static int sFailures = 0;
+static i32 sFailures = 0;
 
 #define CHECK(cond)                                                    \
     do {                                                               \
@@ -37,8 +37,8 @@ static int sFailures = 0;
     } while (0)
 
 // --- stub driver (in-process; records calls, never spawns) ------------------
-static int sSpawnCalls = 0;
-static int sCancelCalls = 0;
+static i32 sSpawnCalls = 0;
+static i32 sCancelCalls = 0;
 static HarnessStatus sPollVerdict = HARNESS_STATUS_RUNNING;
 static u64 sLastTimeoutMs = 0;
 
@@ -82,7 +82,7 @@ static HarnessDriverTable stubTable() {
 }
 
 /* Verifies provider lookup and Harness job admission, capacity, polling, cancellation, and timeout behavior. */
-int main(int argc, const char **argv) {
+i32 main(i32 argc, const char **argv) {
     (discard) argc;
     (discard) argv;
 
@@ -158,7 +158,7 @@ int main(int argc, const char **argv) {
     // --- bound run + poll + cancel through the stub --------------------------
     Harness h = Harness(250);
     Harness_setEngine(&h, opencode);
-    int driverCtx = 7;
+    i32 driverCtx = 7;
     Harness_setDriver(&h, &driverCtx, stubTable());
     CHECK(Harness_getEngine(&h) == opencode);
     CHECK(Harness_getDriver(&h) == &driverCtx);

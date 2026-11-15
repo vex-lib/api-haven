@@ -80,7 +80,7 @@ static bool appendLiteral(char *out, bytes cap, bytes *used, const char *s) {
 
 /** Appends one JSON-escaped string to the current bounded output position. */
 static bool appendJsonString(char *out, bytes cap, bytes *used, const char *s) {
-    const int64_t w = Json_writeString(out + *used, cap - *used, s);
+    const i64 w = Json_writeString(out + *used, cap - *used, s);
     if (w < 0)
         return false;
     *used += (bytes)w;
@@ -148,7 +148,7 @@ bool AiChatGemini_buildRequest(const AiChatGemini *self, const AiMessage *msgs,
             base = resolved;
     }
 
-    const int printed = snprintf(urlBuf, urlCap, "%s/v1beta/models/%s:generateContent",
+    const i32 printed = snprintf(urlBuf, urlCap, "%s/v1beta/models/%s:generateContent",
                                  base, (*self).model);
     if (printed < 0 || (bytes)printed >= urlCap)
         return false;

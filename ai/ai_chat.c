@@ -75,7 +75,7 @@ static bool appendLiteral(char *out, bytes cap, bytes *used, const char *s) {
 
 /** Appends one JSON-escaped string to the current bounded output position. */
 static bool appendJsonString(char *out, bytes cap, bytes *used, const char *s) {
-    const int64_t w = Json_writeString(out + *used, cap - *used, s);
+    const i64 w = Json_writeString(out + *used, cap - *used, s);
     if (w < 0)
         return false;
     *used += (bytes)w;
@@ -132,7 +132,7 @@ bool AiChat_buildRequest(const AiChat *self, const AiMessage *msgs, u32 msgCount
             base = resolved;
     }
 
-    const int printed = snprintf(urlBuf, urlCap, "%s/chat/completions", base);
+    const i32 printed = snprintf(urlBuf, urlCap, "%s/chat/completions", base);
     if (printed < 0 || (bytes)printed >= urlCap)
         return false;
 

@@ -50,7 +50,7 @@ typedef struct AiProviderSlot {
     const char *note;        // caveat / variant note; NULL when none
     u32 quotaPerDay;    // free-tier requests/day (0 = unknown)
     u32 quotaRemaining; // free-tier remainder (0 = unknown/exhausted)
-    int64_t resetUnix;       // quota window reset epoch secs (0 = unknown)
+    i64 resetUnix;       // quota window reset epoch secs (0 = unknown)
     const char *authKind;    // credential kind label; NULL = see auth enum
     const char *licenseFamily; // license family label; NULL = UNKNOWN
 } AiProviderSlot;
@@ -88,7 +88,7 @@ AiProviderRegion AiProvider_getRegion(const AiProvider *self, const AiProviderSl
 const char *AiProvider_getNote(const AiProvider *self, const AiProviderSlot *slot);
 u32 AiProvider_getQuotaPerDay(const AiProvider *self, const AiProviderSlot *slot);
 u32 AiProvider_getQuotaRemaining(const AiProvider *self, const AiProviderSlot *slot);
-int64_t AiProvider_getResetUnix(const AiProvider *self, const AiProviderSlot *slot);
+i64 AiProvider_getResetUnix(const AiProvider *self, const AiProviderSlot *slot);
 const char *AiProvider_getAuthKind(const AiProvider *self, const AiProviderSlot *slot);
 const char *AiProvider_getLicenseFamily(const AiProvider *self, const AiProviderSlot *slot);
 

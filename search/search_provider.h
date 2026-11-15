@@ -42,7 +42,7 @@ typedef struct SearchProviderSlot {
     const char *note;         // caveat; NULL when none
     u32 quotaPerDay;     // free-tier requests/day (0 = unknown)
     u32 quotaRemaining;  // free-tier remainder (0 = unknown/exhausted)
-    int64_t resetUnix;        // quota window reset epoch secs (0 = unknown)
+    i64 resetUnix;        // quota window reset epoch secs (0 = unknown)
     const char *authKind;     // credential kind label; NULL = see auth enum
     const char *licenseFamily; // license family label; NULL = UNKNOWN
 } SearchProviderSlot;
@@ -87,7 +87,7 @@ u32 SearchProvider_getQuotaPerDay(const SearchProvider *self,
                                        const SearchProviderSlot *slot);
 u32 SearchProvider_getQuotaRemaining(const SearchProvider *self,
                                           const SearchProviderSlot *slot);
-int64_t SearchProvider_getResetUnix(const SearchProvider *self,
+i64 SearchProvider_getResetUnix(const SearchProvider *self,
                                     const SearchProviderSlot *slot);
 const char *SearchProvider_getAuthKind(const SearchProvider *self,
                                        const SearchProviderSlot *slot);

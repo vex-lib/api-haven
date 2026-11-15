@@ -40,7 +40,7 @@
 #define kLineCap 65536u
 
 /** Runs the newline-framed MCP stdio loop until stdin reaches EOF. */
-int main() {
+i32 main() {
     // Banner to stderr — never stdout (Rule: stdout is the JSON-RPC wire).
     fprintf(stderr, "vexgraph-mcp %s (stdio JSON-RPC; logs to stderr)\n",
             MCP_SERVER_VERSION);
@@ -49,7 +49,7 @@ int main() {
     static char line[kLineCap];
     char response[262144]; // worst case: full capture/app-dump escape
 
-    while (fgets(line, (int)kLineCap, stdin) != nullptr) {
+    while (fgets(line, (i32)kLineCap, stdin) != nullptr) {
         const bytes len = strlen(line);
         // Strip the trailing newline (MCP framing is newline-delimited;
         // keep CR out of the parser too).
@@ -63,7 +63,7 @@ int main() {
         // Overlong line: drain the remainder, answer a parse error so the
         // client learns the frame was rejected.
         if (lineLen == kLineCap - 1 && line[kLineCap - 2] != '\n') {
-            int c;
+            i32 c;
             while ((c = getchar()) != '\n' && c != EOF)
                 ;
             fputs("{\"jsonrpc\":\"2.0\",\"id\":null,"

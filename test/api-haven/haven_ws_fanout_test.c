@@ -19,7 +19,7 @@
  * ============================================================================
  */
 
-static int sFailures = 0;
+static i32 sFailures = 0;
 
 #define CHECK(cond)                                                    \
     do {                                                               \
@@ -72,7 +72,7 @@ static const HavenWsSource sMockSource = {
 };
 
 /* Exercises fanout attachment, fair bounded polling, slot reuse, saturation, and null safety. */
-int main(int argc, const char **argv) {
+i32 main(i32 argc, const char **argv) {
     (discard) argc;
     (discard) argv;
 

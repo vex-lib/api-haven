@@ -29,7 +29,7 @@
  * ============================================================================
  */
 
-static int sFailures = 0;
+static i32 sFailures = 0;
 
 #define CHECK(cond)                                                    \
     do {                                                               \
@@ -40,7 +40,7 @@ static int sFailures = 0;
     } while (0)
 
 /* Verifies api-haven can consume Vexspoke app, capture, and process probes through the R2 seam. */
-int main(int argc, const char **argv) {
+i32 main(i32 argc, const char **argv) {
     // --- vexspoke AppDetect through the api_haven seam ------------------------
     AppDetect *detect = AppDetect_shared();
     CHECK(detect != nullptr);

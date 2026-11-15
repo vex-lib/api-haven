@@ -40,7 +40,7 @@
 
 /** Parses the URL into bounded scheme, host, port, and path outputs. */
 static bool parseUrl(const char *url, char *scheme, bytes schemeCap,
-                     char *host, bytes hostCap, int *port,
+                     char *host, bytes hostCap, i32 *port,
                      char *path, bytes pathCap) {
     if (!url || url[0] == '\0')
         return false;
@@ -91,7 +91,7 @@ static bool parseUrl(const char *url, char *scheme, bytes schemeCap,
 }
 
 /** A transferred response is a success only on a 2xx status; redirects and errors are not. */
-static bool statusIsSuccess(int status) {
+static bool statusIsSuccess(i32 status) {
     return status >= 200 && status < 300;
 }
 
@@ -103,7 +103,7 @@ static bool perform(const char *url, const ApiAuth *auth, const char *method,
     char scheme[16] = { 0 };
     char host[256] = { 0 };
     char path[512] = { 0 };
-    int port = 80;
+    i32 port = 80;
     if (!parseUrl(url, scheme, sizeof(scheme), host, sizeof(host), &port, path, sizeof(path)))
         return false;
     char authValue[512] = { 0 };

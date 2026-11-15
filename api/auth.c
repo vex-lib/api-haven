@@ -1,9 +1,9 @@
+#include "vex.h"
 #include "api/auth.h"
 
 #include <stdio.h>
 #include <string.h>
 
-#include "annotation/annotation.h"
 
 ;;DEFINITION
 /** One request's authentication, in one struct. It exists so the Rest core never

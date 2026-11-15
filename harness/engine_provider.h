@@ -1,9 +1,7 @@
 #ifndef ENGINE_PROVIDER_H
 #define ENGINE_PROVIDER_H
 
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
+#include "vex.h"
 
 // harness/engine_provider.h — the CLI coding-engine directory (L1
 // descriptors), mirroring the ai/ provider pattern.

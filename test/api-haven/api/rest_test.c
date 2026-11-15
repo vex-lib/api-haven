@@ -10,6 +10,7 @@
  */
 #define _POSIX_C_SOURCE 200809L
 
+#include "vex.h"
 #include "test_support.h"
 
 #include <stdio.h>

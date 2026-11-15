@@ -1,9 +1,7 @@
 #ifndef SEARCH_PROVIDER_H
 #define SEARCH_PROVIDER_H
 
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
+#include "vex.h"
 
 // search/search_provider.h — the blessed web-search directory (L1
 // descriptors), mirroring the harness/app provider pattern.

@@ -1,4 +1,4 @@
-#include "annotation/annotation.h"
+#include "vex.h"
 #include "test_support.h"
 
 #include <stdio.h>

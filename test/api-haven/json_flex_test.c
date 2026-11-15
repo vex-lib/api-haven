@@ -1,3 +1,4 @@
+#include "vex.h"
 #include "net/json.h"
 #include <stdio.h>
 #include <string.h>

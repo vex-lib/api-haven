@@ -1,7 +1,7 @@
 #ifndef DB_PROVIDER_H
 #define DB_PROVIDER_H
 
-#include <stdint.h>
+#include "vex.h"
 
 // database/db_provider.h — the database data-source directory (L1
 // descriptors), mirroring the ai/ provider pattern.

@@ -1,9 +1,7 @@
 #ifndef API_AUTH_H
 #define API_AUTH_H
 
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
+#include "vex.h"
 
 // api/auth.h — credential contract for every api-haven driver (Shape B/C/D).
 //

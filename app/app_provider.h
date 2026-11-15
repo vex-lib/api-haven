@@ -1,9 +1,7 @@
 #ifndef APP_PROVIDER_H
 #define APP_PROVIDER_H
 
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
+#include "vex.h"
 
 // app/app_provider.h — the app/automation directory (L1 descriptors),
 // mirroring the harness/ engine pattern.

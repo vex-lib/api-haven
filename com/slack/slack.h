@@ -1,7 +1,7 @@
 #ifndef COM_SLACK_SLACK_H
 #define COM_SLACK_SLACK_H
 
-#include <stdbool.h>
+#include "vex.h"
 
 // com/slack/slack.h — Slack incoming-webhook driver (Shape A).
 //

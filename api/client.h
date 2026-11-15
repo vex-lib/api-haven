@@ -1,9 +1,7 @@
 #ifndef API_CLIENT_H
 #define API_CLIENT_H
 
-#include <stdbool.h>
-#include <stdint.h>
-#include <stddef.h>
+#include "vex.h"
 
 typedef struct APIClientTelemetry {
     u64 frameCount;

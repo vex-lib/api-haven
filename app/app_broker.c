@@ -1,7 +1,6 @@
-#include "annotation/annotation.h"
+#include "vex.h"
 #include "app/app_broker.h"
 
-#include <stddef.h>
 
 ;;DEFINITION
 /** The bounded app/automation action seam. It exists so a driver call cannot

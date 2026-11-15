@@ -1,10 +1,7 @@
 #ifndef ASSET_BROKER_H
 #define ASSET_BROKER_H
 
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
-#include "util/constructor.h"
+#include "vex.h"
 
 // asset/asset_broker.h — the AssetBroker class: bounded chunked-copy
 // downloader into the VexHome cache (L2 behavior, R2 api-haven).

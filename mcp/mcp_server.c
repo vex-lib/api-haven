@@ -1,4 +1,4 @@
-#include "annotation/annotation.h"
+#include "vex.h"
 #include "mcp/mcp_server.h"
 
 #include "ai/ai_provider.h"

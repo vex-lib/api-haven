@@ -1,7 +1,7 @@
 #ifndef ASSET_PROVIDER_H
 #define ASSET_PROVIDER_H
 
-#include <stdint.h>
+#include "vex.h"
 
 // asset/asset_provider.h — the external asset-source directory (L1
 // descriptors), mirroring the ai/ provider pattern under Rule 34.

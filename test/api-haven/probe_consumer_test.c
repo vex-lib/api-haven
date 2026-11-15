@@ -1,4 +1,3 @@
-#include "annotation/annotation.h"
 
 // api-haven is the CLI/MCP-facing layer: it CONSUMES vexspoke's R1
 // system probes (AppDetect, CaptureTool, ProcessProbe) instead of
@@ -7,6 +6,7 @@
 // OS probes). This test proves the seam: the probes resolve and behave
 // through api_haven's link against vexspoke.
 
+#include "vex.h"
 #include "system/app_detect.h"
 #include "system/capture_tool.h"
 #include "system/process_probe.h"

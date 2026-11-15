@@ -1,12 +1,10 @@
 #ifndef MCP_SERVER_H
 #define MCP_SERVER_H
 
+#include "vex.h"
 #include "app/app_broker.h"
 #include "harness/harness.h"
 
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
 
 // mcp/mcp_server.h — Model Context Protocol server engine (JSON-RPC 2.0).
 //

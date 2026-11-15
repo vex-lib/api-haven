@@ -1,10 +1,7 @@
 #ifndef DB_SQLITE_FILE_H
 #define DB_SQLITE_FILE_H
 
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
-#include "util/constructor.h"
+#include "vex.h"
 
 // database/db_sqlite_file.h — the DbSqliteFile class: catalog-only
 // read-only SQLite file descriptor (L1 metadata, R2 api-haven).

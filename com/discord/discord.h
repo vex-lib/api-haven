@@ -1,9 +1,7 @@
 #ifndef COM_DISCORD_DISCORD_H
 #define COM_DISCORD_DISCORD_H
 
-#include <stdbool.h>
-#include <stdint.h>
-#include <stddef.h>
+#include "vex.h"
 
 typedef struct DiscordEmbed {
     const char *title;

@@ -1,8 +1,7 @@
 #ifndef HAVEN_SNAPSHOT_IO_H
 #define HAVEN_SNAPSHOT_IO_H
 
-#include <stddef.h>
-#include <stdint.h>
+#include "vex.h"
 
 /* Provider-neutral vocabulary, not a Drive implementation. Host owns context,
  * credentials, transport and scheduling. Callbacks must return in bounded slices

@@ -1,7 +1,7 @@
 #ifndef AI_PROVIDER_H
 #define AI_PROVIDER_H
 
-#include <stdint.h>
+#include "vex.h"
 
 // ai/ai_provider.h — the AI provider directory (L1 descriptor table).
 //

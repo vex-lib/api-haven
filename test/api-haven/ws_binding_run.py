@@ -29,7 +29,7 @@ SOURCES = [
     (CPU / "src/security/sha1.c", CPU),
     (CPU / "src/security/secure_random.c", CPU),
     (CPU / "src/lang/str.c", CPU),
-    (CPU / "src/atomic/spin.c", CPU),
+    (ENGINE / "src/atomic/spin_lock.c", ENGINE),
     (ENGINE / "src/nio/mem.c", ENGINE),
 ]
 

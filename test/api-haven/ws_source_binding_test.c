@@ -33,14 +33,14 @@ static const HavenWsSource kBinding = {
     .close = VexWsSource_close,
 };
 
-_Static_assert(_Generic(kBinding.connect, bool (*)(any) : 1, default : 0),
+_Static_assert(_Generic(kBinding.connect, bool (*) (any) : 1, default : 0),
                "connect must be bool(any)");
-_Static_assert(_Generic(kBinding.poll, u32 (*)(any, u64) : 1, default : 0),
+_Static_assert(_Generic(kBinding.poll, u32 (*) (any, u64) : 1, default : 0),
                "poll must be u32(any, u64)");
-_Static_assert(_Generic(kBinding.send, bool (*)(any, const u8*, u32) : 1,
+_Static_assert(_Generic(kBinding.send, bool (*) (any, const u8*, u32) : 1,
                         default : 0),
                "send must be bool(any, const u8*, u32)");
-_Static_assert(_Generic(kBinding.close, fn (*)(any) : 1, default : 0),
+_Static_assert(_Generic(kBinding.close, fn (*) (any) : 1, default : 0),
                "close must be fn(any)");
 
 static i32 g_failures = 0;

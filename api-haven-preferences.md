@@ -2,16 +2,16 @@
 
 ## Constitution Link
 
-gist.md (`../../metadata/gists/preferences/gist.md`) is the compressed law list; all universal laws bind this repository. Read one on demand: `./tools/prefs law "<title>"`. Universal laws are inherited, never restated.
+gist.md (`../../../metadata/gists/preferences/gist.md`) is the compressed law list; all universal laws bind this repository. Read one on demand: `./tools/prefs law "<title>"`. Universal laws are inherited, never restated.
 
-Tier: core (R3 API Connector). Owns: connector contracts, telemetry loops, asset provider descriptors. Borrows: Vexspoke CPU/behavior, Relational Engine memory/storage.
+Tier: core / tool (API Connector). Owns: connector contracts, telemetry loops, asset provider descriptors. Borrows: Vexspoke CPU/behavior, Relational Engine memory/storage.
 
 ## Exclusive Laws
 
 | Law Title | Scope | Enforcement |
-| **Asset Sourcing Law** | R3 API Connector asset providers | Mandatory for `api-haven` |
-| **Quarantined Attic Isolation Law** | R3 API Connector `attic/` | Mandatory for `api-haven` |
-| **Zero-Allocation Telemetry Law** | R3 API Connector telemetry | Mandatory for `api-haven` |
+| **Asset Sourcing Law** | core API Connector asset providers | Mandatory for `api-haven` |
+| **Quarantined Attic Isolation Law** | API Connector `attic/` | Mandatory for `api-haven` |
+| **Zero-Allocation Telemetry Law** | API Connector telemetry | Mandatory for `api-haven` |
 
 ### Asset Sourcing Law
 
@@ -22,7 +22,7 @@ Tier: core (R3 API Connector). Owns: connector contracts, telemetry loops, asset
 * Every result is one normalized AssetRow: provider slug, id, title, author, license family, preview/download URLs, attribution, dimensions/duration, size; UI never sees provider-specific shapes.
 * License is a field, not a footnote: every row carries a license family; render attribution before import; project export fails closed on UNKNOWN.
 * Downloads land in the cache (`AssetBroker_downloadToCache` streams to `VexHome_cache(<subsystem>)` with bounded timeouts); track cache files as shim state; close before `Memory_freeAll`; no exec or writes outside cache.
-* The UI seam is fn-pointers: Darling hosts AssetBrowser and never includes api-haven; R5 binds an AssetSource fn-pointer table (opaque handle + callbacks).
+* The UI seam is fn-pointers: Darling hosts AssetBrowser and never includes api-haven; an `app` binds an AssetSource fn-pointer table (opaque handle + callbacks).
 * MCP surface (`McpServer`) hosts `asset_source_lookup`/`asset_search`/`asset_download`; writes stay cache-confined; timeouts bounded; no exec.
 * API keys come via vexspoke Keychain or `ASSET_KEY_<SLUG>` env rendered by ApiAuth; never arena, preferences or repo.
 

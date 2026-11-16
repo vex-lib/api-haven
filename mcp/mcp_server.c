@@ -646,7 +646,7 @@ static bool encodeQueryComponent(const char *src, char *out, bytes cap) {
     if (!src || !out || cap == 0)
         return false;
     bytes o = 0;
-    for (const u8 *p = (const u8 *)src; *p; p++) {
+    for (const u8 *p = (const u8*) src; *p; p++) {
         u8 c = *p;
         bool unreserved = (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
                           (c >= '0' && c <= '9') || c == '-' || c == '_' ||

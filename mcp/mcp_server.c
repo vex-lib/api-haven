@@ -162,6 +162,29 @@ typedef struct McpResourceSlot {
     McpToolFn render;
 } McpResourceSlot;
 
+;;GETTER
+static inline char *McpServer_protocolVersionMut(McpServer *self) { return (*self).protocolVersion; }
+;;SETTER
+static inline fn McpServer_setInitialized(McpServer *self, i32 initialized) { (*self).initialized = initialized; }
+;;GETTER
+static inline u32 HarnessJob_jobId(const HarnessJob *self) { return (*self).jobId; }
+;;GETTER
+static inline const EngineProviderSlot *HarnessJob_engine(const HarnessJob *self) { return (*self).engine; }
+;;GETTER
+static inline u32 AppJob_jobId(const AppJob *self) { return (*self).jobId; }
+;;GETTER
+static inline bytes AppJob_outLen(const AppJob *self) { return (*self).outLen; }
+;;GETTER
+static inline const AppProviderSlot *AppJob_target(const AppJob *self) { return (*self).target; }
+;;GETTER
+static inline McpToolFn McpResourceSlot_render(const McpResourceSlot *self) { return (*self).render; }
+;;GETTER
+static inline const char *McpResourceSlot_uri(const McpResourceSlot *self) { return (*self).uri; }
+;;GETTER
+static inline const char *McpResourceSlot_mimeType(const McpResourceSlot *self) { return (*self).mimeType; }
+;;GETTER
+static inline McpToolFn McpToolSlot_handle(const McpToolSlot *self) { return (*self).handle; }
+
 // --- static tool handler forward declarations ---
 static bool renderAppDetect(const JsonDoc *doc, JsonRef args,
                             char *out, bytes cap);
@@ -950,9 +973,9 @@ static bool respondInitializeReal(McpServer *self, const JsonDoc *doc,
                 chosen = "2025-06-18";
         }
     }
-    snprintf((*self).protocolVersion, sizeof((*self).protocolVersion), "%s",
+    snprintf(McpServer_protocolVersionMut(self), sizeof(((McpServer) {0}).protocolVersion), "%s",
              chosen);
-    (*self).initialized = 1;
+    McpServer_setInitialized(self, 1);
     bytes pos = 0;
     appendStr(out, cap, &pos, "{\"jsonrpc\":\"2.0\",\"id\":");
     appendStr(out, cap, &pos, id);
@@ -960,7 +983,7 @@ static bool respondInitializeReal(McpServer *self, const JsonDoc *doc,
               ",\"result\":{\"protocolVersion\":\"%s\","
               "\"capabilities\":{\"tools\":{},\"resources\":{}},"
               "\"serverInfo\":{\"name\":\"%s\",\"version\":\"%s\"}}}",
-              (*self).protocolVersion, (*self).name, (*self).version);
+              McpServer_getProtocolVersion(self), McpServer_getName(self), McpServer_getVersion(self));
     return true;
 }
 
@@ -1306,7 +1329,7 @@ static bool renderHarnessPoll(const JsonDoc *doc, JsonRef args,
         u32 count = Harness_getJobCount(&sHarnessJobs);
         for (u32 i = 0; i < count; i++) {
             const HarnessJob *cand = Harness_getJobAt(&sHarnessJobs, i);
-            if (cand && (*cand).jobId == jobId) {
+            if (cand && HarnessJob_jobId(cand) == jobId) {
                 job = cand;
                 break;
             }
@@ -1317,8 +1340,9 @@ static bool renderHarnessPoll(const JsonDoc *doc, JsonRef args,
         return false;
     }
     EngineProvider *dir = EngineProvider_shared();
-    const char *engineSlug = (*job).engine
-        ? EngineProvider_getSlug(dir, (*job).engine) : "?";
+    const EngineProviderSlot *engine = HarnessJob_engine(job);
+    const char *engineSlug = engine
+        ? EngineProvider_getSlug(dir, engine) : "?";
     appendFmt(out, cap, &pos, "job %u: %s engine=%s", jobId,
               harnessStatusName(st), engineSlug);
     return true;
@@ -1417,9 +1441,9 @@ static bool renderAppAction(const JsonDoc *doc, JsonRef args,
     u32 count = AppBroker_getJobCount(&sAppJobs);
     for (u32 i = 0; i < count; i++) {
         const AppJob *cand = AppBroker_getJobAt(&sAppJobs, i);
-        if (cand && (*cand).jobId == jobId) {
+        if (cand && AppJob_jobId(cand) == jobId) {
             job = cand;
-            outLen = (*cand).outLen;
+            outLen = AppJob_outLen(cand);
             break;
         }
     }
@@ -1447,7 +1471,7 @@ static bool renderAppPoll(const JsonDoc *doc, JsonRef args,
     u32 count = AppBroker_getJobCount(&sAppJobs);
     for (u32 i = 0; i < count; i++) {
         const AppJob *cand = AppBroker_getJobAt(&sAppJobs, i);
-        if (cand && (*cand).jobId == jobId) {
+        if (cand && AppJob_jobId(cand) == jobId) {
             job = cand;
             break;
         }
@@ -1457,8 +1481,9 @@ static bool renderAppPoll(const JsonDoc *doc, JsonRef args,
         return false;
     }
     AppProvider *dir = AppProvider_shared();
-    const char *targetSlug = (*job).target
-        ? AppProvider_getSlug(dir, (*job).target) : "?";
+    const AppProviderSlot *target = AppJob_target(job);
+    const char *targetSlug = target
+        ? AppProvider_getSlug(dir, target) : "?";
     appendFmt(out, cap, &pos, "job %u: %s target=%s", jobId,
               appStatusName(st), targetSlug);
     return true;
@@ -1884,7 +1909,7 @@ bool McpServer_handleLine(McpServer *self, const char *line, bytes lineLen,
         }
         char body[65536];
         body[0] = '\0';
-        (discard) (*res).render(&doc, -1, body, sizeof(body));
+        (discard) McpResourceSlot_render(res)(&doc, -1, body, sizeof(body));
         char escaped[131072];
         escapeJsonText(body, escaped, sizeof(escaped));
         bytes pos = 0;
@@ -1893,7 +1918,7 @@ bool McpServer_handleLine(McpServer *self, const char *line, bytes lineLen,
         appendFmt(outBuf, outCap, &pos,
                   ",\"result\":{\"contents\":[{\"uri\":\"%s\",\"mimeType\":"
                   "\"%s\",\"text\":\"%s\"}]}}",
-                  (*res).uri, (*res).mimeType, escaped);
+                  McpResourceSlot_uri(res), McpResourceSlot_mimeType(res), escaped);
         return true;
     }
     if (methodIs(&doc, method, "tools/call")) {
@@ -1918,7 +1943,7 @@ bool McpServer_handleLine(McpServer *self, const char *line, bytes lineLen,
         JsonRef args = Json_member(&doc, params, "arguments");
         char body[65536];
         body[0] = '\0';
-        const bool ok = (*tool).handle(&doc, args, body, sizeof(body));
+        const bool ok = McpToolSlot_handle(tool)(&doc, args, body, sizeof(body));
         char escaped[131072];
         escapeJsonText(body, escaped, sizeof(escaped));
         bytes pos = 0;
@@ -1951,21 +1976,25 @@ McpServer *McpServer_shared() {
 // GETTERS
 
 /** Returns the configured server name, or nullptr for a null receiver. */
+;;GETTER
 const char *McpServer_getName(const McpServer *self) {
     return self ? (*self).name : nullptr;
 }
 
 /** Returns the configured server version, or nullptr for a null receiver. */
+;;GETTER
 const char *McpServer_getVersion(const McpServer *self) {
     return self ? (*self).version : nullptr;
 }
 
 /** Returns the negotiated protocol version, or nullptr before initialization. */
+;;GETTER
 const char *McpServer_getProtocolVersion(const McpServer *self) {
     return self ? (*self).protocolVersion : nullptr;
 }
 
 /** Reports whether the server has completed its initialize handshake. */
+;;GETTER
 bool McpServer_isInitialized(const McpServer *self) {
     return self && (*self).initialized != 0;
 }

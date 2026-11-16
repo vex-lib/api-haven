@@ -35,14 +35,23 @@ typedef struct MockTransport {
     u32 framesToDeliver;
 } MockTransport;
 
+;;GETTER
+static inline u32 MockTransport_pollCount(const MockTransport *self) { return (*self).pollCount; }
+;;SETTER
+static inline fn MockTransport_setPollCount(MockTransport *self, u32 pollCount) { (*self).pollCount = pollCount; }
+;;SETTER
+static inline fn MockTransport_setLastBudget(MockTransport *self, u64 lastBudget) { (*self).lastBudget = lastBudget; }
+;;GETTER
+static inline u32 MockTransport_framesToDeliver(const MockTransport *self) { return (*self).framesToDeliver; }
+
 /* Records each assigned poll budget and returns the mock transport's queued frame count. */
 static u32 mockPoll(any handle, u64 budgetMs) {
     if (!handle)
         return 0;
     MockTransport *mock = (MockTransport*) handle;
-    (*mock).pollCount++;
-    (*mock).lastBudget = budgetMs;
-    return (*mock).framesToDeliver;
+    MockTransport_setPollCount(mock, MockTransport_pollCount(mock) + 1);
+    MockTransport_setLastBudget(mock, budgetMs);
+    return MockTransport_framesToDeliver(mock);
 }
 
 /* Supplies successful connect behavior for the fanout source table. */

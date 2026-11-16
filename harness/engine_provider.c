@@ -168,7 +168,8 @@ const EngineProviderSlot *EngineProvider_get(const EngineProvider *self, const c
         return nullptr;
     for (u32 i = 0; i < kEngineProviderCount; i++) {
         const EngineProviderSlot *slot = &kEngineProviders[i];
-        if ((*slot).slug && strcmp((*slot).slug, slug) == 0)
+        const char *rowSlug = EngineProvider_getSlug(self, slot);
+        if (rowSlug && strcmp(rowSlug, slug) == 0)
             return slot;
     }
     return nullptr;
@@ -180,7 +181,7 @@ bool EngineProvider_resolveCli(const EngineProvider *self,
                                char *outBuf, bytes outCap) {
     if (!self || !slot || !outBuf || outCap == 0)
         return false;
-    const char *cli = (*slot).cliName;
+    const char *cli = EngineProvider_getCliName(self, slot);
     if (!cli)
         return false;
     bytes len = strlen(cli);
@@ -193,6 +194,7 @@ bool EngineProvider_resolveCli(const EngineProvider *self,
 // GETTERS
 
 /** Returns the slot's canonical slug, or nullptr when no slot is supplied. */
+;;GETTER
 const char *EngineProvider_getSlug(const EngineProvider *self,
                                    const EngineProviderSlot *slot) {
     (discard) self;
@@ -200,6 +202,7 @@ const char *EngineProvider_getSlug(const EngineProvider *self,
 }
 
 /** Returns the slot's display label, or nullptr when no slot is supplied. */
+;;GETTER
 const char *EngineProvider_getDisplayName(const EngineProvider *self,
                                           const EngineProviderSlot *slot) {
     (discard) self;
@@ -207,6 +210,7 @@ const char *EngineProvider_getDisplayName(const EngineProvider *self,
 }
 
 /** Returns the slot's CLI executable name, or nullptr when absent. */
+;;GETTER
 const char *EngineProvider_getCliName(const EngineProvider *self,
                                       const EngineProviderSlot *slot) {
     (discard) self;
@@ -214,6 +218,7 @@ const char *EngineProvider_getCliName(const EngineProvider *self,
 }
 
 /** Returns the slot's transport family, or the documented safe default. */
+;;GETTER
 EngineProviderFamily EngineProvider_getFamily(const EngineProvider *self,
                                               const EngineProviderSlot *slot) {
     if (!self || !slot)
@@ -222,6 +227,7 @@ EngineProviderFamily EngineProvider_getFamily(const EngineProvider *self,
 }
 
 /** Returns the slot's credential scheme, or the documented safe default. */
+;;GETTER
 EngineProviderAuth EngineProvider_getAuth(const EngineProvider *self,
                                           const EngineProviderSlot *slot) {
     if (!self || !slot)
@@ -230,6 +236,7 @@ EngineProviderAuth EngineProvider_getAuth(const EngineProvider *self,
 }
 
 /** Returns the slot's optional provider note. */
+;;GETTER
 const char *EngineProvider_getNote(const EngineProvider *self,
                                    const EngineProviderSlot *slot) {
     (discard) self;

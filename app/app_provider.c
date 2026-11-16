@@ -235,7 +235,8 @@ const AppProviderSlot *AppProvider_get(const AppProvider *self, const char *slug
         return nullptr;
     for (u32 i = 0; i < kAppProviderCount; i++) {
         const AppProviderSlot *slot = &kAppProviders[i];
-        if ((*slot).slug && strcmp((*slot).slug, slug) == 0)
+        const char *rowSlug = AppProvider_getSlug(self, slot);
+        if (rowSlug && strcmp(rowSlug, slug) == 0)
             return slot;
     }
     return nullptr;
@@ -247,7 +248,7 @@ bool AppProvider_resolveTarget(const AppProvider *self,
                                char *outBuf, bytes outCap) {
     if (!self || !slot || !outBuf || outCap == 0)
         return false;
-    const char *target = (*slot).bundleIdOrScheme;
+    const char *target = AppProvider_getBundleIdOrScheme(self, slot);
     if (!target)
         return false;
     bytes len = strlen(target);
@@ -260,6 +261,7 @@ bool AppProvider_resolveTarget(const AppProvider *self,
 // GETTERS
 
 /** Returns the slot's canonical slug, or nullptr when no slot is supplied. */
+;;GETTER
 const char *AppProvider_getSlug(const AppProvider *self,
                                 const AppProviderSlot *slot) {
     (discard) self;
@@ -267,6 +269,7 @@ const char *AppProvider_getSlug(const AppProvider *self,
 }
 
 /** Returns the slot's display label, or nullptr when no slot is supplied. */
+;;GETTER
 const char *AppProvider_getDisplayName(const AppProvider *self,
                                        const AppProviderSlot *slot) {
     (discard) self;
@@ -274,6 +277,7 @@ const char *AppProvider_getDisplayName(const AppProvider *self,
 }
 
 /** Returns the slot's transport family, or the documented safe default. */
+;;GETTER
 AppProviderFamily AppProvider_getFamily(const AppProvider *self,
                                         const AppProviderSlot *slot) {
     if (!self || !slot)
@@ -282,6 +286,7 @@ AppProviderFamily AppProvider_getFamily(const AppProvider *self,
 }
 
 /** Returns the slot's authentication scheme, or the documented safe default. */
+;;GETTER
 AppProviderAuth AppProvider_getAuth(const AppProvider *self,
                                     const AppProviderSlot *slot) {
     if (!self || !slot)
@@ -290,6 +295,7 @@ AppProviderAuth AppProvider_getAuth(const AppProvider *self,
 }
 
 /** Returns the slot's bundle identifier, CLI name, or URL target string. */
+;;GETTER
 const char *AppProvider_getBundleIdOrScheme(const AppProvider *self,
                                             const AppProviderSlot *slot) {
     (discard) self;
@@ -297,6 +303,7 @@ const char *AppProvider_getBundleIdOrScheme(const AppProvider *self,
 }
 
 /** Returns the slot's optional provider caveat. */
+;;GETTER
 const char *AppProvider_getNote(const AppProvider *self,
                                 const AppProviderSlot *slot) {
     (discard) self;

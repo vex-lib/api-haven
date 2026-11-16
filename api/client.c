@@ -90,6 +90,15 @@ static bool parseUrl(const char *url, char *scheme, bytes schemeCap,
     return true;
 }
 
+;;GETTER
+static inline i32 APIClientTelemetry_state(const APIClientTelemetry *self) { return (*self).state; }
+;;GETTER
+static inline u64 APIClientTelemetry_frameCount(const APIClientTelemetry *self) { return (*self).frameCount; }
+;;GETTER
+static inline i32 APIClientTelemetry_activePipelines(const APIClientTelemetry *self) { return (*self).activePipelines; }
+;;GETTER
+static inline u64 APIClientTelemetry_totalAllocations(const APIClientTelemetry *self) { return (*self).totalAllocations; }
+
 /** Serializes telemetry into bounded JSON and reports HTTP success. */
 bool APIClient_sendTelemetry(const char *endpointUrl, const APIClientTelemetry *telemetry) {
     if (!endpointUrl || !telemetry) {
@@ -108,10 +117,10 @@ bool APIClient_sendTelemetry(const char *endpointUrl, const APIClientTelemetry *
     char jsonBuf[512];
     i32 n = snprintf(jsonBuf, sizeof(jsonBuf),
                      "{\"state\":%d,\"frameCount\":%llu,\"activePipelines\":%d,\"totalAllocations\":%llu}",
-                     (*telemetry).state,
-                     (u64)(*telemetry).frameCount,
-                     (*telemetry).activePipelines,
-                     (u64)(*telemetry).totalAllocations);
+                     APIClientTelemetry_state(telemetry),
+                     (u64)APIClientTelemetry_frameCount(telemetry),
+                     APIClientTelemetry_activePipelines(telemetry),
+                     (u64)APIClientTelemetry_totalAllocations(telemetry));
     if (n < 0 || (bytes)n >= sizeof(jsonBuf)) {
         return false;
     }

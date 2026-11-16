@@ -109,12 +109,18 @@ AiChat AiChat_2(const char *model, const char *apiKey) {
 
 // CORE FUNCTIONS
 
+;;GETTER
+static inline const char *AiMessage_role(const AiMessage *self) { return (*self).role; }
+;;GETTER
+static inline const char *AiMessage_content(const AiMessage *self) { return (*self).content; }
+
 /** Renders the OpenAI-compatible request URL, JSON body, and auth descriptor. */
 bool AiChat_buildRequest(const AiChat *self, const AiMessage *msgs, u32 msgCount,
                          char *bodyBuf, bytes bodyCap,
                          char *urlBuf, bytes urlCap,
                          ApiAuth *authOut) {
-    if (!self || !bodyBuf || !urlBuf || !authOut || !(*self).model)
+    const char *model = AiChat_getModel(self);
+    if (!self || !bodyBuf || !urlBuf || !authOut || !model)
         return false;
     if (!msgs && msgCount > 0)
         return false;
@@ -123,11 +129,14 @@ bool AiChat_buildRequest(const AiChat *self, const AiMessage *msgs, u32 msgCount
 
     // Resolve endpoint: override > peer native base > family default > gateway.
     const char *base = "https://openrouter.ai/api/v1";
-    if ((*self).baseUrlOverride)
-        base = (*self).baseUrlOverride;
-    else if ((*self).peer) {
-        const AiProvider *table = (*self).provider ? (*self).provider : AiProvider_shared();
-        const char *resolved = AiProvider_resolveBaseUrl(table, (*self).peer);
+    const char *baseUrlOverride = AiChat_getBaseUrl(self);
+    const AiProviderSlot *peer = AiChat_getPeer(self);
+    if (baseUrlOverride)
+        base = baseUrlOverride;
+    else if (peer) {
+        const AiProvider *provider = AiChat_getProvider(self);
+        const AiProvider *table = provider ? provider : AiProvider_shared();
+        const char *resolved = AiProvider_resolveBaseUrl(table, peer);
         if (resolved)
             base = resolved;
     }
@@ -137,8 +146,9 @@ bool AiChat_buildRequest(const AiChat *self, const AiMessage *msgs, u32 msgCount
         return false;
 
     // Credential: peer row may dictate scheme; only Bearer is modeled today.
-    if ((*self).apiKey)
-        (*authOut) = ApiAuth_bearer((*self).apiKey);
+    const char *apiKey = AiChat_getApiKey(self);
+    if (apiKey)
+        (*authOut) = ApiAuth_bearer(apiKey);
     else
         (*authOut) = ApiAuth_none();
 
@@ -146,7 +156,7 @@ bool AiChat_buildRequest(const AiChat *self, const AiMessage *msgs, u32 msgCount
     bytes used = 0;
     if (!appendLiteral(bodyBuf, bodyCap, &used, "{\"model\":"))
         return false;
-    if (!appendJsonString(bodyBuf, bodyCap, &used, (*self).model))
+    if (!appendJsonString(bodyBuf, bodyCap, &used, model))
         return false;
     if (!appendLiteral(bodyBuf, bodyCap, &used, ",\"messages\":["))
         return false;
@@ -156,11 +166,11 @@ bool AiChat_buildRequest(const AiChat *self, const AiMessage *msgs, u32 msgCount
             return false;
         if (!appendLiteral(bodyBuf, bodyCap, &used, "{\"role\":"))
             return false;
-        if (!appendJsonString(bodyBuf, bodyCap, &used, (*m).role))
+        if (!appendJsonString(bodyBuf, bodyCap, &used, AiMessage_role(m)))
             return false;
         if (!appendLiteral(bodyBuf, bodyCap, &used, ",\"content\":"))
             return false;
-        if (!appendJsonString(bodyBuf, bodyCap, &used, (*m).content))
+        if (!appendJsonString(bodyBuf, bodyCap, &used, AiMessage_content(m)))
             return false;
         if (!appendLiteral(bodyBuf, bodyCap, &used, "}"))
             return false;
@@ -211,6 +221,7 @@ fn AiChat_setApiKey(AiChat *self, const char *apiKey) {
 }
 
 /** Sets an optional borrowed endpoint override. */
+;;SETTER
 fn AiChat_setBaseUrl(AiChat *self, const char *baseUrlOverride) {
     if (self)
         (*self).baseUrlOverride = baseUrlOverride;
@@ -219,26 +230,31 @@ fn AiChat_setBaseUrl(AiChat *self, const char *baseUrlOverride) {
 // GETTERS
 
 /** Returns the configured provider directory, or nullptr for a null receiver. */
+;;GETTER
 const AiProvider *AiChat_getProvider(const AiChat *self) {
     return self ? (*self).provider : nullptr;
 }
 
 /** Returns the selected provider row, or nullptr when unset or self is null. */
+;;GETTER
 const AiProviderSlot *AiChat_getPeer(const AiChat *self) {
     return self ? (*self).peer : nullptr;
 }
 
 /** Returns the borrowed model identifier, or nullptr when unset. */
+;;GETTER
 const char *AiChat_getModel(const AiChat *self) {
     return self ? (*self).model : nullptr;
 }
 
 /** Returns the borrowed API key, or nullptr when unset. */
+;;GETTER
 const char *AiChat_getApiKey(const AiChat *self) {
     return self ? (*self).apiKey : nullptr;
 }
 
 /** Returns the endpoint override, or nullptr when unset. */
+;;GETTER
 const char *AiChat_getBaseUrl(const AiChat *self) {
     return self ? (*self).baseUrlOverride : nullptr;
 }

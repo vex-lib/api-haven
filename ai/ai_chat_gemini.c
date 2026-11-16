@@ -126,11 +126,17 @@ AiChatGemini AiChatGemini_2(const char *model, const char *apiKey) {
 
 // CORE FUNCTIONS
 
+;;GETTER
+static inline const char *AiMessage_role(const AiMessage *self) { return (*self).role; }
+;;GETTER
+static inline const char *AiMessage_content(const AiMessage *self) { return (*self).content; }
+
 /** Renders the Gemini generateContent URL, JSON body, and API-key auth descriptor. */
 bool AiChatGemini_buildRequest(const AiChatGemini *self, const AiMessage *msgs,
                                u32 msgCount, char *bodyBuf, bytes bodyCap,
                                char *urlBuf, bytes urlCap, ApiAuth *authOut) {
-    if (!self || !bodyBuf || !urlBuf || !authOut || !(*self).model)
+    const char *model = AiChatGemini_getModel(self);
+    if (!self || !bodyBuf || !urlBuf || !authOut || !model)
         return false;
     if (!msgs && msgCount > 0)
         return false;
@@ -139,23 +145,27 @@ bool AiChatGemini_buildRequest(const AiChatGemini *self, const AiMessage *msgs,
 
     // Resolve endpoint: override > peer native base > Google default.
     const char *base = "https://generativelanguage.googleapis.com";
-    if ((*self).baseUrlOverride)
-        base = (*self).baseUrlOverride;
-    else if ((*self).peer) {
-        const AiProvider *table = (*self).provider ? (*self).provider : AiProvider_shared();
-        const char *resolved = AiProvider_resolveBaseUrl(table, (*self).peer);
+    const char *baseUrlOverride = AiChatGemini_getBaseUrl(self);
+    const AiProviderSlot *peer = AiChatGemini_getPeer(self);
+    if (baseUrlOverride)
+        base = baseUrlOverride;
+    else if (peer) {
+        const AiProvider *provider = AiChatGemini_getProvider(self);
+        const AiProvider *table = provider ? provider : AiProvider_shared();
+        const char *resolved = AiProvider_resolveBaseUrl(table, peer);
         if (resolved)
             base = resolved;
     }
 
     const i32 printed = snprintf(urlBuf, urlCap, "%s/v1beta/models/%s:generateContent",
-                                 base, (*self).model);
+                                 base, model);
     if (printed < 0 || (bytes)printed >= urlCap)
         return false;
 
     // Credential: Gemini wire takes x-goog-api-key, never Bearer.
-    if ((*self).apiKey)
-        (*authOut) = ApiAuth_apiKey("x-goog-api-key", (*self).apiKey);
+    const char *apiKey = AiChatGemini_getApiKey(self);
+    if (apiKey)
+        (*authOut) = ApiAuth_apiKey("x-goog-api-key", apiKey);
     else
         (*authOut) = ApiAuth_none();
 
@@ -169,11 +179,11 @@ bool AiChatGemini_buildRequest(const AiChatGemini *self, const AiMessage *msgs,
             return false;
         if (!appendLiteral(bodyBuf, bodyCap, &used, "{\"role\":"))
             return false;
-        if (!appendJsonString(bodyBuf, bodyCap, &used, mapRole((*m).role)))
+        if (!appendJsonString(bodyBuf, bodyCap, &used, mapRole(AiMessage_role(m))))
             return false;
         if (!appendLiteral(bodyBuf, bodyCap, &used, ",\"parts\":[{\"text\":"))
             return false;
-        if (!appendJsonString(bodyBuf, bodyCap, &used, (*m).content))
+        if (!appendJsonString(bodyBuf, bodyCap, &used, AiMessage_content(m)))
             return false;
         if (!appendLiteral(bodyBuf, bodyCap, &used, "}]}"))
             return false;
@@ -224,6 +234,7 @@ fn AiChatGemini_setApiKey(AiChatGemini *self, const char *apiKey) {
 }
 
 /** Sets an optional borrowed endpoint override. */
+;;SETTER
 fn AiChatGemini_setBaseUrl(AiChatGemini *self, const char *baseUrlOverride) {
     if (self)
         (*self).baseUrlOverride = baseUrlOverride;
@@ -232,26 +243,31 @@ fn AiChatGemini_setBaseUrl(AiChatGemini *self, const char *baseUrlOverride) {
 // GETTERS
 
 /** Returns the configured provider directory, or nullptr for a null receiver. */
+;;GETTER
 const AiProvider *AiChatGemini_getProvider(const AiChatGemini *self) {
     return self ? (*self).provider : nullptr;
 }
 
 /** Returns the selected provider row, or nullptr when unset or self is null. */
+;;GETTER
 const AiProviderSlot *AiChatGemini_getPeer(const AiChatGemini *self) {
     return self ? (*self).peer : nullptr;
 }
 
 /** Returns the borrowed model identifier, or nullptr when unset. */
+;;GETTER
 const char *AiChatGemini_getModel(const AiChatGemini *self) {
     return self ? (*self).model : nullptr;
 }
 
 /** Returns the borrowed API key, or nullptr when unset. */
+;;GETTER
 const char *AiChatGemini_getApiKey(const AiChatGemini *self) {
     return self ? (*self).apiKey : nullptr;
 }
 
 /** Returns the endpoint override, or nullptr when unset. */
+;;GETTER
 const char *AiChatGemini_getBaseUrl(const AiChatGemini *self) {
     return self ? (*self).baseUrlOverride : nullptr;
 }

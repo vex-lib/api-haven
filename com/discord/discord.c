@@ -173,6 +173,15 @@ bool DiscordWebhook_sendText(const char *webhookUrl, const char *content,
     return resp.ok && resp.status >= 200 && resp.status < 300;
 }
 
+;;GETTER
+static inline const char *DiscordEmbed_title(const DiscordEmbed *self) { return (*self).title; }
+;;GETTER
+static inline const char *DiscordEmbed_description(const DiscordEmbed *self) { return (*self).description; }
+;;GETTER
+static inline i32 DiscordEmbed_color(const DiscordEmbed *self) { return (*self).color; }
+;;GETTER
+static inline const char *DiscordEmbed_imageUrl(const DiscordEmbed *self) { return (*self).imageUrl; }
+
 /** Sends a Discord webhook payload with optional embed fields. */
 bool DiscordWebhook_sendEmbed(const char *webhookUrl, const char *content,
                               const char *username, const char *avatarUrl,
@@ -220,25 +229,29 @@ bool DiscordWebhook_sendEmbed(const char *webhookUrl, const char *content,
         offset += kLen;
 
         bool embedFirst = true;
-        if ((*embed).title) {
-            if (!appendStringField(jsonBuf, sizeof(jsonBuf), &offset, "title", (*embed).title, &embedFirst))
+        const char *title = DiscordEmbed_title(embed);
+        if (title) {
+            if (!appendStringField(jsonBuf, sizeof(jsonBuf), &offset, "title", title, &embedFirst))
                 return false;
         }
-        if ((*embed).description) {
-            if (!appendStringField(jsonBuf, sizeof(jsonBuf), &offset, "description", (*embed).description, &embedFirst))
+        const char *description = DiscordEmbed_description(embed);
+        if (description) {
+            if (!appendStringField(jsonBuf, sizeof(jsonBuf), &offset, "description", description, &embedFirst))
                 return false;
         }
-        if ((*embed).color != 0) {
+        i32 color = DiscordEmbed_color(embed);
+        if (color != 0) {
             if (!embedFirst) {
                 if (offset + 1 >= sizeof(jsonBuf)) return false;
                 jsonBuf[offset++] = ',';
             }
             embedFirst = false;
-            i32 n = snprintf(jsonBuf + offset, sizeof(jsonBuf) - offset, "\"color\":%d", (*embed).color);
+            i32 n = snprintf(jsonBuf + offset, sizeof(jsonBuf) - offset, "\"color\":%d", color);
             if (n < 0 || offset + (bytes)n >= sizeof(jsonBuf)) return false;
             offset += (bytes)n;
         }
-        if ((*embed).imageUrl) {
+        const char *imageUrl = DiscordEmbed_imageUrl(embed);
+        if (imageUrl) {
             if (!embedFirst) {
                 if (offset + 1 >= sizeof(jsonBuf)) return false;
                 jsonBuf[offset++] = ',';
@@ -250,7 +263,7 @@ bool DiscordWebhook_sendEmbed(const char *webhookUrl, const char *content,
             memcpy(jsonBuf + offset, imgKey, ikLen);
             offset += ikLen;
 
-            i64 w = Json_writeString(jsonBuf + offset, sizeof(jsonBuf) - offset, (*embed).imageUrl);
+            i64 w = Json_writeString(jsonBuf + offset, sizeof(jsonBuf) - offset, imageUrl);
             if (w < 0) return false;
             offset += (bytes)w;
 

@@ -138,7 +138,8 @@ const AiProviderSlot *AiProvider_get(const AiProvider *self, const char *slug) {
     const u32 total = AiProvider_count(self);
     for (u32 i = 0; i < total; i++) {
         const AiProviderSlot *slot = AiProvider_at(self, i);
-        if ((*slot).slug && strcmp((*slot).slug, slug) == 0)
+        const char *rowSlug = AiProvider_getSlug(self, slot);
+        if (rowSlug && strcmp(rowSlug, slug) == 0)
             return slot;
     }
     return nullptr;
@@ -149,9 +150,10 @@ const char *AiProvider_resolveBaseUrl(const AiProvider *self,
                                       const AiProviderSlot *slot) {
     if (!self || !slot)
         return nullptr;
-    if ((*slot).baseUrl)
-        return (*slot).baseUrl;
-    switch ((*slot).family) {
+    const char *baseUrl = AiProvider_getBaseUrl(self, slot);
+    if (baseUrl)
+        return baseUrl;
+    switch (AiProvider_getFamily(self, slot)) {
     case AI_PROVIDER_FAMILY_ANTHROPIC:
         return "https://api.anthropic.com/v1";
     case AI_PROVIDER_FAMILY_LOCAL:
@@ -167,24 +169,28 @@ const char *AiProvider_resolveBaseUrl(const AiProvider *self,
 // GETTERS
 
 /** Returns the slot's canonical slug, or nullptr when no slot is supplied. */
+;;GETTER
 const char *AiProvider_getSlug(const AiProvider *self, const AiProviderSlot *slot) {
     (discard) self;
     return slot ? (*slot).slug : nullptr;
 }
 
 /** Returns the slot's display label, or nullptr when no slot is supplied. */
+;;GETTER
 const char *AiProvider_getDisplayName(const AiProvider *self, const AiProviderSlot *slot) {
     (discard) self;
     return slot ? (*slot).displayName : nullptr;
 }
 
 /** Returns the slot's explicitly configured endpoint, if any. */
+;;GETTER
 const char *AiProvider_getBaseUrl(const AiProvider *self, const AiProviderSlot *slot) {
     (discard) self;
     return slot ? (*slot).baseUrl : nullptr;
 }
 
 /** Returns the slot's wire-contract family, or the documented safe default. */
+;;GETTER
 AiProviderFamily AiProvider_getFamily(const AiProvider *self, const AiProviderSlot *slot) {
     if (!self || !slot)
         return AI_PROVIDER_FAMILY_OPENAI_COMPAT; // safe default
@@ -192,6 +198,7 @@ AiProviderFamily AiProvider_getFamily(const AiProvider *self, const AiProviderSl
 }
 
 /** Returns the slot's credential scheme, or the documented safe default. */
+;;GETTER
 AiProviderAuth AiProvider_getAuth(const AiProvider *self, const AiProviderSlot *slot) {
     if (!self || !slot)
         return AI_PROVIDER_AUTH_BEARER; // safe default
@@ -199,6 +206,7 @@ AiProviderAuth AiProvider_getAuth(const AiProvider *self, const AiProviderSlot *
 }
 
 /** Returns the slot's region classification, or the documented safe default. */
+;;GETTER
 AiProviderRegion AiProvider_getRegion(const AiProvider *self, const AiProviderSlot *slot) {
     if (!self || !slot)
         return AI_PROVIDER_REGION_GLOBAL; // safe default
@@ -206,12 +214,14 @@ AiProviderRegion AiProvider_getRegion(const AiProvider *self, const AiProviderSl
 }
 
 /** Returns the slot's optional note, or nullptr when absent. */
+;;GETTER
 const char *AiProvider_getNote(const AiProvider *self, const AiProviderSlot *slot) {
     (discard) self;
     return slot ? (*slot).note : nullptr;
 }
 
 /** Returns the slot's daily quota value, or zero when unavailable. */
+;;GETTER
 u32 AiProvider_getQuotaPerDay(const AiProvider *self, const AiProviderSlot *slot) {
     if (!self || !slot)
         return 0;
@@ -219,6 +229,7 @@ u32 AiProvider_getQuotaPerDay(const AiProvider *self, const AiProviderSlot *slot
 }
 
 /** Returns the slot's remaining quota value, or zero when unavailable. */
+;;GETTER
 u32 AiProvider_getQuotaRemaining(const AiProvider *self, const AiProviderSlot *slot) {
     if (!self || !slot)
         return 0;
@@ -226,6 +237,7 @@ u32 AiProvider_getQuotaRemaining(const AiProvider *self, const AiProviderSlot *s
 }
 
 /** Returns the slot's quota-reset Unix time, or zero when unavailable. */
+;;GETTER
 i64 AiProvider_getResetUnix(const AiProvider *self, const AiProviderSlot *slot) {
     if (!self || !slot)
         return 0;
@@ -233,12 +245,14 @@ i64 AiProvider_getResetUnix(const AiProvider *self, const AiProviderSlot *slot) 
 }
 
 /** Returns the slot's optional human-readable credential-kind label. */
+;;GETTER
 const char *AiProvider_getAuthKind(const AiProvider *self, const AiProviderSlot *slot) {
     (discard) self;
     return slot ? (*slot).authKind : nullptr;
 }
 
 /** Returns the slot's optional license-family label. */
+;;GETTER
 const char *AiProvider_getLicenseFamily(const AiProvider *self, const AiProviderSlot *slot) {
     (discard) self;
     return slot ? (*slot).licenseFamily : nullptr;

@@ -23,6 +23,13 @@
 #include "net/url.h"
 #include "security/sha1.h"
 
+;;GETTER
+static inline WebSocketMessageKind WebSocketMessage_kind(const WebSocketMessage *self) { return (*self).kind; }
+;;GETTER
+static inline bytes WebSocketMessage_length(const WebSocketMessage *self) { return (*self).length; }
+;;GETTER
+static inline const u8 *WebSocketMessage_payload(const WebSocketMessage *self) { return (*self).payload; }
+
 // The binding itself: assigning these four into the seam's table IS the
 // compatibility check. A signature that drifts (even by a const) fails to
 // compile here, which is the only place both headers are visible.
@@ -242,14 +249,14 @@ i32 main() {
     // One message per step, in order, with nothing dropped in between.
     CHECK(HavenWsFanout_pollStep(fanout, 500u) == 1u);
     const WebSocketMessage *first = VexWsSource_last(&handle);
-    CHECK(first != nullptr && (*first).kind == WS_MESSAGE_TEXT);
-    CHECK(first != nullptr && (*first).length == 3u);
-    CHECK(first != nullptr && memcmp((*first).payload, "one", 3u) == 0);
+    CHECK(first != nullptr && WebSocketMessage_kind(first) == WS_MESSAGE_TEXT);
+    CHECK(first != nullptr && WebSocketMessage_length(first) == 3u);
+    CHECK(first != nullptr && memcmp(WebSocketMessage_payload(first), "one", 3u) == 0);
 
     CHECK(HavenWsFanout_pollStep(fanout, 500u) == 1u);
     const WebSocketMessage *second = VexWsSource_last(&handle);
-    CHECK(second != nullptr && (*second).kind == WS_MESSAGE_TEXT);
-    CHECK(second != nullptr && memcmp((*second).payload, "two", 3u) == 0);
+    CHECK(second != nullptr && WebSocketMessage_kind(second) == WS_MESSAGE_TEXT);
+    CHECK(second != nullptr && memcmp(WebSocketMessage_payload(second), "two", 3u) == 0);
 
     // The seam's send reaches the peer as a masked TEXT frame.
     CHECK(kBinding.send(&handle, (const u8*) "pong", 4u));

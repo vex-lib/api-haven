@@ -49,21 +49,46 @@ static i32 g_failures = 0;
     else { printf("[loopback] FAIL %s\n", name); g_failures++; } \
 } while (0)
 
+;;GETTER
+static inline const char *HttpExchange_method(const HttpExchange *self) { return (*self).method; }
+;;GETTER
+static inline const char *HttpExchange_path(const HttpExchange *self) { return (*self).path; }
+;;GETTER
+static inline bytes HttpExchange_bodyLen(const HttpExchange *self) { return (*self).bodyLen; }
+;;GETTER
+static inline const char *HttpExchange_body(const HttpExchange *self) { return (*self).body; }
+
+;;GETTER
+static inline char *Capture_method(Capture *self) { return (*self).method; }
+;;GETTER
+static inline char *Capture_path(Capture *self) { return (*self).path; }
+;;GETTER
+static inline char *Capture_body(Capture *self) { return (*self).body; }
+;;SETTER
+static inline fn Capture_setBodyLen(Capture *self, bytes bodyLen) { (*self).bodyLen = bodyLen; }
+;;GETTER
+static inline i32 Capture_hits(const Capture *self) { return (*self).hits; }
+;;SETTER
+static inline fn Capture_setHits(Capture *self, i32 hits) { (*self).hits = hits; }
+
 /* Captures loopback request fields/body and returns a deterministic method-specific response. */
 static fn captureHandler(const HttpExchange *exchange, i32 clientFd, any userdata) {
     (discard) userdata;
     Capture *cap = &g_cap;
-    strncpy((*cap).method, (*exchange).method, sizeof((*cap).method) - 1);
-    strncpy((*cap).path, (*exchange).path, sizeof((*cap).path) - 1);
-    bytes n = (*exchange).bodyLen;
-    if (n >= sizeof((*cap).body))
-        n = sizeof((*cap).body) - 1;
-    if (n > 0 && (*exchange).body)
-        memcpy((*cap).body, (*exchange).body, n);
-    (*cap).body[n] = '\0';
-    (*cap).bodyLen = n;
-    (*cap).hits++;
-    if (strcmp((*exchange).method, "GET") == 0)
+    const char *method = HttpExchange_method(exchange);
+    strncpy(Capture_method(cap), method, sizeof(((Capture) {0}).method) - 1);
+    strncpy(Capture_path(cap), HttpExchange_path(exchange), sizeof(((Capture) {0}).path) - 1);
+    bytes n = HttpExchange_bodyLen(exchange);
+    if (n >= sizeof(((Capture) {0}).body))
+        n = sizeof(((Capture) {0}).body) - 1;
+    const char *body = HttpExchange_body(exchange);
+    char *capBody = Capture_body(cap);
+    if (n > 0 && body)
+        memcpy(capBody, body, n);
+    capBody[n] = '\0';
+    Capture_setBodyLen(cap, n);
+    Capture_setHits(cap, Capture_hits(cap) + 1);
+    if (strcmp(method, "GET") == 0)
         Http_respond(clientFd, 200, "application/json", "{\"ok\":true}", 11);
     else
         Http_respond(clientFd, 204, "text/plain", "", 0);

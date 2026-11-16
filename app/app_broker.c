@@ -100,60 +100,87 @@ AppBroker AppBroker_1(u64 timeoutMs) {
 
 // CORE FUNCTIONS
 
-/** Runs one action through the injected driver and records its bounded result. */
+;;GETTER
+static inline AppDriverTable AppBroker_table(const AppBroker *self) { return (*self).table; }
+;;SETTER
+static inline fn AppBroker_setLastStatus(AppBroker *self, AppStatus lastStatus) { (*self).lastStatus = lastStatus; }
+;;SETTER
+static inline fn AppBroker_setJobCount(AppBroker *self, u32 jobCount) { (*self).jobCount = jobCount; }
+;;GETTER
+static inline AppJob *AppBroker_jobs(AppBroker *self) { return (*self).jobs; }
+;;GETTER
+static inline u32 AppJob_jobId(const AppJob *self) { return (*self).jobId; }
+;;SETTER
+static inline fn AppJob_setJobId(AppJob *self, u32 jobId) { (*self).jobId = jobId; }
+;;SETTER
+static inline fn AppJob_setTarget(AppJob *self, const AppProviderSlot *target) { (*self).target = target; }
+;;GETTER
+static inline AppStatus AppJob_status(const AppJob *self) { return (*self).status; }
+;;SETTER
+static inline fn AppJob_setStatus(AppJob *self, AppStatus status) { (*self).status = status; }
+;;SETTER
+static inline fn AppJob_setTimeoutMs(AppJob *self, u64 timeoutMs) { (*self).timeoutMs = timeoutMs; }
+;;SETTER
+static inline fn AppJob_setDriverHandle(AppJob *self, any driverHandle) { (*self).driverHandle = driverHandle; }
+;;SETTER
+static inline fn AppJob_setOutLen(AppJob *self, bytes outLen) { (*self).outLen = outLen; }
+
 /** Runs one action through the injected driver and records its bounded result. */
 bool AppBroker_action(AppBroker *self, const char *action,
                       const char *paramsJson, bytes paramsLen,
                       char *outBuf, bytes outCap, u32 *outJobId) {
     if (!self)
         return false;
-    AppDriverTable table = (*self).table;
-    any driver = (*self).driver;
-    const AppProviderSlot *target = (*self).target;
+    AppDriverTable table = AppBroker_table(self);
+    any driver = AppBroker_getDriver(self);
+    const AppProviderSlot *target = AppBroker_getTarget(self);
     if (!target || !driver || !table.runActionFn || !action || (*action) == '\0') {
-        (*self).lastStatus = APP_STATUS_IDLE;
+        AppBroker_setLastStatus(self, APP_STATUS_IDLE);
         return false;
     }
     i32 freeIndex = -1;
-    for (u32 i = 0; i < (*self).jobCount; i++) {
-        AppJob *job = &(*self).jobs[i];
-        if ((*job).status != APP_STATUS_RUNNING) {
+    u32 jobCount = AppBroker_getJobCount(self);
+    AppJob *jobs = AppBroker_jobs(self);
+    for (u32 i = 0; i < jobCount; i++) {
+        AppJob *job = &jobs[i];
+        if (AppJob_status(job) != APP_STATUS_RUNNING) {
             freeIndex = (i32) i;
             break;
         }
     }
     if (freeIndex < 0) {
-        if ((*self).jobCount >= (u32) APP_MAX_JOBS) {
-            (*self).lastStatus = APP_STATUS_BUSY_FULL;
+        if (jobCount >= (u32) APP_MAX_JOBS) {
+            AppBroker_setLastStatus(self, APP_STATUS_BUSY_FULL);
             return false;
         }
-        freeIndex = (i32) (*self).jobCount;
-        (*self).jobCount++;
+        freeIndex = (i32) jobCount;
+        AppBroker_setJobCount(self, jobCount + 1);
     }
-    u64 bound = (*self).timeoutMs;
-    AppJob *slot = &(*self).jobs[(u32) freeIndex];
-    (*slot).jobId = (u32) freeIndex + 1;
-    (*slot).target = target;
-    (*slot).status = APP_STATUS_RUNNING;
-    (*slot).timeoutMs = bound;
-    (*slot).driverHandle = nullptr;
-    (*slot).outLen = 0;
+    u64 bound = AppBroker_getTimeout(self);
+    AppJob *slot = &jobs[(u32) freeIndex];
+    u32 jobId = (u32) freeIndex + 1;
+    AppJob_setJobId(slot, jobId);
+    AppJob_setTarget(slot, target);
+    AppJob_setStatus(slot, APP_STATUS_RUNNING);
+    AppJob_setTimeoutMs(slot, bound);
+    AppJob_setDriverHandle(slot, nullptr);
+    AppJob_setOutLen(slot, 0);
     bytes produced = 0;
     bool ok = table.runActionFn(driver, target, action, paramsJson, paramsLen,
                                 bound, outBuf, outCap, &produced);
     if (!ok) {
-        (*slot).status = APP_STATUS_TIMEOUT;
-        (*slot).outLen = 0;
-        (*self).lastStatus = APP_STATUS_TIMEOUT;
+        AppJob_setStatus(slot, APP_STATUS_TIMEOUT);
+        AppJob_setOutLen(slot, 0);
+        AppBroker_setLastStatus(self, APP_STATUS_TIMEOUT);
         if (outJobId)
-            *outJobId = (*slot).jobId;
+            *outJobId = jobId;
         return false;
     }
-    (*slot).status = APP_STATUS_DONE;
-    (*slot).outLen = produced;
-    (*self).lastStatus = APP_STATUS_DONE;
+    AppJob_setStatus(slot, APP_STATUS_DONE);
+    AppJob_setOutLen(slot, produced);
+    AppBroker_setLastStatus(self, APP_STATUS_DONE);
     if (outJobId)
-        (*outJobId) = (*slot).jobId;
+        (*outJobId) = jobId;
     return true;
 }
 
@@ -161,10 +188,11 @@ bool AppBroker_action(AppBroker *self, const char *action,
 AppStatus AppBroker_poll(AppBroker *self, u32 jobId) {
     if (!self || jobId == 0)
         return APP_STATUS_IDLE;
-    for (u32 i = 0; i < (*self).jobCount; i++) {
-        const AppJob *job = &(*self).jobs[i];
-        if ((*job).jobId == jobId)
-            return (*job).status;
+    u32 jobCount = AppBroker_getJobCount(self);
+    for (u32 i = 0; i < jobCount; i++) {
+        const AppJob *job = AppBroker_getJobAt(self, i);
+        if (job && AppJob_jobId(job) == jobId)
+            return AppJob_status(job);
     }
     return APP_STATUS_IDLE;
 }
@@ -173,14 +201,16 @@ AppStatus AppBroker_poll(AppBroker *self, u32 jobId) {
 bool AppBroker_cancel(AppBroker *self, u32 jobId) {
     if (!self || jobId == 0)
         return false;
-    for (u32 i = 0; i < (*self).jobCount; i++) {
-        AppJob *job = &(*self).jobs[i];
-        if ((*job).jobId != jobId)
+    u32 jobCount = AppBroker_getJobCount(self);
+    AppJob *jobs = AppBroker_jobs(self);
+    for (u32 i = 0; i < jobCount; i++) {
+        AppJob *job = &jobs[i];
+        if (AppJob_jobId(job) != jobId)
             continue;
-        if ((*job).status != APP_STATUS_RUNNING)
+        if (AppJob_status(job) != APP_STATUS_RUNNING)
             return false;
-        (*job).status = APP_STATUS_IDLE;
-        (*job).driverHandle = nullptr;
+        AppJob_setStatus(job, APP_STATUS_IDLE);
+        AppJob_setDriverHandle(job, nullptr);
         return true;
     }
     return false;
@@ -189,6 +219,7 @@ bool AppBroker_cancel(AppBroker *self, u32 jobId) {
 // SETTERS
 
 /** Sets the borrowed automation target row used for subsequent actions. */
+;;SETTER
 fn AppBroker_setTarget(AppBroker *self, const AppProviderSlot *target) {
     if (!self)
         return;
@@ -196,6 +227,7 @@ fn AppBroker_setTarget(AppBroker *self, const AppProviderSlot *target) {
 }
 
 /** Binds the opaque driver context and its action callback table. */
+;;SETTER
 fn AppBroker_setDriver(AppBroker *self, any driver, AppDriverTable table) {
     if (!self)
         return;
@@ -204,6 +236,7 @@ fn AppBroker_setDriver(AppBroker *self, any driver, AppDriverTable table) {
 }
 
 /** Sets the default per-action timeout in milliseconds. */
+;;SETTER
 fn AppBroker_setTimeout(AppBroker *self, u64 timeoutMs) {
     if (!self)
         return;
@@ -213,16 +246,19 @@ fn AppBroker_setTimeout(AppBroker *self, u64 timeoutMs) {
 // GETTERS
 
 /** Returns the borrowed target row, or nullptr when unset. */
+;;GETTER
 const AppProviderSlot *AppBroker_getTarget(const AppBroker *self) {
     return self ? (*self).target : nullptr;
 }
 
 /** Returns the opaque driver context, or nullptr for a null receiver. */
+;;GETTER
 any AppBroker_getDriver(const AppBroker *self) {
     return self ? (*self).driver : nullptr;
 }
 
 /** Returns the configured timeout, or zero for a null receiver. */
+;;GETTER
 u64 AppBroker_getTimeout(const AppBroker *self) {
     if (!self)
         return 0;
@@ -233,15 +269,17 @@ u64 AppBroker_getTimeout(const AppBroker *self) {
 bool AppBroker_isRunning(const AppBroker *self) {
     if (!self)
         return false;
-    for (u32 i = 0; i < (*self).jobCount; i++) {
-        const AppJob *job = &(*self).jobs[i];
-        if ((*job).status == APP_STATUS_RUNNING)
+    u32 jobCount = AppBroker_getJobCount(self);
+    for (u32 i = 0; i < jobCount; i++) {
+        const AppJob *job = AppBroker_getJobAt(self, i);
+        if (job && AppJob_status(job) == APP_STATUS_RUNNING)
             return true;
     }
     return false;
 }
 
 /** Returns the number of job slots issued so far. */
+;;GETTER
 u32 AppBroker_getJobCount(const AppBroker *self) {
     if (!self)
         return 0;
@@ -249,6 +287,7 @@ u32 AppBroker_getJobCount(const AppBroker *self) {
 }
 
 /** Returns the job record at index i, or nullptr when out of range. */
+;;GETTER
 const AppJob *AppBroker_getJobAt(const AppBroker *self, u32 i) {
     if (!self)
         return nullptr;
@@ -261,15 +300,17 @@ const AppJob *AppBroker_getJobAt(const AppBroker *self, u32 i) {
 AppStatus AppBroker_getJobStatus(const AppBroker *self, u32 jobId) {
     if (!self || jobId == 0)
         return APP_STATUS_IDLE;
-    for (u32 i = 0; i < (*self).jobCount; i++) {
-        const AppJob *job = &(*self).jobs[i];
-        if ((*job).jobId == jobId)
-            return (*job).status;
+    u32 jobCount = AppBroker_getJobCount(self);
+    for (u32 i = 0; i < jobCount; i++) {
+        const AppJob *job = AppBroker_getJobAt(self, i);
+        if (job && AppJob_jobId(job) == jobId)
+            return AppJob_status(job);
     }
     return APP_STATUS_IDLE;
 }
 
 /** Returns the last action result, or idle for a null receiver. */
+;;GETTER
 AppStatus AppBroker_getLastStatus(const AppBroker *self) {
     if (!self)
         return APP_STATUS_IDLE;

@@ -31,11 +31,18 @@ static i32 g_failures = 0;
 /* Counts requests and answers "/status/NNN" with that status, else 200. */
 static i32 g_hits;
 
+;;GETTER
+static inline const char *HttpExchange_path(const HttpExchange *self) { return (*self).path; }
+;;SETTER
+static inline fn HttpResponse_setBody(HttpResponse *self, char *body) { (*self).body = body; }
+;;SETTER
+static inline fn HttpResponse_setBodyCap(HttpResponse *self, bytes bodyCap) { (*self).bodyCap = bodyCap; }
+
 static fn statusHandler(const HttpExchange *exchange, i32 clientFd, any userdata) {
     (discard) userdata;
     g_hits++;
     i32 status = 200;
-    const char *path = (*exchange).path;
+    const char *path = HttpExchange_path(exchange);
     if (strncmp(path, "/status/", 8) == 0)
         status = atoi(path + 8);
     char body[64];
@@ -48,8 +55,8 @@ static fn statusHandler(const HttpExchange *exchange, i32 clientFd, any userdata
 /* One GET into a fresh caller buffer; returns the call result and leaves resp. */
 static bool getStatus(const char *url, const ApiAuth *auth, HttpResponse *resp, char *body, bytes cap) {
     memset(resp, 0, sizeof(*resp));
-    (*resp).body = body;
-    (*resp).bodyCap = cap;
+    HttpResponse_setBody(resp, body);
+    HttpResponse_setBodyCap(resp, cap);
     body[0] = '\0';
     return Rest_get(url, auth, resp);
 }

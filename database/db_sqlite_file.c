@@ -83,18 +83,25 @@ DbSqliteFile DbSqliteFile_1(const char *path) {
 
 // CORE FUNCTIONS
 
+;;GETTER
+static inline DbSqliteExecFn DbSqliteExec_exec(const DbSqliteExec *self) { return (*self).exec; }
+;;SETTER
+static inline fn DbSqliteFile_setExecHandle(DbSqliteFile *self, any execHandle) { (*self).execHandle = execHandle; }
+;;SETTER
+static inline fn DbSqliteFile_setExecTable(DbSqliteFile *self, const DbSqliteExec *execTable) { (*self).execTable = execTable; }
+
 /** Binds a borrowed owner handle and its execution callback table. */
 bool DbSqliteFile_bind(DbSqliteFile *self, any handle, const DbSqliteExec *table) {
     if (self == nullptr)
         return false;
     if (handle == nullptr || table == nullptr)
         return false;
-    if ((*self).execHandle != nullptr)
+    if (DbSqliteFile_getExecHandle(self) != nullptr)
         return false;
-    if ((*table).exec == nullptr)
+    if (DbSqliteExec_exec(table) == nullptr)
         return false;
-    (*self).execHandle = handle;
-    (*self).execTable = table;
+    DbSqliteFile_setExecHandle(self, handle);
+    DbSqliteFile_setExecTable(self, table);
     return true;
 }
 
@@ -102,8 +109,8 @@ bool DbSqliteFile_bind(DbSqliteFile *self, any handle, const DbSqliteExec *table
 fn DbSqliteFile_unbind(DbSqliteFile *self) {
     if (self == nullptr)
         return;
-    (*self).execHandle = nullptr;
-    (*self).execTable = nullptr;
+    DbSqliteFile_setExecHandle(self, nullptr);
+    DbSqliteFile_setExecTable(self, nullptr);
 }
 
 /** Formats this descriptor into out when the complete text fits. */
@@ -112,12 +119,12 @@ bool DbSqliteFile_describe(const DbSqliteFile *self, char *out, bytes outCap) {
         return false;
     if (out == nullptr || outCap == 0)
         return false;
-    const char *path = (*self).path;
+    const char *path = DbSqliteFile_getPath(self);
     if (path == nullptr || (*path) == '\0')
         return false;
     const i32 n = snprintf(out, outCap, "sqlite file: path=%s readOnly=%d caps=%u maxBytes=%llu",
-                           path, (*self).readOnly ? 1 : 0,
-                           (*self).caps, (u64)(*self).maxBytes);
+                           path, DbSqliteFile_isReadOnly(self) ? 1 : 0,
+                           DbSqliteFile_getCaps(self), (u64)DbSqliteFile_getMaxBytes(self));
     if (n <= 0 || (bytes)n >= outCap)
         return false;
     return true;
@@ -132,17 +139,20 @@ bool DbSqliteFile_exec(const DbSqliteFile *self, const char *sql,
         return false;
     if (out == nullptr || outCap == 0)
         return false;
-    if ((*self).execHandle == nullptr || (*self).execTable == nullptr)
+    any handle = DbSqliteFile_getExecHandle(self);
+    const DbSqliteExec *table = DbSqliteFile_getExecTable(self);
+    if (handle == nullptr || table == nullptr)
         return false;
-    const DbSqliteExec *table = (*self).execTable;
-    if ((*table).exec == nullptr)
+    DbSqliteExecFn execFn = DbSqliteExec_exec(table);
+    if (execFn == nullptr)
         return false;
-    return (*table).exec((*self).execHandle, sql, out, outCap);
+    return execFn(handle, sql, out, outCap);
 }
 
 // SETTERS
 
 /** Sets the borrowed path described by this catalog row. */
+;;SETTER
 fn DbSqliteFile_setPath(DbSqliteFile *self, const char *path) {
     if (self == nullptr)
         return;
@@ -150,6 +160,7 @@ fn DbSqliteFile_setPath(DbSqliteFile *self, const char *path) {
 }
 
 /** Replaces the descriptor's advertised capability flags. */
+;;SETTER
 fn DbSqliteFile_setCaps(DbSqliteFile *self, u32 caps) {
     if (self == nullptr)
         return;
@@ -157,6 +168,7 @@ fn DbSqliteFile_setCaps(DbSqliteFile *self, u32 caps) {
 }
 
 /** Sets the maximum byte bound advertised for reads. */
+;;SETTER
 fn DbSqliteFile_setMaxBytes(DbSqliteFile *self, u64 maxBytes) {
     if (self == nullptr)
         return;
@@ -164,6 +176,7 @@ fn DbSqliteFile_setMaxBytes(DbSqliteFile *self, u64 maxBytes) {
 }
 
 /** Sets the descriptor's read-only flag; no write callback is provided. */
+;;SETTER
 fn DbSqliteFile_setReadOnly(DbSqliteFile *self, bool readOnly) {
     if (self == nullptr)
         return;
@@ -173,6 +186,7 @@ fn DbSqliteFile_setReadOnly(DbSqliteFile *self, bool readOnly) {
 // GETTERS
 
 /** Returns the borrowed file path, or nullptr for a null receiver. */
+;;GETTER
 const char *DbSqliteFile_getPath(const DbSqliteFile *self) {
     if (self == nullptr)
         return nullptr;
@@ -180,6 +194,7 @@ const char *DbSqliteFile_getPath(const DbSqliteFile *self) {
 }
 
 /** Returns the advertised capability bits, or zero for a null receiver. */
+;;GETTER
 u32 DbSqliteFile_getCaps(const DbSqliteFile *self) {
     if (self == nullptr)
         return 0;
@@ -187,6 +202,7 @@ u32 DbSqliteFile_getCaps(const DbSqliteFile *self) {
 }
 
 /** Returns the read byte limit, or zero for a null receiver. */
+;;GETTER
 u64 DbSqliteFile_getMaxBytes(const DbSqliteFile *self) {
     if (self == nullptr)
         return 0;
@@ -194,6 +210,7 @@ u64 DbSqliteFile_getMaxBytes(const DbSqliteFile *self) {
 }
 
 /** Reports the descriptor's read-only setting. */
+;;GETTER
 bool DbSqliteFile_isReadOnly(const DbSqliteFile *self) {
     if (self == nullptr)
         return false;
@@ -201,6 +218,7 @@ bool DbSqliteFile_isReadOnly(const DbSqliteFile *self) {
 }
 
 /** Returns the borrowed owner handle, or nullptr when unbound. */
+;;GETTER
 any DbSqliteFile_getExecHandle(const DbSqliteFile *self) {
     if (self == nullptr)
         return nullptr;
@@ -208,6 +226,7 @@ any DbSqliteFile_getExecHandle(const DbSqliteFile *self) {
 }
 
 /** Returns the borrowed execution callback table, or nullptr when unbound. */
+;;GETTER
 const DbSqliteExec *DbSqliteFile_getExecTable(const DbSqliteFile *self) {
     if (self == nullptr)
         return nullptr;

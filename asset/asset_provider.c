@@ -242,54 +242,63 @@ const AssetProviderSlot *AssetProvider_get(const AssetProvider *self, const char
 // GETTERS
 
 /** Returns the slot's canonical slug, or nullptr when no slot is supplied. */
+;;GETTER
 const char *AssetProvider_getSlug(const AssetProvider *self, const AssetProviderSlot *slot) {
     (discard) self;
     return slot ? (*slot).slug : nullptr;
 }
 
 /** Returns the slot's display label, or nullptr when no slot is supplied. */
+;;GETTER
 const char *AssetProvider_getDisplayName(const AssetProvider *self, const AssetProviderSlot *slot) {
     (discard) self;
     return slot ? (*slot).displayName : nullptr;
 }
 
 /** Returns the slot's public search API base, if configured. */
+;;GETTER
 const char *AssetProvider_getApiBase(const AssetProvider *self, const AssetProviderSlot *slot) {
     (discard) self;
     return slot ? (*slot).apiBase : nullptr;
 }
 
 /** Returns the slot's license-family label. */
+;;GETTER
 const char *AssetProvider_getLicenseFamily(const AssetProvider *self, const AssetProviderSlot *slot) {
     (discard) self;
     return slot ? (*slot).licenseFamily : nullptr;
 }
 
 /** Returns the title of the slot's curated sample asset. */
+;;GETTER
 const char *AssetProvider_getSampleTitle(const AssetProvider *self, const AssetProviderSlot *slot) {
     (discard) self;
     return slot ? (*slot).sampleTitle : nullptr;
 }
 
 /** Returns the attribution author for the curated sample asset. */
+;;GETTER
 const char *AssetProvider_getSampleAuthor(const AssetProvider *self, const AssetProviderSlot *slot) {
     (discard) self;
     return slot ? (*slot).sampleAuthor : nullptr;
 }
 
 /** Returns the curated sample's preview URL. */
+;;GETTER
 const char *AssetProvider_getSamplePreview(const AssetProvider *self, const AssetProviderSlot *slot) {
     (discard) self;
     return slot ? (*slot).samplePreview : nullptr;
 }
 
 /** Returns the curated sample's download URL. */
+;;GETTER
 const char *AssetProvider_getSampleDownload(const AssetProvider *self, const AssetProviderSlot *slot) {
     (discard) self;
     return slot ? (*slot).sampleDownload : nullptr;
 }
 
 /** Returns the slot's optional provider caveat. */
+;;GETTER
 const char *AssetProvider_getNote(const AssetProvider *self, const AssetProviderSlot *slot) {
     (discard) self;
     return slot ? (*slot).note : nullptr;

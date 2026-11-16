@@ -72,11 +72,22 @@
 
 // --- static helpers ---------------------------------------------------------
 
+;;GETTER
+static inline char *AiSse_eventBuf(AiSse *self) { return (*self).eventBuf; }
+;;GETTER
+static inline char *AiSse_lineBuf(AiSse *self) { return (*self).lineBuf; }
+;;SETTER
+static inline fn AiSse_setLineLen(AiSse *self, u32 lineLen) { (*self).lineLen = lineLen; }
+;;SETTER
+static inline fn AiSse_setSlotHandle(AiSse *self, any slotHandle) { (*self).slotHandle = slotHandle; }
+;;SETTER
+static inline fn AiSse_setSlotSource(AiSse *self, const HavenWsSource *slotSource) { (*self).slotSource = slotSource; }
+
 /** Restores the default SSE event name in the parser's event buffer. */
 static fn setDefaultEvent(AiSse *self) {
     const char *dflt = "message";
     bytes n = strlen(dflt);
-    memcpy((*self).eventBuf, dflt, n + 1);
+    memcpy(AiSse_eventBuf(self), dflt, n + 1);
 }
 
 /** Appends a payload fragment and flags truncation when the output cannot hold it. */
@@ -120,8 +131,9 @@ static bool dispatchLine(AiSse *self, const char *line, bytes lineLen,
         bytes take = vlen;
         if (take >= AI_SSE_EVENT_CAP)
             take = AI_SSE_EVENT_CAP - 1;
-        memcpy((*self).eventBuf, v, take);
-        (*self).eventBuf[take] = '\0';
+        char *eventBuf = AiSse_eventBuf(self);
+        memcpy(eventBuf, v, take);
+        eventBuf[take] = '\0';
         return true;
     }
     if (lineLen >= 5 && memcmp(line, "data:", 5) == 0) {
@@ -132,7 +144,7 @@ static bool dispatchLine(AiSse *self, const char *line, bytes lineLen,
             vlen--;
         }
         if (vlen == 6 && memcmp(v, "[DONE]", 6) == 0) {
-            (*self).done = true;
+            AiSse_setDone(self, true);
             *hasData = true;
             return true;
         }
@@ -166,11 +178,11 @@ bool AiSse_feed(AiSse *self, const char *Bytes, bytes byteLen,
         return false;
     if (outTruncated)
         *outTruncated = false;
-    if ((*self).cancelled)
+    if (AiSse_isCancelled(self))
         return false;
-    if ((*self).done)
+    if (AiSse_isDone(self))
         return false;
-    if ((*self).timeoutMs == 0)
+    if (AiSse_getTimeout(self) == 0)
         return false;
     if (textOut == nullptr || textCap == 0)
         return false;
@@ -180,27 +192,30 @@ bool AiSse_feed(AiSse *self, const char *Bytes, bytes byteLen,
     bytes used = 0;
     bool hasData = false;
     bool dispatched = false;
+    char *lineBuf = AiSse_lineBuf(self);
     for (bytes i = 0; i < byteLen; i++) {
         char c = Bytes[i];
         if (c == '\n') {
-            bytes llen = (*self).lineLen;
-            if (llen > 0 && (*self).lineBuf[llen - 1] == '\r')
+            bytes llen = AiSse_getLineLen(self);
+            if (llen > 0 && lineBuf[llen - 1] == '\r')
                 llen--;
-            if (!dispatchLine(self, (*self).lineBuf, llen, textOut, textCap,
+            if (!dispatchLine(self, lineBuf, llen, textOut, textCap,
                               &used, &hasData, &dispatched, outTruncated))
                 return false;
-            (*self).lineLen = 0;
+            AiSse_setLineLen(self, 0);
             continue;
         }
-        if ((*self).lineLen + 1 >= AI_SSE_LINE_CAP) {
-            if (!dispatchLine(self, (*self).lineBuf, (*self).lineLen, textOut,
+        u32 curLen = AiSse_getLineLen(self);
+        if (curLen + 1 >= AI_SSE_LINE_CAP) {
+            if (!dispatchLine(self, lineBuf, curLen, textOut,
                               textCap, &used, &hasData, &dispatched,
                               outTruncated))
                 return false;
-            (*self).lineLen = 0;
+            curLen = 0;
+            AiSse_setLineLen(self, 0);
         }
-        (*self).lineBuf[(*self).lineLen] = c;
-        (*self).lineLen += 1;
+        lineBuf[curLen] = c;
+        AiSse_setLineLen(self, curLen + 1);
     }
     if (dispatched && used > 0 && textOut[used - 1] == '\n')
         textOut[used - 1] = '\0';
@@ -213,10 +228,10 @@ bool AiSse_bind(AiSse *self, any handle, const HavenWsSource *source) {
         return false;
     if (handle == nullptr || source == nullptr)
         return false;
-    if ((*self).slotHandle != nullptr)
+    if (AiSse_getSlotHandle(self) != nullptr)
         return false;
-    (*self).slotHandle = handle;
-    (*self).slotSource = source;
+    AiSse_setSlotHandle(self, handle);
+    AiSse_setSlotSource(self, source);
     return true;
 }
 
@@ -224,17 +239,17 @@ bool AiSse_bind(AiSse *self, any handle, const HavenWsSource *source) {
 fn AiSse_unbind(AiSse *self) {
     if (self == nullptr)
         return;
-    (*self).slotHandle = nullptr;
-    (*self).slotSource = nullptr;
+    AiSse_setSlotHandle(self, nullptr);
+    AiSse_setSlotSource(self, nullptr);
 }
 
 /** Clears stream progress and completion state while retaining binding/configuration. */
 fn AiSse_reset(AiSse *self) {
     if (self == nullptr)
         return;
-    (*self).cancelled = false;
-    (*self).done = false;
-    (*self).lineLen = 0;
+    AiSse_setCancelled(self, false);
+    AiSse_setDone(self, false);
+    AiSse_setLineLen(self, 0);
     setDefaultEvent(self);
 }
 
@@ -242,12 +257,13 @@ fn AiSse_reset(AiSse *self) {
 fn AiSse_cancel(AiSse *self) {
     if (self == nullptr)
         return;
-    (*self).cancelled = true;
+    AiSse_setCancelled(self, true);
 }
 
 // SETTERS
 
 /** Sets the timeout value associated with the bound polling slice. */
+;;SETTER
 fn AiSse_setTimeout(AiSse *self, u64 timeoutMs) {
     if (self == nullptr)
         return;
@@ -255,6 +271,7 @@ fn AiSse_setTimeout(AiSse *self, u64 timeoutMs) {
 }
 
 /** Sets the decoder's cancellation state. */
+;;SETTER
 fn AiSse_setCancelled(AiSse *self, bool cancelled) {
     if (self == nullptr)
         return;
@@ -262,6 +279,7 @@ fn AiSse_setCancelled(AiSse *self, bool cancelled) {
 }
 
 /** Sets whether the stream has reached its terminal event. */
+;;SETTER
 fn AiSse_setDone(AiSse *self, bool done) {
     if (self == nullptr)
         return;
@@ -271,6 +289,7 @@ fn AiSse_setDone(AiSse *self, bool done) {
 // GETTERS
 
 /** Returns the borrowed fan-out handle, or nullptr for an unbound decoder. */
+;;GETTER
 any AiSse_getSlotHandle(const AiSse *self) {
     if (self == nullptr)
         return nullptr;
@@ -278,6 +297,7 @@ any AiSse_getSlotHandle(const AiSse *self) {
 }
 
 /** Returns the borrowed transport table, or nullptr when unbound. */
+;;GETTER
 const HavenWsSource *AiSse_getSlotSource(const AiSse *self) {
     if (self == nullptr)
         return nullptr;
@@ -285,6 +305,7 @@ const HavenWsSource *AiSse_getSlotSource(const AiSse *self) {
 }
 
 /** Returns the configured timeout, or zero for a null receiver. */
+;;GETTER
 u64 AiSse_getTimeout(const AiSse *self) {
     if (self == nullptr)
         return 0;
@@ -292,6 +313,7 @@ u64 AiSse_getTimeout(const AiSse *self) {
 }
 
 /** Reports whether the decoder is cancelled. */
+;;GETTER
 bool AiSse_isCancelled(const AiSse *self) {
     if (self == nullptr)
         return false;
@@ -299,6 +321,7 @@ bool AiSse_isCancelled(const AiSse *self) {
 }
 
 /** Reports whether the terminal SSE event has been observed. */
+;;GETTER
 bool AiSse_isDone(const AiSse *self) {
     if (self == nullptr)
         return false;
@@ -306,6 +329,7 @@ bool AiSse_isDone(const AiSse *self) {
 }
 
 /** Returns the number of bytes currently buffered for an incomplete line. */
+;;GETTER
 u32 AiSse_getLineLen(const AiSse *self) {
     if (self == nullptr)
         return 0;
@@ -313,6 +337,7 @@ u32 AiSse_getLineLen(const AiSse *self) {
 }
 
 /** Returns a borrowed view of the current event name. */
+;;GETTER
 const char *AiSse_getEvent(const AiSse *self) {
     return self ? (*self).eventBuf : nullptr;
 }

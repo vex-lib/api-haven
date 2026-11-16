@@ -101,9 +101,9 @@ bool AssetBroker_copyChunk(AssetBroker *self, const u8 *srcChunk, bytes chunkLen
         return false;
     if (outTruncated)
         *outTruncated = false;
-    if ((*self).cancelled)
+    if (AssetBroker_isCancelled(self))
         return false;
-    if ((*self).chunkBudgetMs == 0)
+    if (AssetBroker_getChunkBudget(self) == 0)
         return false;
     if (dest == nullptr || usedLen == nullptr || destCap == 0)
         return false;
@@ -121,7 +121,7 @@ bool AssetBroker_copyChunk(AssetBroker *self, const u8 *srcChunk, bytes chunkLen
     if (chunkLen > 0)
         memcpy(dest + (*usedLen), srcChunk, chunkLen);
     (*usedLen) += (u32)chunkLen;
-    (*self).bytesCopied += (u32)chunkLen;
+    AssetBroker_setBytesCopied(self, AssetBroker_getBytesCopied(self) + (u32)chunkLen);
     return true;
 }
 
@@ -135,7 +135,7 @@ bool AssetBroker_cachePath(const AssetBroker *self, const char *fileName,
     if (out == nullptr || outCap == 0)
         return false;
     const char *prefix = "cache/";
-    const char *sub = (*self).cacheSub;
+    const char *sub = AssetBroker_getCacheSub(self);
     bytes need = strlen(prefix) + strlen(sub) + 1 + strlen(fileName) + 1;
     if (need > outCap)
         return false;
@@ -155,18 +155,21 @@ bool AssetBroker_cachePath(const AssetBroker *self, const char *fileName,
 fn AssetBroker_reset(AssetBroker *self) {
     if (self == nullptr)
         return;
-    (*self).cancelled = false;
-    (*self).bytesCopied = 0;
+    AssetBroker_setCancelled(self, false);
+    AssetBroker_setBytesCopied(self, 0);
 }
 
 /** Marks future chunk copies as cancelled. */
 fn AssetBroker_cancel(AssetBroker *self) {
     if (self == nullptr)
         return;
-    (*self).cancelled = true;
+    AssetBroker_setCancelled(self, true);
 }
 
 // SETTERS
+
+;;GETTER
+static inline char *AssetBroker_cacheSubMut(AssetBroker *self) { return (*self).cacheSub; }
 
 /** Replaces the cache subdirectory only when the full name fits its field. */
 bool AssetBroker_setCacheSub(AssetBroker *self, const char *sub, bool *outTruncated) {
@@ -182,11 +185,12 @@ bool AssetBroker_setCacheSub(AssetBroker *self, const char *sub, bool *outTrunca
             *outTruncated = true;
         return false;
     }
-    memcpy((*self).cacheSub, sub, n + 1);
+    memcpy(AssetBroker_cacheSubMut(self), sub, n + 1);
     return true;
 }
 
 /** Sets the per-chunk time budget used by the broker contract. */
+;;SETTER
 fn AssetBroker_setChunkBudget(AssetBroker *self, u64 chunkBudgetMs) {
     if (self == nullptr)
         return;
@@ -194,6 +198,7 @@ fn AssetBroker_setChunkBudget(AssetBroker *self, u64 chunkBudgetMs) {
 }
 
 /** Sets the broker's cancellation flag. */
+;;SETTER
 fn AssetBroker_setCancelled(AssetBroker *self, bool cancelled) {
     if (self == nullptr)
         return;
@@ -201,6 +206,7 @@ fn AssetBroker_setCancelled(AssetBroker *self, bool cancelled) {
 }
 
 /** Sets the reported cumulative number of bytes copied. */
+;;SETTER
 fn AssetBroker_setBytesCopied(AssetBroker *self, u32 bytesCopied) {
     if (self == nullptr)
         return;
@@ -210,11 +216,13 @@ fn AssetBroker_setBytesCopied(AssetBroker *self, u32 bytesCopied) {
 // GETTERS
 
 /** Returns a borrowed view of the configured cache subdirectory. */
+;;GETTER
 const char *AssetBroker_getCacheSub(const AssetBroker *self) {
     return self ? (*self).cacheSub : nullptr;
 }
 
 /** Returns the per-chunk budget, or zero for a null receiver. */
+;;GETTER
 u64 AssetBroker_getChunkBudget(const AssetBroker *self) {
     if (self == nullptr)
         return 0;
@@ -222,6 +230,7 @@ u64 AssetBroker_getChunkBudget(const AssetBroker *self) {
 }
 
 /** Reports whether future copy operations are cancelled. */
+;;GETTER
 bool AssetBroker_isCancelled(const AssetBroker *self) {
     if (self == nullptr)
         return false;
@@ -229,6 +238,7 @@ bool AssetBroker_isCancelled(const AssetBroker *self) {
 }
 
 /** Returns the cumulative copied-byte count, or zero for a null receiver. */
+;;GETTER
 u32 AssetBroker_getBytesCopied(const AssetBroker *self) {
     if (self == nullptr)
         return 0;

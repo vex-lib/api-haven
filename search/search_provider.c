@@ -142,7 +142,8 @@ const SearchProviderSlot *SearchProvider_get(const SearchProvider *self, const c
         return nullptr;
     for (u32 i = 0; i < kSearchProviderCount; i++) {
         const SearchProviderSlot *slot = &kSearchProviders[i];
-        if ((*slot).slug && strcmp((*slot).slug, slug) == 0)
+        const char *rowSlug = SearchProvider_getSlug(self, slot);
+        if (rowSlug && strcmp(rowSlug, slug) == 0)
             return slot;
     }
     return nullptr;
@@ -154,7 +155,7 @@ bool SearchProvider_resolveEndpoint(const SearchProvider *self,
                                     char *outBuf, bytes outCap) {
     if (!self || !slot || !outBuf || outCap == 0)
         return false;
-    const char *ep = (*slot).endpoint;
+    const char *ep = SearchProvider_getEndpoint(self, slot);
     if (!ep)
         return false;
     bytes len = strlen(ep);
@@ -167,6 +168,7 @@ bool SearchProvider_resolveEndpoint(const SearchProvider *self,
 // GETTERS
 
 /** Returns the slot's canonical slug, or nullptr when no slot is supplied. */
+;;GETTER
 const char *SearchProvider_getSlug(const SearchProvider *self,
                                    const SearchProviderSlot *slot) {
     (discard) self;
@@ -174,6 +176,7 @@ const char *SearchProvider_getSlug(const SearchProvider *self,
 }
 
 /** Returns the slot's display label, or nullptr when no slot is supplied. */
+;;GETTER
 const char *SearchProvider_getDisplayName(const SearchProvider *self,
                                           const SearchProviderSlot *slot) {
     (discard) self;
@@ -181,6 +184,7 @@ const char *SearchProvider_getDisplayName(const SearchProvider *self,
 }
 
 /** Returns the slot's wire family, or the documented safe default. */
+;;GETTER
 SearchProviderFamily SearchProvider_getFamily(const SearchProvider *self,
                                               const SearchProviderSlot *slot) {
     if (!self || !slot)
@@ -189,6 +193,7 @@ SearchProviderFamily SearchProvider_getFamily(const SearchProvider *self,
 }
 
 /** Returns the slot's authentication scheme, or the documented safe default. */
+;;GETTER
 SearchProviderAuth SearchProvider_getAuth(const SearchProvider *self,
                                           const SearchProviderSlot *slot) {
     if (!self || !slot)
@@ -197,6 +202,7 @@ SearchProviderAuth SearchProvider_getAuth(const SearchProvider *self,
 }
 
 /** Returns the slot's configured search endpoint, if any. */
+;;GETTER
 const char *SearchProvider_getEndpoint(const SearchProvider *self,
                                        const SearchProviderSlot *slot) {
     (discard) self;
@@ -204,6 +210,7 @@ const char *SearchProvider_getEndpoint(const SearchProvider *self,
 }
 
 /** Returns the slot's optional provider note. */
+;;GETTER
 const char *SearchProvider_getNote(const SearchProvider *self,
                                    const SearchProviderSlot *slot) {
     (discard) self;
@@ -211,6 +218,7 @@ const char *SearchProvider_getNote(const SearchProvider *self,
 }
 
 /** Returns the slot's daily quota value, or zero when unavailable. */
+;;GETTER
 u32 SearchProvider_getQuotaPerDay(const SearchProvider *self,
                                        const SearchProviderSlot *slot) {
     if (!self || !slot)
@@ -219,6 +227,7 @@ u32 SearchProvider_getQuotaPerDay(const SearchProvider *self,
 }
 
 /** Returns the slot's remaining quota value, or zero when unavailable. */
+;;GETTER
 u32 SearchProvider_getQuotaRemaining(const SearchProvider *self,
                                           const SearchProviderSlot *slot) {
     if (!self || !slot)
@@ -227,6 +236,7 @@ u32 SearchProvider_getQuotaRemaining(const SearchProvider *self,
 }
 
 /** Returns the slot's quota-reset Unix time, or zero when unavailable. */
+;;GETTER
 i64 SearchProvider_getResetUnix(const SearchProvider *self,
                                     const SearchProviderSlot *slot) {
     if (!self || !slot)
@@ -235,6 +245,7 @@ i64 SearchProvider_getResetUnix(const SearchProvider *self,
 }
 
 /** Returns the slot's optional human-readable credential-kind label. */
+;;GETTER
 const char *SearchProvider_getAuthKind(const SearchProvider *self,
                                        const SearchProviderSlot *slot) {
     (discard) self;
@@ -242,6 +253,7 @@ const char *SearchProvider_getAuthKind(const SearchProvider *self,
 }
 
 /** Returns the slot's optional license-family label. */
+;;GETTER
 const char *SearchProvider_getLicenseFamily(const SearchProvider *self,
                                             const SearchProviderSlot *slot) {
     (discard) self;

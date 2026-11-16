@@ -5,6 +5,9 @@
 #include <stdio.h>
 #include <string.h>
 
+;;GETTER
+static inline bytes AppJob_outLen(const AppJob *self) { return (*self).outLen; }
+
 ;;OVERVIEW
 /**
  * ============================================================================
@@ -194,7 +197,7 @@ i32 main(i32 argc, const char **argv) {
     CHECK(!AppBroker_isRunning(&b));
     const AppJob *slot = AppBroker_getJobAt(&b, 0);
     CHECK(slot != nullptr);
-    CHECK(slot && (*slot).outLen == 10);
+    CHECK(slot && AppJob_outLen(slot) == 10);
     CHECK(AppBroker_getJobAt(&b, 1) == nullptr);
     CHECK(!AppBroker_cancel(&b, jobId)); // DONE slot: false
     CHECK(AppBroker_poll(&b, 999) == APP_STATUS_IDLE);

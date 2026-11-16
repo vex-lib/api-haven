@@ -122,24 +122,28 @@ const DbProviderSlot *DbProvider_findByEngine(const DbProvider *self,
 // GETTERS
 
 /** Returns the slot's canonical slug, or nullptr when no slot is supplied. */
+;;GETTER
 const char *DbProvider_getSlug(const DbProvider *self, const DbProviderSlot *slot) {
     (discard) self;
     return slot ? (*slot).slug : nullptr;
 }
 
 /** Returns the slot's display label, or nullptr when no slot is supplied. */
+;;GETTER
 const char *DbProvider_getDisplayName(const DbProvider *self, const DbProviderSlot *slot) {
     (discard) self;
     return slot ? (*slot).displayName : nullptr;
 }
 
 /** Returns the slot's driver/engine key, or nullptr when no slot is supplied. */
+;;GETTER
 const char *DbProvider_getEngine(const DbProvider *self, const DbProviderSlot *slot) {
     (discard) self;
     return slot ? (*slot).engine : nullptr;
 }
 
 /** Returns the slot's canonical wire port, or zero when unavailable. */
+;;GETTER
 u16 DbProvider_getDefaultPort(const DbProvider *self, const DbProviderSlot *slot) {
     if (!self || !slot)
         return 0;
@@ -147,6 +151,7 @@ u16 DbProvider_getDefaultPort(const DbProvider *self, const DbProviderSlot *slot
 }
 
 /** Returns the slot's wire family, or the documented safe default. */
+;;GETTER
 DbProviderFamily DbProvider_getFamily(const DbProvider *self, const DbProviderSlot *slot) {
     if (!self || !slot)
         return DB_PROVIDER_FAMILY_SQL; // safe default
@@ -154,6 +159,7 @@ DbProviderFamily DbProvider_getFamily(const DbProvider *self, const DbProviderSl
 }
 
 /** Returns the slot's optional provider note. */
+;;GETTER
 const char *DbProvider_getNote(const DbProvider *self, const DbProviderSlot *slot) {
     (discard) self;
     return slot ? (*slot).note : nullptr;

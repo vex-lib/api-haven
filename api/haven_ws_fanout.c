@@ -66,12 +66,29 @@
 
 // CONSTRUCTORS
 
+;;SETTER
+static inline fn HavenWsFanout_setCount(HavenWsFanout *self, u32 count) { (*self).count = count; }
+;;GETTER
+static inline HavenWsSlot *HavenWsFanout_slots(HavenWsFanout *self) { return (*self).slots; }
+;;GETTER
+static inline const HavenWsSlot *HavenWsFanout_slotsConst(const HavenWsFanout *self) { return (*self).slots; }
+;;GETTER
+static inline any HavenWsSlot_handle(const HavenWsSlot *self) { return (*self).handle; }
+;;SETTER
+static inline fn HavenWsSlot_setHandle(HavenWsSlot *self, any handle) { (*self).handle = handle; }
+;;GETTER
+static inline const HavenWsSource *HavenWsSlot_source(const HavenWsSlot *self) { return (*self).source; }
+;;SETTER
+static inline fn HavenWsSlot_setSource(HavenWsSlot *self, const HavenWsSource *source) { (*self).source = source; }
+;;GETTER
+static inline u32 (*HavenWsSource_poll(const HavenWsSource *self))(any, u64) { return (*self).poll; }
+
 /** Allocates and initializes an empty fixed-capacity fan-out registry. */
 HavenWsFanout *HavenWsFanout_0() {
     HavenWsFanout *fanout = (HavenWsFanout*) calloc(1, sizeof(HavenWsFanout));
     if (!fanout)
         return nullptr;
-    (*fanout).count = 0;
+    HavenWsFanout_setCount(fanout, 0);
     return fanout;
 }
 
@@ -89,17 +106,18 @@ bool HavenWsFanout_attach(HavenWsFanout *fanout, any handle,
                           const HavenWsSource *source) {
     if (!fanout || !handle || !source)
         return false;
+    HavenWsSlot *slots = HavenWsFanout_slots(fanout);
     for (u32 i = 0; i < HAVEN_WS_FANOUT_MAX; i++) {
-        HavenWsSlot *slot = &(*fanout).slots[i];
-        if ((*slot).handle == handle)
+        HavenWsSlot *slot = &slots[i];
+        if (HavenWsSlot_handle(slot) == handle)
             return false;
     }
     for (u32 i = 0; i < HAVEN_WS_FANOUT_MAX; i++) {
-        HavenWsSlot *slot = &(*fanout).slots[i];
-        if ((*slot).handle == nullptr) {
-            (*slot).handle = handle;
-            (*slot).source = source;
-            (*fanout).count += 1;
+        HavenWsSlot *slot = &slots[i];
+        if (HavenWsSlot_handle(slot) == nullptr) {
+            HavenWsSlot_setHandle(slot, handle);
+            HavenWsSlot_setSource(slot, source);
+            HavenWsFanout_setCount(fanout, HavenWsFanout_getCount(fanout) + 1);
             return true;
         }
     }
@@ -110,12 +128,13 @@ bool HavenWsFanout_attach(HavenWsFanout *fanout, any handle,
 bool HavenWsFanout_detach(HavenWsFanout *fanout, any handle) {
     if (!fanout || !handle)
         return false;
+    HavenWsSlot *slots = HavenWsFanout_slots(fanout);
     for (u32 i = 0; i < HAVEN_WS_FANOUT_MAX; i++) {
-        HavenWsSlot *slot = &(*fanout).slots[i];
-        if ((*slot).handle == handle) {
-            (*slot).handle = nullptr;
-            (*slot).source = nullptr;
-            (*fanout).count -= 1;
+        HavenWsSlot *slot = &slots[i];
+        if (HavenWsSlot_handle(slot) == handle) {
+            HavenWsSlot_setHandle(slot, nullptr);
+            HavenWsSlot_setSource(slot, nullptr);
+            HavenWsFanout_setCount(fanout, HavenWsFanout_getCount(fanout) - 1);
             return true;
         }
     }
@@ -128,20 +147,24 @@ u32 HavenWsFanout_pollStep(HavenWsFanout *fanout, u64 budgetMs) {
         return 0;
     if (budgetMs == 0)
         return 0;
-    if ((*fanout).count == 0)
+    u32 count = HavenWsFanout_getCount(fanout);
+    if (count == 0)
         return 0;
-    u64 slice = budgetMs / (*fanout).count;
+    u64 slice = budgetMs / count;
     if (slice == 0)
         slice = 1;
     u32 delivered = 0;
+    HavenWsSlot *slots = HavenWsFanout_slots(fanout);
     for (u32 i = 0; i < HAVEN_WS_FANOUT_MAX; i++) {
-        HavenWsSlot *slot = &(*fanout).slots[i];
-        if ((*slot).handle == nullptr || (*slot).source == nullptr)
+        HavenWsSlot *slot = &slots[i];
+        any handle = HavenWsSlot_handle(slot);
+        const HavenWsSource *source = HavenWsSlot_source(slot);
+        if (handle == nullptr || source == nullptr)
             continue;
-        const HavenWsSource *source = (*slot).source;
-        if ((*source).poll == nullptr)
+        u32 (*pollFn)(any, u64) = HavenWsSource_poll(source);
+        if (pollFn == nullptr)
             continue;
-        delivered += (*source).poll((*slot).handle, slice);
+        delivered += pollFn(handle, slice);
     }
     return delivered;
 }
@@ -149,6 +172,7 @@ u32 HavenWsFanout_pollStep(HavenWsFanout *fanout, u64 budgetMs) {
 // GETTERS
 
 /** Returns the number of currently attached handles. */
+;;GETTER
 u32 HavenWsFanout_getCount(const HavenWsFanout *fanout) {
     if (!fanout)
         return 0;
@@ -161,6 +185,6 @@ any HavenWsFanout_getHandle(const HavenWsFanout *fanout, u32 i) {
         return nullptr;
     if (i >= HAVEN_WS_FANOUT_MAX)
         return nullptr;
-    const HavenWsSlot *slot = &(*fanout).slots[i];
-    return (*slot).handle;
+    const HavenWsSlot *slot = &HavenWsFanout_slotsConst(fanout)[i];
+    return HavenWsSlot_handle(slot);
 }

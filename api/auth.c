@@ -80,28 +80,42 @@ ApiAuth ApiAuth_bearerFn(ApiTokenFn fn, any userdata) {
 }
 
 // CORE FUNCTIONS
+;;GETTER
+static inline ApiAuthKind ApiAuth_kind(const ApiAuth *self) { return (*self).kind; }
+;;GETTER
+static inline const char *ApiAuth_headerName(const ApiAuth *self) { return (*self).headerName; }
+;;GETTER
+static inline const char *ApiAuth_credential(const ApiAuth *self) { return (*self).credential; }
+;;GETTER
+static inline ApiTokenFn ApiAuth_tokenFn(const ApiAuth *self) { return (*self).tokenFn; }
+;;GETTER
+static inline any ApiAuth_tokenUserdata(const ApiAuth *self) { return (*self).tokenUserdata; }
+
 /** Copies the selected credential into valueBuf and returns its header name. */
 bool ApiAuth_apply(const ApiAuth *auth, const char **nameOut,
                    char *valueBuf, bytes valueCap) {
     if (!auth || !nameOut || !valueBuf || valueCap == 0)
         return false;
-    if ((*auth).kind == API_AUTH_NONE)
+    ApiAuthKind kind = ApiAuth_kind(auth);
+    if (kind == API_AUTH_NONE)
         return false;
-    if ((*auth).kind == API_AUTH_API_KEY) {
-        if (!(*auth).headerName || !(*auth).credential)
+    if (kind == API_AUTH_API_KEY) {
+        const char *headerName = ApiAuth_headerName(auth);
+        const char *credential = ApiAuth_credential(auth);
+        if (!headerName || !credential)
             return false;
-        bytes n = strlen((*auth).credential);
+        bytes n = strlen(credential);
         if (n + 1 > valueCap)
             return false;
-        memcpy(valueBuf, (*auth).credential, n + 1);
-        *nameOut = (*auth).headerName;
+        memcpy(valueBuf, credential, n + 1);
+        *nameOut = headerName;
         return true;
     }
     const char *token = nullptr;
-    if ((*auth).kind == API_AUTH_BEARER)
-        token = (*auth).credential;
-    else if ((*auth).kind == API_AUTH_BEARER_FN && (*auth).tokenFn)
-        token = (*auth).tokenFn((*auth).tokenUserdata);
+    if (kind == API_AUTH_BEARER)
+        token = ApiAuth_credential(auth);
+    else if (kind == API_AUTH_BEARER_FN && ApiAuth_tokenFn(auth))
+        token = ApiAuth_tokenFn(auth)(ApiAuth_tokenUserdata(auth));
     if (!token)
         return false;
     i32 n = snprintf(valueBuf, valueCap, "Bearer %s", token);

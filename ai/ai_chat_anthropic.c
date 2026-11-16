@@ -113,26 +113,36 @@ AiChatAnthropic AiChatAnthropic_2(const char *model, const char *apiKey) {
 
 // CORE FUNCTIONS
 
+;;GETTER
+static inline const char *AiMessage_role(const AiMessage *self) { return (*self).role; }
+;;GETTER
+static inline const char *AiMessage_content(const AiMessage *self) { return (*self).content; }
+
 /** Renders the Anthropic Messages URL, body, and x-api-key auth descriptor. */
 bool AiChatAnthropic_buildRequest(const AiChatAnthropic *self, const AiMessage *msgs,
                                   u32 msgCount, char *bodyBuf, bytes bodyCap,
                                   char *urlBuf, bytes urlCap, ApiAuth *authOut) {
-    if (!self || !bodyBuf || !urlBuf || !authOut || !(*self).model)
+    const char *model = AiChatAnthropic_getModel(self);
+    if (!self || !bodyBuf || !urlBuf || !authOut || !model)
         return false;
     if (!msgs && msgCount > 0)
         return false;
     if (urlCap == 0 || bodyCap == 0)
         return false;
-    if ((*self).maxTokens == 0)
+    u32 maxTokens = AiChatAnthropic_getMaxTokens(self);
+    if (maxTokens == 0)
         return false;
 
     // Resolve endpoint: override > peer native base > Anthropic default.
     const char *base = "https://api.anthropic.com/v1";
-    if ((*self).baseUrlOverride)
-        base = (*self).baseUrlOverride;
-    else if ((*self).peer) {
-        const AiProvider *table = (*self).provider ? (*self).provider : AiProvider_shared();
-        const char *resolved = AiProvider_resolveBaseUrl(table, (*self).peer);
+    const char *baseUrlOverride = AiChatAnthropic_getBaseUrl(self);
+    const AiProviderSlot *peer = AiChatAnthropic_getPeer(self);
+    if (baseUrlOverride)
+        base = baseUrlOverride;
+    else if (peer) {
+        const AiProvider *provider = AiChatAnthropic_getProvider(self);
+        const AiProvider *table = provider ? provider : AiProvider_shared();
+        const char *resolved = AiProvider_resolveBaseUrl(table, peer);
         if (resolved)
             base = resolved;
     }
@@ -142,8 +152,9 @@ bool AiChatAnthropic_buildRequest(const AiChatAnthropic *self, const AiMessage *
         return false;
 
     // Credential: Anthropic wire takes x-api-key, never Bearer.
-    if ((*self).apiKey)
-        (*authOut) = ApiAuth_apiKey("x-api-key", (*self).apiKey);
+    const char *apiKey = AiChatAnthropic_getApiKey(self);
+    if (apiKey)
+        (*authOut) = ApiAuth_apiKey("x-api-key", apiKey);
     else
         (*authOut) = ApiAuth_none();
 
@@ -151,11 +162,11 @@ bool AiChatAnthropic_buildRequest(const AiChatAnthropic *self, const AiMessage *
     bytes used = 0;
     if (!appendLiteral(bodyBuf, bodyCap, &used, "{\"model\":"))
         return false;
-    if (!appendJsonString(bodyBuf, bodyCap, &used, (*self).model))
+    if (!appendJsonString(bodyBuf, bodyCap, &used, model))
         return false;
     char tokenBuf[32];
     const i32 tw = snprintf(tokenBuf, sizeof(tokenBuf), ",\"max_tokens\":%u,\"messages\":[",
-                            (*self).maxTokens);
+                            maxTokens);
     if (tw < 0 || (bytes)tw >= sizeof(tokenBuf))
         return false;
     if (!appendLiteral(bodyBuf, bodyCap, &used, tokenBuf))
@@ -166,11 +177,11 @@ bool AiChatAnthropic_buildRequest(const AiChatAnthropic *self, const AiMessage *
             return false;
         if (!appendLiteral(bodyBuf, bodyCap, &used, "{\"role\":"))
             return false;
-        if (!appendJsonString(bodyBuf, bodyCap, &used, (*m).role))
+        if (!appendJsonString(bodyBuf, bodyCap, &used, AiMessage_role(m)))
             return false;
         if (!appendLiteral(bodyBuf, bodyCap, &used, ",\"content\":"))
             return false;
-        if (!appendJsonString(bodyBuf, bodyCap, &used, (*m).content))
+        if (!appendJsonString(bodyBuf, bodyCap, &used, AiMessage_content(m)))
             return false;
         if (!appendLiteral(bodyBuf, bodyCap, &used, "}"))
             return false;
@@ -221,6 +232,7 @@ fn AiChatAnthropic_setApiKey(AiChatAnthropic *self, const char *apiKey) {
 }
 
 /** Sets an optional borrowed endpoint override. */
+;;SETTER
 fn AiChatAnthropic_setBaseUrl(AiChatAnthropic *self, const char *baseUrlOverride) {
     if (self)
         (*self).baseUrlOverride = baseUrlOverride;
@@ -235,31 +247,37 @@ fn AiChatAnthropic_setMaxTokens(AiChatAnthropic *self, u32 maxTokens) {
 // GETTERS
 
 /** Returns the configured provider directory, or nullptr for a null receiver. */
+;;GETTER
 const AiProvider *AiChatAnthropic_getProvider(const AiChatAnthropic *self) {
     return self ? (*self).provider : nullptr;
 }
 
 /** Returns the selected provider row, or nullptr when unset or self is null. */
+;;GETTER
 const AiProviderSlot *AiChatAnthropic_getPeer(const AiChatAnthropic *self) {
     return self ? (*self).peer : nullptr;
 }
 
 /** Returns the borrowed model identifier, or nullptr when unset. */
+;;GETTER
 const char *AiChatAnthropic_getModel(const AiChatAnthropic *self) {
     return self ? (*self).model : nullptr;
 }
 
 /** Returns the borrowed API key, or nullptr when unset. */
+;;GETTER
 const char *AiChatAnthropic_getApiKey(const AiChatAnthropic *self) {
     return self ? (*self).apiKey : nullptr;
 }
 
 /** Returns the endpoint override, or nullptr when unset. */
+;;GETTER
 const char *AiChatAnthropic_getBaseUrl(const AiChatAnthropic *self) {
     return self ? (*self).baseUrlOverride : nullptr;
 }
 
 /** Returns the configured token ceiling, or zero for a null receiver. */
+;;GETTER
 u32 AiChatAnthropic_getMaxTokens(const AiChatAnthropic *self) {
     if (!self)
         return 0;

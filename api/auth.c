@@ -22,11 +22,11 @@
  * are borrowed (caller-owned stable storage); rendering is allocation-free
  * into a caller buffer.
  *
- * STRUCT FIELDS (Mirroring api/auth.h — exactly this file's class):
+ * STRUCT FIELDS (Mirroring api/auth.h, exactly this file's class):
  * ----------------------------------------------------------------------------
  *   ApiAuthKind kind;           // NONE / API_KEY / BEARER / BEARER_FN
- *   const char *headerName;     // API_KEY header name; else nullptr
- *   const char *credential;     // API_KEY value / BEARER token; else nullptr
+ *   string headerName;     // API_KEY header name; else nullptr
+ *   string credential;     // API_KEY value / BEARER token; else nullptr
  *   ApiTokenFn tokenFn;         // BEARER_FN callback; else nullptr
  *   any tokenUserdata;        // BEARER_FN userdata; else nullptr
  *
@@ -45,7 +45,7 @@
  * ============================================================================
  */
 
-// CONSTRUCTORS
+/** CONSTRUCTORS */
 /** Creates an authentication descriptor that adds no credential header. */
 ApiAuth ApiAuth_none() {
     ApiAuth auth = { 0 };
@@ -54,7 +54,7 @@ ApiAuth ApiAuth_none() {
 }
 
 /** Creates a descriptor for a caller-owned API-key header and value. */
-ApiAuth ApiAuth_apiKey(const char *headerName, const char *key) {
+ApiAuth ApiAuth_apiKey(string headerName, string key) {
     ApiAuth auth = { 0 };
     auth.kind = API_AUTH_API_KEY;
     auth.headerName = headerName;
@@ -63,7 +63,7 @@ ApiAuth ApiAuth_apiKey(const char *headerName, const char *key) {
 }
 
 /** Creates a descriptor for a caller-owned bearer token. */
-ApiAuth ApiAuth_bearer(const char *token) {
+ApiAuth ApiAuth_bearer(string token) {
     ApiAuth auth = { 0 };
     auth.kind = API_AUTH_BEARER;
     auth.credential = token;
@@ -79,29 +79,44 @@ ApiAuth ApiAuth_bearerFn(ApiTokenFn fn, any userdata) {
     return auth;
 }
 
-// CORE FUNCTIONS
+/** CORE FUNCTIONS */
 ;;GETTER
-static inline ApiAuthKind ApiAuth_kind(const ApiAuth *self) { return (*self).kind; }
+static inline ApiAuthKind ApiAuth_kind(const ApiAuth *self)
+{
+    return (*self).kind;
+}
 ;;GETTER
-static inline const char *ApiAuth_headerName(const ApiAuth *self) { return (*self).headerName; }
+static inline string ApiAuth_headerName(const ApiAuth *self)
+{
+    return (*self).headerName;
+}
 ;;GETTER
-static inline const char *ApiAuth_credential(const ApiAuth *self) { return (*self).credential; }
+static inline string ApiAuth_credential(const ApiAuth *self)
+{
+    return (*self).credential;
+}
 ;;GETTER
-static inline ApiTokenFn ApiAuth_tokenFn(const ApiAuth *self) { return (*self).tokenFn; }
+static inline ApiTokenFn ApiAuth_tokenFn(const ApiAuth *self)
+{
+    return (*self).tokenFn;
+}
 ;;GETTER
-static inline any ApiAuth_tokenUserdata(const ApiAuth *self) { return (*self).tokenUserdata; }
+static inline any ApiAuth_tokenUserdata(const ApiAuth *self)
+{
+    return (*self).tokenUserdata;
+}
 
 /** Copies the selected credential into valueBuf and returns its header name. */
-bool ApiAuth_apply(const ApiAuth *auth, const char **nameOut,
-                   char *valueBuf, bytes valueCap) {
+bool ApiAuth_apply(const ApiAuth *auth, string *nameOut,
+                   utf8 *valueBuf, bytes valueCap) {
     if (!auth || !nameOut || !valueBuf || valueCap == 0)
         return false;
     ApiAuthKind kind = ApiAuth_kind(auth);
     if (kind == API_AUTH_NONE)
         return false;
     if (kind == API_AUTH_API_KEY) {
-        const char *headerName = ApiAuth_headerName(auth);
-        const char *credential = ApiAuth_credential(auth);
+        string headerName = ApiAuth_headerName(auth);
+        string credential = ApiAuth_credential(auth);
         if (!headerName || !credential)
             return false;
         bytes n = strlen(credential);
@@ -111,7 +126,7 @@ bool ApiAuth_apply(const ApiAuth *auth, const char **nameOut,
         *nameOut = headerName;
         return true;
     }
-    const char *token = nullptr;
+    string token = nullptr;
     if (kind == API_AUTH_BEARER)
         token = ApiAuth_credential(auth);
     else if (kind == API_AUTH_BEARER_FN && ApiAuth_tokenFn(auth))

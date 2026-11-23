@@ -10,6 +10,6 @@ typedef struct APIClientTelemetry {
     u64 totalAllocations;
 } APIClientTelemetry;
 
-bool APIClient_sendTelemetry(const char *endpointUrl, const APIClientTelemetry *telemetry);
+bool APIClient_sendTelemetry(string endpointUrl, const APIClientTelemetry *telemetry);
 
 #endif

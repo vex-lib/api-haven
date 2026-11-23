@@ -1,5 +1,6 @@
 #include "vex.h"
 #include "search/search_provider.h"
+#include "re/primitive/vex-string.h"
 
 #include <string.h>
 
@@ -8,7 +9,7 @@
  * wikimedia) with slug, display name, wire family, credential scheme and endpoint
  * base. It exists so a search backend is a row, not a branch; queries run through
  * api/rest.h in the MCP renderer, never here. Calling a documented API and
- * parsing its documented JSON is a client using a contract — scraping is not
+ * parsing its documented JSON is a client using a contract, scraping is not
  * something this class does. */
 
 ;;OVERVIEW
@@ -19,54 +20,54 @@
  * ============================================================================
  * The blessed web-search directory: 3 static descriptor rows covering
  * the search backends the engine may query (searxng, google-cse,
- * wikimedia) — each with a canonical slug, display name, wire family,
+ * wikimedia), each with a canonical slug, display name, wire family,
  * credential scheme, and endpoint base. One table, linear slug lookup,
  * zero allocation, immutable (thread-safe reads without locks).
  * Queries run through api/rest.h in the MCP renderer, never here.
  *
  * NOT SCRAPING (basic computer science): calling a documented search
  * API over HTTP and parsing its documented JSON response is a client
- * using a contract — request schema in, response schema out, credentials
+ * using a contract, request schema in, response schema out, credentials
  * where the contract says. Scraping is the opposite: fetching human
  * HTML meant for browsers and reverse-engineering it into a fake API
  * (selectors as schema, layout as versioning, ToS bypass as auth).
  * One is a function call over a socket; the other is screen-reading
  * someone else's UI and pretending it's an interface. Rule 34 bans the
- * second; every row below is the first — a real search API or
+ * second; every row below is the first, a real search API or
  * self-hosted SearXNG.
  *
- * STRUCT FIELDS (Mirroring search/search_provider.h — exactly this
+ * STRUCT FIELDS (Mirroring search/search_provider.h, exactly this
  * file's class):
  * ----------------------------------------------------------------------------
- *   u32 reserved;   // singleton marker; no mutable state — all data
+ *   u32 reserved;   // singleton marker; no mutable state, all data
  *                        // lives in the static const SearchProviderSlot rows
  *
-  * SLOT RECORD (SearchProviderSlot — Rule 3 co-location, zero behavior of
+  * SLOT RECORD (SearchProviderSlot, Rule 3 co-location, zero behavior of
   * its own; all query behavior hangs off this table class):
   * ----------------------------------------------------------------------------
-  *   const char *slug;            // canonical key, e.g. "searxng"
-  *   const char *displayName;     // human label
+  *   string slug;            // canonical key, e.g. "searxng"
+  *   string displayName;     // human label
   *   SearchProviderFamily family; // wire family enum
   *   SearchProviderAuth   auth;   // credential scheme enum
-  *   const char *endpoint;        // base URL the renderer builds on
-  *   const char *note;            // caveat; NULL when none
+  *   string endpoint;        // base URL the renderer builds on
+  *   string note;            // caveat; nullptr when none
   *   u32 quotaPerDay;        // free-tier requests/day (0 = unknown)
   *   u32 quotaRemaining;     // free-tier remainder (0 = unknown)
   *   i64  resetUnix;          // quota window reset epoch secs (0 = unknown)
-  *   const char *authKind;        // credential kind label; NULL = see auth
-  *   const char *licenseFamily;   // license family label; NULL = UNKNOWN
+  *   string authKind;        // credential kind label; nullptr = see auth
+  *   string licenseFamily;   // license family label; nullptr = UNKNOWN
   *
   * TODO(quota): the 3 static rows below carry first-pass quota values
   * (google-cse 100/day free tier, wikimedia CC-BY-SA, searxng unlimited
   * self-hosted = 0/unknown). Refine per-backend numbers when verified,
   * mirroring the AiProvider QUOTA table in tools/gen_providers.py.
  *
- * PRIVATE HELPERS (none — rows live in kSearchProviders[] below, each
+ * PRIVATE HELPERS (none, rows live in kSearchProviders[] below, each
  * row carrying exactly the SLOT RECORD fields above):
  * ----------------------------------------------------------------------------
- *   kSearchProviders[]      — 3 static const rows (this file only)
- *   kSearchProviderCount    — row count derived from the array
- *   sSearchProviderShared   — zero-init singleton handle
+ *   kSearchProviders[]     , 3 static const rows (this file only)
+ *   kSearchProviderCount   , row count derived from the array
+ *   sSearchProviderShared  , zero-init singleton handle
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
@@ -79,14 +80,14 @@
  *   - SearchProvider_get(self, slug)                 : row by slug
  *   - SearchProvider_resolveEndpoint(self, slot, dest) : endpoint copy
  *
-  * Getters (Rule 24; null-safe. Setters omitted — immutable rows, waiver):
+  * Getters (Rule 24; null-safe. Setters omitted, immutable rows, waiver):
   *   - SearchProvider_getSlug / getDisplayName / getFamily / getAuth /
   *     getEndpoint / getNote / getQuotaPerDay / getQuotaRemaining /
   *     getResetUnix / getAuthKind / getLicenseFamily(self, slot)
  * ============================================================================
  */
-;;INTENTION("immutable slot records — setters omitted; data is static const; access via SearchProvider_* table functions — Rule 33 Tier-2 waiver")
-;;INTENTION("descriptors only: no sockets/HTTP here; queries run via api/rest.h in the MCP renderer — Rule 17 api-haven clause; scraping to fake a search API is a Rule 34 defect")
+;;INTENTION("immutable slot records, setters omitted; data is static const; access via SearchProvider_* table functions, Rule 33 Tier-2 waiver")
+;;INTENTION("descriptors only: no sockets/HTTP here; queries run via api/rest.h in the MCP renderer, Rule 17 api-haven clause; scraping to fake a search API is a Rule 34 defect")
 
 static const SearchProviderSlot kSearchProviders[] = {
     {"searxng", "SearXNG (self-hosted)",
@@ -109,16 +110,16 @@ static const SearchProviderSlot kSearchProviders[] = {
 static const u32 kSearchProviderCount =
     (u32)(sizeof(kSearchProviders) / sizeof(kSearchProviders[0]));
 
-static SearchProvider sSearchProviderShared; // zero-init singleton
+static SearchProvider sSearchProviderShared; /** zero-init singleton */
 
-// CONSTRUCTORS
+/** CONSTRUCTORS */
 
 /** Returns the process-wide immutable web-search directory handle. */
 SearchProvider *SearchProvider_shared() {
     return &sSearchProviderShared;
 }
 
-// CORE FUNCTIONS
+/** CORE FUNCTIONS */
 
 /** Returns the directory row count, or zero for a null receiver. */
 u32 SearchProvider_count(const SearchProvider *self) {
@@ -137,13 +138,14 @@ const SearchProviderSlot *SearchProvider_at(const SearchProvider *self, u32 i) {
 }
 
 /** Finds a search provider by exact slug, returning nullptr when absent. */
-const SearchProviderSlot *SearchProvider_get(const SearchProvider *self, const char *slug) {
+const SearchProviderSlot *SearchProvider_get(const SearchProvider *self, string slug) {
     if (!self || !slug || (*slug) == '\0')
         return nullptr;
+    string target = slug;
     for (u32 i = 0; i < kSearchProviderCount; i++) {
         const SearchProviderSlot *slot = &kSearchProviders[i];
-        const char *rowSlug = SearchProvider_getSlug(self, slot);
-        if (rowSlug && strcmp(rowSlug, slug) == 0)
+        string rowSlug = SearchProvider_getSlug(self, slot);
+        if (rowSlug && string_equals(rowSlug, target))
             return slot;
     }
     return nullptr;
@@ -152,10 +154,10 @@ const SearchProviderSlot *SearchProvider_get(const SearchProvider *self, const c
 /** Copies the provider endpoint into outBuf when it fits including its terminator. */
 bool SearchProvider_resolveEndpoint(const SearchProvider *self,
                                     const SearchProviderSlot *slot,
-                                    char *outBuf, bytes outCap) {
+                                    utf8 *outBuf, bytes outCap) {
     if (!self || !slot || !outBuf || outCap == 0)
         return false;
-    const char *ep = SearchProvider_getEndpoint(self, slot);
+    string ep = SearchProvider_getEndpoint(self, slot);
     if (!ep)
         return false;
     bytes len = strlen(ep);
@@ -165,11 +167,11 @@ bool SearchProvider_resolveEndpoint(const SearchProvider *self,
     return true;
 }
 
-// GETTERS
+/** GETTERS */
 
 /** Returns the slot's canonical slug, or nullptr when no slot is supplied. */
 ;;GETTER
-const char *SearchProvider_getSlug(const SearchProvider *self,
+string SearchProvider_getSlug(const SearchProvider *self,
                                    const SearchProviderSlot *slot) {
     (discard) self;
     return slot ? (*slot).slug : nullptr;
@@ -177,7 +179,7 @@ const char *SearchProvider_getSlug(const SearchProvider *self,
 
 /** Returns the slot's display label, or nullptr when no slot is supplied. */
 ;;GETTER
-const char *SearchProvider_getDisplayName(const SearchProvider *self,
+string SearchProvider_getDisplayName(const SearchProvider *self,
                                           const SearchProviderSlot *slot) {
     (discard) self;
     return slot ? (*slot).displayName : nullptr;
@@ -188,7 +190,7 @@ const char *SearchProvider_getDisplayName(const SearchProvider *self,
 SearchProviderFamily SearchProvider_getFamily(const SearchProvider *self,
                                               const SearchProviderSlot *slot) {
     if (!self || !slot)
-        return SEARCH_FAMILY_SEARXNG; // safe default
+        return SEARCH_FAMILY_SEARXNG;
     return (*slot).family;
 }
 
@@ -197,13 +199,13 @@ SearchProviderFamily SearchProvider_getFamily(const SearchProvider *self,
 SearchProviderAuth SearchProvider_getAuth(const SearchProvider *self,
                                           const SearchProviderSlot *slot) {
     if (!self || !slot)
-        return SEARCH_AUTH_NONE; // safe default
+        return SEARCH_AUTH_NONE;
     return (*slot).auth;
 }
 
 /** Returns the slot's configured search endpoint, if any. */
 ;;GETTER
-const char *SearchProvider_getEndpoint(const SearchProvider *self,
+string SearchProvider_getEndpoint(const SearchProvider *self,
                                        const SearchProviderSlot *slot) {
     (discard) self;
     return slot ? (*slot).endpoint : nullptr;
@@ -211,7 +213,7 @@ const char *SearchProvider_getEndpoint(const SearchProvider *self,
 
 /** Returns the slot's optional provider note. */
 ;;GETTER
-const char *SearchProvider_getNote(const SearchProvider *self,
+string SearchProvider_getNote(const SearchProvider *self,
                                    const SearchProviderSlot *slot) {
     (discard) self;
     return slot ? (*slot).note : nullptr;
@@ -246,7 +248,7 @@ i64 SearchProvider_getResetUnix(const SearchProvider *self,
 
 /** Returns the slot's optional human-readable credential-kind label. */
 ;;GETTER
-const char *SearchProvider_getAuthKind(const SearchProvider *self,
+string SearchProvider_getAuthKind(const SearchProvider *self,
                                        const SearchProviderSlot *slot) {
     (discard) self;
     return slot ? (*slot).authKind : nullptr;
@@ -254,7 +256,7 @@ const char *SearchProvider_getAuthKind(const SearchProvider *self,
 
 /** Returns the slot's optional license-family label. */
 ;;GETTER
-const char *SearchProvider_getLicenseFamily(const SearchProvider *self,
+string SearchProvider_getLicenseFamily(const SearchProvider *self,
                                             const SearchProviderSlot *slot) {
     (discard) self;
     return slot ? (*slot).licenseFamily : nullptr;

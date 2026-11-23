@@ -1,4 +1,4 @@
-# api-haven — Repo-Local Living Preferences
+# api-haven, Repo-Local Living Preferences
 
 ## Constitution Link
 
@@ -42,11 +42,11 @@ Tier: core / tool (API Connector). Owns: connector contracts, telemetry loops, a
 
 ## Repo-Local Extensions
 
-* None — no managed exceptions to universal laws.
+* None, no managed exceptions to universal laws.
 
 ## Readiness Cross-Reference
 
 * Feature readiness: api-haven readiness gist.
 * Open blockers: ecosystem blockers gist.
-* Proof lawbook: `tests/test-preferences.md` — `./tools/prefs test "<title>"`.
-* Evidence ledger: `metadata/gists/test-checklist.md` — `python3 tools/test_checklist.py check`.
+* Proof lawbook: `tests/test-preferences.md`, `./tools/prefs test "<title>"`.
+* Evidence ledger: `metadata/gists/test-checklist.md`, `python3 tools/test_checklist.py check`.

@@ -6,7 +6,7 @@ It serves as an architectural manifesto for a **zero-allocation C23 systems libr
 
 > Legacy note: the original Java surface (`api.APIClient`, zero-GC
 > off-heap telemetry) is quarantined under `attic/` and is not built.
-> The canonical ports live in `src/api` and `src/com` — extend those,
+> The canonical ports live in `src/api` and `src/com`, extend those,
 > never the attic.
 
 ---

@@ -1,124 +1,48 @@
 # api-haven
 
-## Current State
+R3 connector switchboard and MCP JSON-RPC server for Vexgraph: off-heap AI provider, database, asset, and webhook registries behind one normalized contract.
 
-**Role:** R3 connector/AI switchboard driver — blessed connectors behind one
-normalized contract, plus the MCP tool/resource server. A library, not a product.
-
-**Implemented (macOS arm64, source-verified):**
-- AI provider directory (260 rows) and the OpenAI/Anthropic/Gemini chat renderers
-  (`AiChat` and its two sisters), the caller-fed SSE decoder (`AiSse`), and the
-  16-slot `HavenWsFanout` registry (functionally complete, marked `;;DRAFT`).
-- Database catalog (25 rows, deliberately clipped at PostgreSQL), the blessed
-  asset directory (12 rows) and the bounded chunked `AssetBroker` copy seam.
-- App/engine/search descriptor directories and the bounded app/harness action
-  seams (execution behind injected driver tables; the standalone runner binds none).
-- `ApiAuth`/`Rest_postJson`/`Rest_get`, Discord/Slack webhooks, and the MCP
-  JSON-RPC core (`McpServer`, 14 tools + 7 resources; the `mcp_server` runner is
-  `src/main/mcp_main.c`).
-
-**Proven:** owner tests exist and are wired under `../../tests/api-haven`; the ledger
-records executed evidence only for `storage/snapshot_io.h` (via
-`../../../tests/sesh/run.py`). The rest is **not ledger-proven** — test files existing is
-not executed proof (the Timestamped Test Checklist Law).
-
-**Stubbed / draft / absent:** no TLS backend anywhere (`web_search` fails closed
-with `TLS_BACKEND_MISSING`); `attic/` does not exist in the checkout; no
-live-internet tests (loopback only); drivers unbound in the standalone runner.
-
-**Platforms proven:** macOS arm64 only; Windows/Linux unproven.
-
-Zero-allocation network endpoint schemas and off-heap API integration.
-
-`api-haven` is a lightweight, zero-GC network client and schema library built to connect the `vexgraph` ecosystem to external web services, remote dashboards, and telemetry endpoints.
-
-In typical software, integrating external web APIs introduces massive heap churn: parsing JSON strings, allocating key-value dictionaries, and assembling HTTP multipart bodies with temporary buffers. 
-
-`api-haven` is built under the exact same zero-compromise doctrine as the rest of the stack: **every request payload, JSON object, and telemetry packet is constructed directly in off-heap memory using `vexspoke`'s relational primitives.**
-
----
-
-## Scope: blessed connectors, one normalized contract
-
-`api-haven` wires external services through explicit, curated contracts rather
-than scraping or wrapping everything at once: AI provider rows, database
-catalogs, blessed asset sources, Discord/Slack webhooks, and the MCP
-tool/resource server. Every outbound payload is constructed in caller-owned
-off-heap memory.
-
-Every connector is a row in one registry with a normalized shape, so the UI
-never sees provider-specific payloads. See "What's in this repo" below for the
-current surfaces.
-
----
-
-## Workspace Integration & How to Use It
-
-`api-haven` is an **R3 driver** in the supervisor order (the Vertical Integration
-Law), attaching to R1 through callback seams and never including consumer headers.
-Current builds consume Vexspoke. R3 may borrow either R2 public contract:
-Vexspoke CPU computation/behavior or Relational Engine memory/storage, stable
-rows, variable bindings and native C search over Rust-owned spans. Engine
-native IO/NIO is linked by default, preserving the C ABI, not rewritten into Rust.
-Broader collection migration remains staged. R1 owns residency/lifetimes;
-no C/Rust atomic-layout compatibility or automatic schema migration is assumed.
-GPU shaders/dispatch remain Graphvex R3, not this connector driver. The full
-ecosystem map lives in `../../README.md` and the readiness Gist.
-
-### Build
-
-```sh
-./tools/b.sh build api_haven # from the Vexgraph workspace root
+```bash
+./tools/b build api_haven
 ```
 
-### Standalone autonomy
-The Standalone Autonomy Law requires runtime dependency closure through
-[b](https://github.com/vex-graph/b), with real R2 headers and implementations.
-Workspace indexing is not a standalone runtime build.
+## About
 
----
+`api-haven` wires external services into the Vexgraph stack without vendor SDKs, garbage-collected JSON trees, or web scraping. Every request envelope, descriptor lookup, and MCP response is constructed in caller-owned off-heap memory on top of `re` and `vexspoke`, so UI layers never handle provider-specific payloads.
 
-## What's in this repo
+## Features
 
-* **`api/client.h/.c`** — telemetry sender (`APIClient_sendTelemetry`): builds a bounded JSON payload and POSTs it. Request configuration and connection pooling are **not** implemented.
-* **`com/discord/discord.h/.c`** — off-heap Discord webhook transmitter (`sendText`/`sendEmbed` via its own `parseUrl` + `Http_perform`); `api/discord.h` is only an include shim (there is no `api/discord.c`).
-* **`ai/ai_provider.h/.c`** — L1 AI provider directory: 260 immutable descriptor rows (name, endpoint, wire family, auth scheme, region) with slot-record data generated by `tools/gen_providers.py` and split across `ai/data/*.inc`; `AiProvider_shared/count/at/get/resolveBaseUrl` plus symmetric getters.
-* **`api/haven_ws_fanout.h/.c`** — fan-out registry (`HavenWsFanout`): 16-slot registry over opaque handles + `HavenWsSource` fn-table `{connect, poll, send, close}`; caller-driven `pollStep` with even millisecond slices, zero threads, zero socket syscalls. A socket adapter is not implemented in this workspace.
-* **`ai/ai_chat.h/.c`** — L2 OpenAI-compatible chat consumer: resolves the provider row to a native endpoint (or family default), renders the chat/completions envelope into caller-owned scratch (`AiChat_buildRequest`), and ships it through `Rest_postJson` (`AiChat_complete`). The Anthropic sister is its own class (`ai_chat_anthropic`, below).
-* **`database/db_provider.h/.c`** — L1 data-source directory: 25 descriptor rows (Amazon Aurora MySQL … PostgreSQL) transcribed from the JetBrains Complete Support dialog, each with canonical slug, verbatim display name, driver/engine key, default wire port, wire family, and note. Generated by `tools/gen_db_providers.py` into `database/data/db_providers.inc`; `DbProvider_shared/count/at/get/findByEngine` plus symmetric getters. Descriptors only — execution delegates to the owning driver under the Vertical Integration Law.
-* **`ai/ai_sse.h/.c`** — incremental SSE decoder: caller-fed `data:`/`event:` state machine that may bind one HavenWsFanout slot, caller-supplied 100ms slices, truncation flag, zero socket/thread/alloc.
-* **`ai/ai_chat_anthropic.h/.c`** — L2 Anthropic Messages sister: model/max_tokens/messages envelope on `Rest_postJson` (`x-api-key` auth). **`ai/ai_chat_gemini.h/.c`** — L2 Gemini sister: contents[]/parts[].text envelope with the model in the URL (`x-goog-api-key` auth). Shape-A sisters, no mode-flag branches.
-* **`asset/asset_provider.h/.c`** — L1 external asset-source directory: 12 descriptor rows over blessed public APIs (Unsplash, Pexels, Pixabay, Openverse, Wikimedia Commons, Sketchfab, Freesound, Poly Haven, AmbientCG, OpenGameArt) plus catalog-only curated manifests (Kenney, Quaternius); each row carries license family + one hand-verified sample (title, author, preview/download URLs). Catalog only, never scraping (the Asset Sourcing Law).
-* **`asset/asset_broker.h/.c`** — L2 bounded chunked-copy downloader: 64KiB chunks into caller-owned dest under VexHome_cache, per-chunk 100ms budget + cancel flag, truncation flag, zero socket/thread/alloc/exec.
-* **`mcp/mcp_server.h/.c`** — L3 Model Context Protocol engine (`McpServer`): newline-delimited JSON-RPC 2.0 server core hosting the connector surface as 14 tools (`app_detect`, `capture_status`, `ai_provider_lookup`, `db_data_source_lookup`, `engine_list`, `harness_run`, `harness_poll`, `app_list`, `app_action`, `app_poll`, `search_list`, `web_search`, `asset_lookup`, `asset_download`) and 7 resources (`system://apps`, `system://capture`, `db://data-sources`, `engines://catalog`, `apps://catalog`, `search://providers`, `assets://catalog`). Version negotiation (2024-11-05 / 2025-03-26 / 2025-06-18), verbatim id echo, notification silence, zero allocation — caller-owned buffers, single-threaded, fn-pointer tool tables. Tools read registries/probes only, no exec, no writes (protocol boundary).
-* **`src/main/mcp_main.c`** — stdio runner (`mcp_server` executable): one JSON-RPC line per stdin line, response on stdout (flushed), logs on stderr only so the JSON wire stays parseable by MCP clients. EOF exits 0.
-* **`com/discord/discord.h/.c`** & **`src/api/client.c`** — C Discord webhook transmitter and the telemetry client. The legacy Java surface is not present in this checkout (there is no `attic/` directory).
-* **[b](https://github.com/vex-graph/b)** — the build system (`./tools/b`).
+- **AI providers and chat renderers (`ai/`)**:
+  - `ai_provider`: 260 immutable descriptor rows (endpoint, wire family, auth scheme, region) generated by `tools/gen_providers.py`.
+  - `ai_chat`, `ai_chat_anthropic`, `ai_chat_gemini`: OpenAI-compatible, Anthropic Messages (`x-api-key`), and Gemini (`x-goog-api-key`) request builders over `Rest_postJson`.
+  - `ai_sse`: Zero-allocation incremental caller-fed SSE (`data:`/`event:`) decoder with 100 ms slices and truncation flags.
+- **Registries and brokers (`database/`, `asset/`, `com/`, `api/`)**:
+  - `db_provider`: 25 database descriptor rows (through PostgreSQL); execution delegates to `darkbase`.
+  - `asset_provider` & `asset_broker`: 12 blessed public-API/curated asset sources and a 64 KiB chunked-copy downloader into `VexHome_cache`.
+  - `haven_ws_fanout`: 16-slot callback-driven WebSocket fan-out registry (`;;DRAFT`, no threads or sockets).
+  - `com/discord/discord` & `api/client`: Off-heap Discord webhook transmitter and bounded telemetry POST client.
+- **MCP server (`mcp/mcp_server`, `src/main/mcp_main.c`)**: Zero-allocation newline-delimited JSON-RPC 2.0 core exposing 14 read-only tools and 7 resources over stdio (`mcp_server`), supporting protocol versions `2024-11-05`, `2025-03-26`, and `2025-06-18`.
 
----
+## Build and test
 
-## Requirements
+From the `worktree/` root:
 
-* C23 compiler (Clang with `-std=gnu23`).
-* `vexspoke` runtime (for `net/http`, `net/json`, `nio/mem`, and `primitive/vex-string`).
-* POSIX sockets (TLS is **not** implemented: `web_search` fails closed with `TLS_BACKEND_MISSING`).
-* The workspace build system, `b` (`./tools/b`).
+```bash
+./tools/b build api_haven
+./tools/shell/test.sh api-haven
+```
+
+`storage/snapshot_io.h` is also exercised by `python3 tests/sesh/run.py`.
+
+## Future
+
+- Implement a TLS backend so `web_search` and HTTPS providers work beyond loopback tests.
+- Add socket adapters for `HavenWsFanout` and `AiSse`.
+- Record full per-file owner test proof across all registries and `McpServer` tools.
 
 ## Scope and Limitations
 
-**Scope:** R3 connector driver — descriptor registries for AI providers, database
-catalogs, asset sources, apps, engines and search, plus the MCP tool/resource
-server and bounded client seams. It owns no OS window, graphics or storage.
-
-**Deliberately not covered:**
-- No vendor SDKs and no scraping; sources without a public API are catalog-only
-  (the Asset Sourcing Law). Legacy Java is not in-tree.
-- No execution: Discord/DB/app/harness actions run only behind injected drivers;
-  the standalone runner binds none.
-
-**Known limits and gaps:**
-- No TLS backend; only the loopback fault-injection path is proven offline.
-- The database catalog is deliberately clipped at PostgreSQL; later rows are not
-  invented.
-- `HavenWsFanout`/`AiSse` are callback-driven and caller-budgeted (no socket adapter or threads is implemented here);
-  macOS arm64 only, no Windows/Linux or live-internet proof.
+- **No TLS backend**: HTTPS paths (including `web_search`) fail closed with `TLS_BACKEND_MISSING`; offline tests cover loopback only.
+- **Descriptors and seams only**: Database, app, and harness actions execute only behind injected driver tables; the standalone runner binds none.
+- **No scraping or vendor SDKs**: Sources without public APIs are catalog-only; the database catalog stops intentionally at PostgreSQL.
+- **macOS arm64 only**: Source-verified and partially tested on Apple Silicon macOS; Windows, Linux, and live-internet paths are unproven.

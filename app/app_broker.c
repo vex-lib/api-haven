@@ -8,7 +8,7 @@
  * per-slot timeout bounds the driver wait, and a per-slot cancel gives teardown
  * its bounded join. Preconditions (target, driver, action) are validated before
  * a slot is issued, so a rejected action consumes nothing. No osascript, no IPC,
- * no sockets, no threads, no allocation — execution runs behind the injected
+ * no sockets, no threads, no allocation, execution runs behind the injected
  * AppDriverTable. */
 
 ;;OVERVIEW
@@ -17,16 +17,16 @@
  * CLASS: AppBroker (app/app_broker)
  * ============================================================================
  * Bounded app/automation action seam: each action owns one slot in a
- * fixed jobs[APP_MAX_JOBS] array (BitPool discipline) — a count,
+ * fixed jobs[APP_MAX_JOBS] array (BitPool discipline), a count,
  * BUSY_FULL when all 16 slots RUNNING, never an unbounded grow.
  * Per-slot timeoutMs bounds the driver call (Rule 27 drop-degrade);
  * per-slot cancel gives teardown its bounded join (Rule 26).
  * Preconditions (target, driver, action) are validated BEFORE a slot is
  * issued, so rejected actions never consume slots. No osascript, no IPC,
- * no sockets, no threads, no allocation — execution runs behind the
+ * no sockets, no threads, no allocation, execution runs behind the
  * injected AppDriverTable (vexspoke/R3).
  *
- * STRUCT FIELDS (Mirroring app/app_broker.h — exactly this file's
+ * STRUCT FIELDS (Mirroring app/app_broker.h, exactly this file's
  * class):
  * ----------------------------------------------------------------------------
  *   AppJob jobs[16];                // fixed slots, BitPool discipline
@@ -37,7 +37,7 @@
  *   AppDriverTable table;           // injected run fn
  *   AppStatus lastStatus;           // verdict of the last action call
  *
- * SLOT RECORD (AppJob — Rule 3 co-location, zero behavior of its own;
+ * SLOT RECORD (AppJob, Rule 3 co-location, zero behavior of its own;
  * all behavior hangs off this class):
  * ----------------------------------------------------------------------------
  *   u32 jobId;                 // slot index + 1; stable per slot
@@ -47,7 +47,7 @@
  *   any driverHandle;             // opaque driver job; nullptr when idle
  *   bytes outLen;                  // Bytes written into the caller dest
  *
- * PRIVATE HELPERS (none — slot scan is inline in AppBroker_action):
+ * PRIVATE HELPERS (none, slot scan is inline in AppBroker_action):
  * ----------------------------------------------------------------------------
  *   (none)
  *
@@ -74,13 +74,13 @@
  * ============================================================================
  */
 ;;PLATFORM_EXCLUSIVE("macOS")
-;;INTENTION("missing targets degrade to UNAVAILABLE via the unbound-driver verdict (IDLE + false) — AppDetect pattern, never a crash when the app or helper is absent")
-;;INTENTION("fixed slots + count + BUSY_FULL instead of a growable queue — BitPool discipline; teardown stays bounded per Rule 26/27")
-;;INTENTION("no osascript/IPC/sockets/threads/allocation inside api-haven — execution is one injected vexspoke/R3 fn; unbound driver degrades to false — Rule 17 api-haven clause")
+;;INTENTION("missing targets degrade to UNAVAILABLE via the unbound-driver verdict (IDLE + false), AppDetect pattern, never a crash when the app or helper is absent")
+;;INTENTION("fixed slots + count + BUSY_FULL instead of a growable queue, BitPool discipline; teardown stays bounded per Rule 26/27")
+;;INTENTION("no osascript/IPC/sockets/threads/allocation inside api-haven, execution is one injected vexspoke/R3 fn; unbound driver degrades to false, Rule 17 api-haven clause")
 
 #define APP_DEFAULT_TIMEOUT_MS 100
 
-// CONSTRUCTORS
+/** CONSTRUCTORS */
 
 /** Creates a broker with no bound driver and the default timeout. */
 AppBroker AppBroker_0() {
@@ -98,37 +98,73 @@ AppBroker AppBroker_1(u64 timeoutMs) {
     return self;
 }
 
-// CORE FUNCTIONS
+/** CORE FUNCTIONS */
 
 ;;GETTER
-static inline AppDriverTable AppBroker_table(const AppBroker *self) { return (*self).table; }
+static inline AppDriverTable AppBroker_table(const AppBroker *self)
+{
+    return (*self).table;
+}
 ;;SETTER
-static inline fn AppBroker_setLastStatus(AppBroker *self, AppStatus lastStatus) { (*self).lastStatus = lastStatus; }
+static inline fn AppBroker_setLastStatus(AppBroker *self, AppStatus lastStatus)
+{
+    (*self).lastStatus = lastStatus;
+}
 ;;SETTER
-static inline fn AppBroker_setJobCount(AppBroker *self, u32 jobCount) { (*self).jobCount = jobCount; }
+static inline fn AppBroker_setJobCount(AppBroker *self, u32 jobCount)
+{
+    (*self).jobCount = jobCount;
+}
 ;;GETTER
-static inline AppJob *AppBroker_jobs(AppBroker *self) { return (*self).jobs; }
+static inline AppJob *AppBroker_jobs(AppBroker *self)
+{
+    return (*self).jobs;
+}
 ;;GETTER
-static inline u32 AppJob_jobId(const AppJob *self) { return (*self).jobId; }
+static inline u32 AppJob_jobId(const AppJob *self)
+{
+    return (*self).jobId;
+}
 ;;SETTER
-static inline fn AppJob_setJobId(AppJob *self, u32 jobId) { (*self).jobId = jobId; }
+static inline fn AppJob_setJobId(AppJob *self, u32 jobId)
+{
+    (*self).jobId = jobId;
+}
 ;;SETTER
-static inline fn AppJob_setTarget(AppJob *self, const AppProviderSlot *target) { (*self).target = target; }
+static inline fn AppJob_setTarget(AppJob *self, const AppProviderSlot *target)
+{
+    (*self).target = target;
+}
 ;;GETTER
-static inline AppStatus AppJob_status(const AppJob *self) { return (*self).status; }
+static inline AppStatus AppJob_status(const AppJob *self)
+{
+    return (*self).status;
+}
 ;;SETTER
-static inline fn AppJob_setStatus(AppJob *self, AppStatus status) { (*self).status = status; }
+static inline fn AppJob_setStatus(AppJob *self, AppStatus status)
+{
+    (*self).status = status;
+}
 ;;SETTER
-static inline fn AppJob_setTimeoutMs(AppJob *self, u64 timeoutMs) { (*self).timeoutMs = timeoutMs; }
+static inline fn AppJob_setTimeoutMs(AppJob *self, u64 timeoutMs)
+{
+    (*self).timeoutMs = timeoutMs;
+}
 ;;SETTER
-static inline fn AppJob_setDriverHandle(AppJob *self, any driverHandle) { (*self).driverHandle = driverHandle; }
+static inline fn AppJob_setDriverHandle(AppJob *self, any driverHandle)
+{
+    (*self).driverHandle = driverHandle;
+}
 ;;SETTER
-static inline fn AppJob_setOutLen(AppJob *self, bytes outLen) { (*self).outLen = outLen; }
+static inline fn AppJob_setOutLen(AppJob *self, bytes outLen)
+{
+    (*self).outLen = outLen;
+}
 
 /** Runs one action through the injected driver and records its bounded result. */
-bool AppBroker_action(AppBroker *self, const char *action,
-                      const char *paramsJson, bytes paramsLen,
-                      char *outBuf, bytes outCap, u32 *outJobId) {
+bool AppBroker_action(AppBroker *self, string action,
+                      string paramsJson, bytes paramsLen,
+                      utf8 *outBuf, bytes outCap, u32 *outJobId) {
     if (!self)
         return false;
     AppDriverTable table = AppBroker_table(self);
@@ -216,7 +252,7 @@ bool AppBroker_cancel(AppBroker *self, u32 jobId) {
     return false;
 }
 
-// SETTERS
+/** SETTERS */
 
 /** Sets the borrowed automation target row used for subsequent actions. */
 ;;SETTER
@@ -243,7 +279,7 @@ fn AppBroker_setTimeout(AppBroker *self, u64 timeoutMs) {
     (*self).timeoutMs = timeoutMs;
 }
 
-// GETTERS
+/** GETTERS */
 
 /** Returns the borrowed target row, or nullptr when unset. */
 ;;GETTER

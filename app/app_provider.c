@@ -1,5 +1,6 @@
 #include "vex.h"
 #include "app/app_provider.h"
+#include "re/primitive/vex-string.h"
 
 #include <string.h>
 
@@ -9,7 +10,7 @@
  * credential scheme and the bundle id / CLI / URL a driver resolves. It exists
  * so a new target is a row, not a branch. Lookup is linear and allocates
  * nothing; the table is immutable, so readers need no lock. Availability is
- * runtime — a target whose driver is unbound reports UNAVAILABLE through the
+ * runtime, a target whose driver is unbound reports UNAVAILABLE through the
  * broker verdict rather than crashing the descriptor. */
 
 ;;OVERVIEW
@@ -24,39 +25,39 @@
  * messenger, python, php, node, go-toolchain, rust-toolchain, unity,
  * unreal, godot, discord-bot, discord-presence, slack, whatsapp,
  * signal, email, sms, matrix, mattermost, line, teams, webhooks,
- * irc, imessage) — each with a canonical slug, display name,
+ * irc, imessage), each with a canonical slug, display name,
  * transport family, credential scheme, and the bundle id / CLI / URL
  * a driver resolves. One table, linear slug lookup, zero allocation,
  * immutable (thread-safe reads without locks). Execution lives behind
  * the injected AppDriverTable (app_broker.h), implemented in
- * vexspoke/R3 — this file never runs scripts and never touches IPC.
+ * vexspoke/R3, this file never runs scripts and never touches IPC.
  *
  * Availability is runtime, AppDetect-style: a target whose driver is
  * unbound (or whose helper is absent) reports UNAVAILABLE through the
- * broker verdict — descriptors never crash when the app is missing.
+ * broker verdict, descriptors never crash when the app is missing.
  *
- * STRUCT FIELDS (Mirroring app/app_provider.h — exactly this file's
+ * STRUCT FIELDS (Mirroring app/app_provider.h, exactly this file's
  * class):
  * ----------------------------------------------------------------------------
- *   u32 reserved;   // singleton marker; no mutable state — all data
+ *   u32 reserved;   // singleton marker; no mutable state, all data
  *                        // lives in the static const AppProviderSlot rows
  *
- * SLOT RECORD (AppProviderSlot — Rule 3 co-location, zero behavior of
+ * SLOT RECORD (AppProviderSlot, Rule 3 co-location, zero behavior of
  * its own; all query behavior hangs off this table class):
  * ----------------------------------------------------------------------------
- *   const char *slug;             // canonical key, e.g. "apple-notes"
- *   const char *displayName;      // human label, e.g. "Notes"
+ *   string slug;             // canonical key, e.g. "apple-notes"
+ *   string displayName;      // human label, e.g. "Notes"
  *   AppProviderFamily family;     // transport bucket enum
  *   AppProviderAuth   auth;       // credential scheme enum
- *   const char *bundleIdOrScheme; // bundle id, CLI, or URL for the driver
- *   const char *note;             // caveat; nullptr when none
+ *   string bundleIdOrScheme; // bundle id, CLI, or URL for the driver
+ *   string note;             // caveat; nullptr when none
  *
- * PRIVATE HELPERS (none — rows live in kAppProviders[] below, each row
+ * PRIVATE HELPERS (none, rows live in kAppProviders[] below, each row
  * carrying exactly the SLOT RECORD fields above):
  * ----------------------------------------------------------------------------
- *   kAppProviders[]      — 29 static const rows (this file only)
- *   kAppProviderCount    — row count derived from the array
- *   sAppProviderShared   — zero-init singleton handle
+ *   kAppProviders[]     , 29 static const rows (this file only)
+ *   kAppProviderCount   , row count derived from the array
+ *   sAppProviderShared  , zero-init singleton handle
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
@@ -69,16 +70,16 @@
  *   - AppProvider_get(self, slug)                : row by slug
  *   - AppProvider_resolveTarget(self, slot, dest): bundle/CLI/URL copy
  *
- * Getters (Rule 24; null-safe. Setters omitted — immutable rows, waiver):
+ * Getters (Rule 24; null-safe. Setters omitted, immutable rows, waiver):
  *   - AppProvider_getSlug / getDisplayName / getFamily / getAuth /
  *     getBundleIdOrScheme / getNote(self, slot)
  * ============================================================================
  */
 ;;PLATFORM_EXCLUSIVE("macOS")
 ;;INTENTION("messaging rows mirror the Hermes Agent gateway surface (MIT, NousResearch; behavior referenced from hermes_text.md, no Hermes code vendored of course)")
-;;INTENTION("Apple-automation rows (notes/music/shortcuts/osascript) are macOS-only; webhook/socket rows degrade to UNAVAILABLE via the unbound-driver verdict when the helper is absent — AppDetect pattern, never a crash")
-;;INTENTION("immutable slot records — setters omitted; data is static const; access via AppProvider_* table functions — Rule 33 Tier-2 waiver")
-;;INTENTION("descriptors only: no osascript/IPC/sockets/threads here; execution is injected via AppDriverTable from vexspoke/R3 — Rule 17 api-haven clause")
+;;INTENTION("Apple-automation rows (notes/music/shortcuts/osascript) are macOS-only; webhook/socket rows degrade to UNAVAILABLE via the unbound-driver verdict when the helper is absent, AppDetect pattern, never a crash")
+;;INTENTION("immutable slot records, setters omitted; data is static const; access via AppProvider_* table functions, Rule 33 Tier-2 waiver")
+;;INTENTION("descriptors only: no osascript/IPC/sockets/threads here; execution is injected via AppDriverTable from vexspoke/R3, Rule 17 api-haven clause")
 
 static const AppProviderSlot kAppProviders[] = {
     {"apple-notes", "Notes",
@@ -202,16 +203,16 @@ static const AppProviderSlot kAppProviders[] = {
 static const u32 kAppProviderCount =
     (u32)(sizeof(kAppProviders) / sizeof(kAppProviders[0]));
 
-static AppProvider sAppProviderShared; // zero-init singleton
+static AppProvider sAppProviderShared; /** zero-init singleton */
 
-// CONSTRUCTORS
+/** CONSTRUCTORS */
 
 /** Returns the process-wide immutable app/automation directory handle. */
 AppProvider *AppProvider_shared() {
     return &sAppProviderShared;
 }
 
-// CORE FUNCTIONS
+/** CORE FUNCTIONS */
 
 /** Returns the directory row count, or zero for a null receiver. */
 u32 AppProvider_count(const AppProvider *self) {
@@ -230,13 +231,14 @@ const AppProviderSlot *AppProvider_at(const AppProvider *self, u32 i) {
 }
 
 /** Finds an automation target by exact slug, returning nullptr when absent. */
-const AppProviderSlot *AppProvider_get(const AppProvider *self, const char *slug) {
+const AppProviderSlot *AppProvider_get(const AppProvider *self, string slug) {
     if (!self || !slug || (*slug) == '\0')
         return nullptr;
+    string target = slug;
     for (u32 i = 0; i < kAppProviderCount; i++) {
         const AppProviderSlot *slot = &kAppProviders[i];
-        const char *rowSlug = AppProvider_getSlug(self, slot);
-        if (rowSlug && strcmp(rowSlug, slug) == 0)
+        string rowSlug = AppProvider_getSlug(self, slot);
+        if (rowSlug && string_equals(rowSlug, target))
             return slot;
     }
     return nullptr;
@@ -245,10 +247,10 @@ const AppProviderSlot *AppProvider_get(const AppProvider *self, const char *slug
 /** Copies the row's bundle, CLI, or URL target into the bounded destination. */
 bool AppProvider_resolveTarget(const AppProvider *self,
                                const AppProviderSlot *slot,
-                               char *outBuf, bytes outCap) {
+                               utf8 *outBuf, bytes outCap) {
     if (!self || !slot || !outBuf || outCap == 0)
         return false;
-    const char *target = AppProvider_getBundleIdOrScheme(self, slot);
+    string target = AppProvider_getBundleIdOrScheme(self, slot);
     if (!target)
         return false;
     bytes len = strlen(target);
@@ -258,11 +260,11 @@ bool AppProvider_resolveTarget(const AppProvider *self,
     return true;
 }
 
-// GETTERS
+/** GETTERS */
 
 /** Returns the slot's canonical slug, or nullptr when no slot is supplied. */
 ;;GETTER
-const char *AppProvider_getSlug(const AppProvider *self,
+string AppProvider_getSlug(const AppProvider *self,
                                 const AppProviderSlot *slot) {
     (discard) self;
     return slot ? (*slot).slug : nullptr;
@@ -270,7 +272,7 @@ const char *AppProvider_getSlug(const AppProvider *self,
 
 /** Returns the slot's display label, or nullptr when no slot is supplied. */
 ;;GETTER
-const char *AppProvider_getDisplayName(const AppProvider *self,
+string AppProvider_getDisplayName(const AppProvider *self,
                                        const AppProviderSlot *slot) {
     (discard) self;
     return slot ? (*slot).displayName : nullptr;
@@ -281,7 +283,7 @@ const char *AppProvider_getDisplayName(const AppProvider *self,
 AppProviderFamily AppProvider_getFamily(const AppProvider *self,
                                         const AppProviderSlot *slot) {
     if (!self || !slot)
-        return APP_PROVIDER_FAMILY_OSA_SCRIPT; // safe default
+        return APP_PROVIDER_FAMILY_OSA_SCRIPT;
     return (*slot).family;
 }
 
@@ -290,13 +292,13 @@ AppProviderFamily AppProvider_getFamily(const AppProvider *self,
 AppProviderAuth AppProvider_getAuth(const AppProvider *self,
                                     const AppProviderSlot *slot) {
     if (!self || !slot)
-        return APP_PROVIDER_AUTH_NONE; // safe default
+        return APP_PROVIDER_AUTH_NONE;
     return (*slot).auth;
 }
 
 /** Returns the slot's bundle identifier, CLI name, or URL target string. */
 ;;GETTER
-const char *AppProvider_getBundleIdOrScheme(const AppProvider *self,
+string AppProvider_getBundleIdOrScheme(const AppProvider *self,
                                             const AppProviderSlot *slot) {
     (discard) self;
     return slot ? (*slot).bundleIdOrScheme : nullptr;
@@ -304,7 +306,7 @@ const char *AppProvider_getBundleIdOrScheme(const AppProvider *self,
 
 /** Returns the slot's optional provider caveat. */
 ;;GETTER
-const char *AppProvider_getNote(const AppProvider *self,
+string AppProvider_getNote(const AppProvider *self,
                                 const AppProviderSlot *slot) {
     (discard) self;
     return slot ? (*slot).note : nullptr;

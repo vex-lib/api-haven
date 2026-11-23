@@ -11,6 +11,7 @@
 #include "harness/engine_provider.h"
 #include "harness/harness.h"
 #include "net/json.h"
+#include "re/primitive/vex-string.h"
 #include "search/search_provider.h"
 #include "system/app_detect.h"
 #include "system/capture_tool.h"
@@ -23,7 +24,7 @@
 ;;DEFINITION
 /** The Model Context Protocol engine: a newline-delimited JSON-RPC 2.0 core that
  * hosts the connector shapes as MCP tools and resources. It exists so the tool
- * surface is described by tables rather than by control flow — the handshake,
+ * surface is described by tables rather than by control flow, the handshake,
  * ping and tool/resource dispatch all read the same immutable McpToolSlot /
  * McpResourceSlot records, each handler a bare fn pointer into render logic.
  * Zero allocation, no network, single-threaded. */
@@ -40,182 +41,197 @@
  * the tool/resource surface, rendering responses into caller-owned
  * buffers. Immutable describer tables (McpToolSlot / McpResourceSlot)
  * hang off this class (Rule 3 slot-record co-location); each handler is
- * a bare fn pointer into registry-render logic — zero allocation, no
+ * a bare fn pointer into registry-render logic, zero allocation, no
  * network, single-threaded.
  *
- * STRUCT FIELDS (Mirroring mcp/mcp_server.h — exactly this file's class):
+ * STRUCT FIELDS (Mirroring mcp/mcp_server.h, exactly this file's class):
  * ----------------------------------------------------------------------------
- *   char protocolVersion[32]; // negotiated client version or latest
+ *   utf8 protocolVersion[32]; // negotiated client version or latest
  *   u32 initialized;     // 1 after a successful initialize handshake
- *   const char *name;         // "vexgraph-mcp"
- *   const char *version;      // MCP_SERVER_VERSION
+ *   string name;         // "vexgraph-mcp"
+ *   string version;      // MCP_SERVER_VERSION
  *
- * SLOT RECORD (McpToolSlot — Rule 3 co-location, behavior deferred to the
+ * SLOT RECORD (McpToolSlot, Rule 3 co-location, behavior deferred to the
  * fn-pointer handler; one row per exposed tool):
  * ----------------------------------------------------------------------------
- *   const char *name;         // tool key, e.g. "app_detect"
- *   const char *description;  // one-line MCP description
- *   const char *inputSchema;  // JSON Schema (pre-rendered static text)
+ *   string name;         // tool key, e.g. "app_detect"
+ *   string description;  // one-line MCP description
+ *   string inputSchema;  // JSON Schema (pre-rendered static text)
  *   McpToolFn handle;         // bool (*)(doc, argsRef, out, cap)
  *
- * SLOT RECORD (McpResourceSlot — same co-location; one row per URI):
+ * SLOT RECORD (McpResourceSlot, same co-location; one row per URI):
  * ----------------------------------------------------------------------------
- *   const char *uri;          // e.g. "system://apps"
- *   const char *name;         // human label
- *   const char *mimeType;     // "text/plain"
- *   McpToolFn render;         // bool (*)(doc, -1, out, cap) — no args
+ *   string uri;          // e.g. "system://apps"
+ *   string name;         // human label
+ *   string mimeType;     // "text/plain"
+ *   McpToolFn render;         // bool (*)(doc, -1, out, cap), no args
  *
- * PRIVATE HELPERS (static, file-local — signatures + roles so the file
+ * PRIVATE HELPERS (static, file-local, signatures + roles so the file
  * reads from the overview alone; each is pure render/protocol logic with
  * zero state):
  * ----------------------------------------------------------------------------
- *   appendStr / appendFmt(buf, cap, pos, ...)   — bounded builders
- *   familyName / authName / regionName / dbFamilyName / kindName(...) —
+ *   appendStr / appendFmt(buf, cap, pos, ...)  , bounded builders
+ *   familyName / authName / regionName / dbFamilyName / kindName(...),
  *                          enum→label maps with fallbacks
- *   containsFold(haystack, needle) — ASCII case-insensitive substring
+ *   containsFold(haystack, needle), ASCII case-insensitive substring
  *                          (registry rows are ASCII identifiers)
- *   escapeJsonText(src, out, cap)   — \" \\ \n \r \t escaping for body text
- *   methodIs(doc, ref, want)        — view-safe method compare
- *   readStringArg(doc, argsRef, key, out, cap) — copy an args string;
+ *   escapeJsonText(src, out, cap)  , \" \\ \n \r \t escaping for body text
+ *   methodIs(doc, ref, want)       , view-safe method compare
+ *   readStringArg(doc, argsRef, key, out, cap), copy an args string;
  *                          false when absent/not-a-string (args=-1 ⇒ false)
- *   rawIdExtract(line, len, out, cap) — copy the raw "id" token verbatim
+ *   rawIdExtract(line, len, out, cap), copy the raw "id" token verbatim
  *                          (quoted string id keeps its quotes; null/absent
  *                          ⇒ false so the caller treats it as notification)
- *   respondError(code, message, id, out, cap) — JSON-RPC error envelope
- *   respondPing(id, out, cap)                  — empty result
- *   respondToolsList(id, out, cap)             — static tool table
- *   respondResourcesList(id, out, cap)         — static resource table
- *   respondInitializeReal(self, doc, id, out, cap) — negotiate protocol
+ *   respondError(code, message, id, out, cap), JSON-RPC error envelope
+ *   respondPing(id, out, cap)                 , empty result
+ *   respondToolsList(id, out, cap)            , static tool table
+ *   respondResourcesList(id, out, cap)        , static resource table
+ *   respondInitializeReal(self, doc, id, out, cap), negotiate protocol
  *                          version + capabilities handshake
- *   renderAppDetect(doc, argsRef, out, cap)    — tool + resource body for
+ *   renderAppDetect(doc, argsRef, out, cap)   , tool + resource body for
  *                          system://apps (14 known apps; optional "name"
  *                          arg for a single app detail)
- *   renderCaptureStatus(doc, argsRef, out, cap) — system://capture body:
+ *   renderCaptureStatus(doc, argsRef, out, cap), system://capture body:
  *                          liveness per kind, optional "kind" filter
- *   renderAiLookup(doc, argsRef, out, cap)     — provider row by "slug" or
+ *   renderAiLookup(doc, argsRef, out, cap)    , provider row by "slug" or
  *                          substring "query" (cap 20 matches)
- *   renderDbLookup(doc, argsRef, out, cap)     — db source by "slug",
+ *   renderDbLookup(doc, argsRef, out, cap)    , db source by "slug",
  *                          "engine", or "query"; all rows when bare
- *   renderAssetLookup(doc, argsRef, out, cap)  — asset source by "slug"
+ *   renderAssetLookup(doc, argsRef, out, cap) , asset source by "slug"
  *                          or "query"; all rows when bare
- *   renderAssetDownload(doc, argsRef, out, cap) — cache-confined download
+ *   renderAssetDownload(doc, argsRef, out, cap), cache-confined download
  *                          plan for one "slug" (+ optional "file"): license
  *                          + attribution + cache path + chunked-copy terms;
  *                          answers the plan, never fetches (no network)
- *   renderEngineList(doc, argsRef, out, cap) — 20 engine rows (optional
+ *   renderEngineList(doc, argsRef, out, cap), 20 engine rows (optional
  *                          substring "query"); all rows when bare
- *   renderHarnessRun(doc, argsRef, out, cap) — async spawn: "engine" +
+ *   renderHarnessRun(doc, argsRef, out, cap), async spawn: "engine" +
  *                          "prompt" (+ optional "timeoutMs") into a seam
  *                          slot; answers job-id, never blocks stdio
- *   renderHarnessPoll(doc, argsRef, out, cap) — "jobId" status line
- *   renderAppList(doc, argsRef, out, cap)    — 29 app rows (optional
+ *   renderHarnessPoll(doc, argsRef, out, cap), "jobId" status line
+ *   renderAppList(doc, argsRef, out, cap)   , 29 app rows (optional
  *                          "query"); all rows when bare
- *   renderAppAction(doc, argsRef, out, cap)  — bounded action: "target" +
+ *   renderAppAction(doc, argsRef, out, cap) , bounded action: "target" +
  *                          "action" (+ optional "params", "timeoutMs");
  *                          answers job-id + output, UNBOUND_DRIVER with
  *                          no driver, BUSY_FULL when slots fill
- *   renderAppPoll(doc, argsRef, out, cap)    — "jobId" stored verdict
- *   renderSearchList(doc, argsRef, out, cap) — 3 search backends
+ *   renderAppPoll(doc, argsRef, out, cap)   , "jobId" stored verdict
+ *   renderSearchList(doc, argsRef, out, cap), 3 search backends
  *                          (optional "query"); all rows when bare
- *   renderWebSearch(doc, argsRef, out, cap)  — live query: "query" (+
+ *   renderWebSearch(doc, argsRef, out, cap) , live query: "query" (+
  *                          optional "provider", "count", "base") via
  *                          Rest_get (5s bound); honest TLS/key/transport
  *                          errors, never scraped HTML
- *   copyJsonString(doc, ref, out, cap)       — string view copy into a
+ *   copyJsonString(doc, ref, out, cap)      , string view copy into a
  *                          caller buffer (truncates past cap, NUL always)
- *   stripHtmlTags(dst, dcap, src)            — drop <...> spans in place
+ *   stripHtmlTags(dst, dcap, src)           , drop <...> spans in place
  *                          (MediaWiki snippets); always NUL-terminated
- *   encodeQueryComponent(src, out, cap)      — percent-encode for ?q=
+ *   encodeQueryComponent(src, out, cap)     , percent-encode for ?q=
  *                          (unreserved pass through, space ⇒ %20)
- *   searchFamilyName / searchAuthName(...)   — enum→label maps
- *   readNumberArg(doc, argsRef, key, outNum) — numeric arg; false when
+ *   searchFamilyName / searchAuthName(...)  , enum→label maps
+ *   readNumberArg(doc, argsRef, key, outNum), numeric arg; false when
  *                          absent/not-a-number (args=-1 ⇒ false)
- *   engineFamilyName / engineAuthName / appFamilyName / appAuthName(...) —
+ *   engineFamilyName / engineAuthName / appFamilyName / appAuthName(...),
  *                          enum→label maps with fallbacks
- *   harnessStatusName / appStatusName(...) — slot verdict labels
- *   ensureSeam()                             — latch-init the file-static
+ *   harnessStatusName / appStatusName(...), slot verdict labels
+ *   ensureSeam()                            , latch-init the file-static
  *                          Harness/AppBroker seam instances once
- *   findResource(uri)                          — resource table lookup
+ *   findResource(uri)                         , resource table lookup
  * ============================================================================
   */
-;;INTENTION("protocol boundary: list/poll/catalog reads touch registries only — no side effects; run/action enqueue bounded driver work async (job-id, never blocks stdio) with per-call timeoutMs — no unbounded waits, no in-process exec (Rule 17 driver seam: UNBOUND_DRIVER until an R3 host binds)")
+;;INTENTION("protocol boundary: list/poll/catalog reads touch registries only, no side effects; run/action enqueue bounded driver work async (job-id, never blocks stdio) with per-call timeoutMs, no unbounded waits, no in-process exec (Rule 17 driver seam: UNBOUND_DRIVER until an R3 host binds)")
 ;;INTENTION("no pagination (cursor): the full small tables ship in one page; capabilities advertise no listChanged/subscriptions")
-;;INTENTION("id echo is a raw token slice of the client line (numbers and strings, quotes preserved); null/missing id ⇒ notification, no response — per JSON-RPC 2.0")
-;;INTENTION("privacy wall documented in renderCaptureStatus: macOS has no public API for other apps' ScreenCaptureKit sessions — liveness is the honest contract")
+;;INTENTION("id echo is a raw token slice of the client line (numbers and strings, quotes preserved); null/missing id ⇒ notification, no response, per JSON-RPC 2.0")
+;;INTENTION("privacy wall documented in renderCaptureStatus: macOS has no public API for other apps' ScreenCaptureKit sessions, liveness is the honest contract")
 
-// One tool handler: writes the plain-text tool body into out (cap Bytes).
-// Return true = success (isError false), false = failure (isError true).
-typedef bool (*McpToolFn)(const JsonDoc *doc, JsonRef args,
-                          char *out, bytes cap);
-
-typedef struct McpToolSlot {
-    const char *name;
-    const char *description;
-    const char *inputSchema;
-    McpToolFn handle;
-} McpToolSlot;
-
-typedef struct McpResourceSlot {
-    const char *uri;
-    const char *name;
-    const char *mimeType;
-    McpToolFn render;
-} McpResourceSlot;
 
 ;;GETTER
-static inline char *McpServer_protocolVersionMut(McpServer *self) { return (*self).protocolVersion; }
+static inline utf8 *McpServer_protocolVersionMut(McpServer *self)
+{
+    return (*self).protocolVersion;
+}
 ;;SETTER
-static inline fn McpServer_setInitialized(McpServer *self, i32 initialized) { (*self).initialized = initialized; }
+static inline fn McpServer_setInitialized(McpServer *self, i32 initialized)
+{
+    (*self).initialized = initialized;
+}
 ;;GETTER
-static inline u32 HarnessJob_jobId(const HarnessJob *self) { return (*self).jobId; }
+static inline u32 HarnessJob_jobId(const HarnessJob *self)
+{
+    return (*self).jobId;
+}
 ;;GETTER
-static inline const EngineProviderSlot *HarnessJob_engine(const HarnessJob *self) { return (*self).engine; }
+static inline const EngineProviderSlot *HarnessJob_engine(const HarnessJob *self)
+{
+    return (*self).engine;
+}
 ;;GETTER
-static inline u32 AppJob_jobId(const AppJob *self) { return (*self).jobId; }
+static inline u32 AppJob_jobId(const AppJob *self)
+{
+    return (*self).jobId;
+}
 ;;GETTER
-static inline bytes AppJob_outLen(const AppJob *self) { return (*self).outLen; }
+static inline bytes AppJob_outLen(const AppJob *self)
+{
+    return (*self).outLen;
+}
 ;;GETTER
-static inline const AppProviderSlot *AppJob_target(const AppJob *self) { return (*self).target; }
+static inline const AppProviderSlot *AppJob_target(const AppJob *self)
+{
+    return (*self).target;
+}
 ;;GETTER
-static inline McpToolFn McpResourceSlot_render(const McpResourceSlot *self) { return (*self).render; }
+static inline McpToolFn McpResourceSlot_render(const McpResourceSlot *self)
+{
+    return (*self).render;
+}
 ;;GETTER
-static inline const char *McpResourceSlot_uri(const McpResourceSlot *self) { return (*self).uri; }
+static inline string McpResourceSlot_uri(const McpResourceSlot *self)
+{
+    return (*self).uri;
+}
 ;;GETTER
-static inline const char *McpResourceSlot_mimeType(const McpResourceSlot *self) { return (*self).mimeType; }
+static inline string McpResourceSlot_mimeType(const McpResourceSlot *self)
+{
+    return (*self).mimeType;
+}
 ;;GETTER
-static inline McpToolFn McpToolSlot_handle(const McpToolSlot *self) { return (*self).handle; }
+static inline McpToolFn McpToolSlot_handle(const McpToolSlot *self)
+{
+    return (*self).handle;
+}
 
-// --- static tool handler forward declarations ---
+/** --- static tool handler forward declarations --- */
 static bool renderAppDetect(const JsonDoc *doc, JsonRef args,
-                            char *out, bytes cap);
+                            utf8 *out, bytes cap);
 static bool renderCaptureStatus(const JsonDoc *doc, JsonRef args,
-                                char *out, bytes cap);
+                                utf8 *out, bytes cap);
 static bool renderAiLookup(const JsonDoc *doc, JsonRef args,
-                           char *out, bytes cap);
+                           utf8 *out, bytes cap);
 static bool renderDbLookup(const JsonDoc *doc, JsonRef args,
-                           char *out, bytes cap);
+                           utf8 *out, bytes cap);
 static bool renderEngineList(const JsonDoc *doc, JsonRef args,
-                             char *out, bytes cap);
+                             utf8 *out, bytes cap);
 static bool renderHarnessRun(const JsonDoc *doc, JsonRef args,
-                             char *out, bytes cap);
+                             utf8 *out, bytes cap);
 static bool renderHarnessPoll(const JsonDoc *doc, JsonRef args,
-                              char *out, bytes cap);
+                              utf8 *out, bytes cap);
 static bool renderAppList(const JsonDoc *doc, JsonRef args,
-                          char *out, bytes cap);
+                          utf8 *out, bytes cap);
 static bool renderAppAction(const JsonDoc *doc, JsonRef args,
-                            char *out, bytes cap);
+                            utf8 *out, bytes cap);
 static bool renderAppPoll(const JsonDoc *doc, JsonRef args,
-                          char *out, bytes cap);
+                          utf8 *out, bytes cap);
 static bool renderSearchList(const JsonDoc *doc, JsonRef args,
-                             char *out, bytes cap);
+                             utf8 *out, bytes cap);
 static bool renderWebSearch(const JsonDoc *doc, JsonRef args,
-                            char *out, bytes cap);
+                            utf8 *out, bytes cap);
 static bool renderAssetLookup(const JsonDoc *doc, JsonRef args,
-                              char *out, bytes cap);
+                              utf8 *out, bytes cap);
 static bool renderAssetDownload(const JsonDoc *doc, JsonRef args,
-                                char *out, bytes cap);
+                                utf8 *out, bytes cap);
 
-// HOSTED TOOLS — the connector surface exposed to AI clients.
+/** HOSTED TOOLS, the connector surface exposed to AI clients. */
 static const McpToolSlot kMcpTools[] = {
     {
         "app_detect",
@@ -235,7 +251,7 @@ static const McpToolSlot kMcpTools[] = {
         "Kap, Loom, ScreenFlow, Camtasia, Filmage, Zoom, Voice Memos, "
         "Loopback, BlackHole, Soundflower) are running or installed, per kind. "
         "Privacy wall: other apps' capture sessions are invisible to macOS "
-        "APIs — this reports process liveness, the honest contract.",
+        "APIs, this reports process liveness, the honest contract.",
         "{\"type\":\"object\",\"properties\":{\"kind\":{\"type\":\"string\","
         "\"enum\":[\"screen\",\"stream\",\"audio\"],"
         "\"description\":\"filter by capture kind; omit for all\"}},"
@@ -280,7 +296,7 @@ static const McpToolSlot kMcpTools[] = {
         "harness_run",
         "Spawn one bounded engine job: engine slug + prompt (+ optional "
         "timeoutMs, default 100ms) into a 16-slot table. Answers a job-id "
-        "immediately and never blocks stdio — poll it with harness_poll. "
+        "immediately and never blocks stdio, poll it with harness_poll. "
         "UNBOUND_DRIVER until an R3 host binds a driver; BUSY_FULL when "
         "all 16 slots run.",
         "{\"type\":\"object\",\"properties\":{\"engine\":{\"type\":\"string\","
@@ -340,7 +356,7 @@ static const McpToolSlot kMcpTools[] = {
         "search_list",
         "Blessed web-search directory: 3 backends (searxng self-hosted, "
         "google-cse, wikimedia) with wire family and auth scheme. "
-        "Optional substring query; bare call lists all. APIs only — "
+        "Optional substring query; bare call lists all. APIs only, "
         "scraping HTML to fake search is out of scope by design.",
         "{\"type\":\"object\",\"properties\":{\"query\":{\"type\":\"string\","
         "\"description\":\"case-insensitive substring over "
@@ -369,7 +385,7 @@ static const McpToolSlot kMcpTools[] = {
         "Pexels, Pixabay, Openverse, Wikimedia Commons, Sketchfab, "
         "Freesound, Poly Haven, AmbientCG, OpenGameArt) plus catalog-only "
         "rows (Kenney, Quaternius). Lookup by slug, substring query, or "
-        "list all with licenses and sample URLs. Catalog only — no "
+        "list all with licenses and sample URLs. Catalog only, no "
         "scraping, per Rule 34.",
         "{\"type\":\"object\",\"properties\":{\"slug\":{\"type\":\"string\","
         "\"description\":\"exact asset-source slug, e.g. unsplash\"},"
@@ -382,7 +398,7 @@ static const McpToolSlot kMcpTools[] = {
         "Cache-confined download plan for one asset source: slug "
         "(required) + file name (optional, defaults to <slug>-sample). "
         "Answers the license family, attribution line, cache path, and "
-        "per-chunk 100ms copy terms — Bytes stream via AssetBroker "
+        "per-chunk 100ms copy terms, Bytes stream via AssetBroker "
         "chunked copies under VexHome_cache, never fetched here.",
         "{\"type\":\"object\",\"properties\":{\"slug\":{\"type\":\"string\","
         "\"description\":\"exact asset-source slug, e.g. poly-haven\"},"
@@ -393,7 +409,7 @@ static const McpToolSlot kMcpTools[] = {
     },
 };
 
-// HOSTED RESOURCES — plain-text registry dumps under stable URIs.
+/** HOSTED RESOURCES, plain-text registry dumps under stable URIs. */
 static const McpResourceSlot kMcpResources[] = {
     {
         "system://apps",
@@ -443,10 +459,10 @@ static const bytes kMcpToolCount = sizeof(kMcpTools) / sizeof(kMcpTools[0]);
 static const bytes kMcpResourceCount =
     sizeof(kMcpResources) / sizeof(kMcpResources[0]);
 
-// --- bounded builders -------------------------------------------------------
+/** --- bounded builders ------------------------------------------------------- */
 
 /** Appends as much of s as fits and keeps the destination NUL-terminated. */
-static fn appendStr(char *buf, bytes cap, bytes *pos, const char *s) {
+static fn appendStr(utf8 *buf, bytes cap, bytes *pos, string s) {
     if ((*pos) >= cap)
         return;
     bytes room = cap - (*pos) - 1;
@@ -459,7 +475,7 @@ static fn appendStr(char *buf, bytes cap, bytes *pos, const char *s) {
 }
 
 /** Formats text at the current output position, clamping the cursor to capacity. */
-static fn appendFmt(char *buf, bytes cap, bytes *pos, const char *fmt, ...) {
+static fn appendFmt(utf8 *buf, bytes cap, bytes *pos, string fmt, ...) {
     if ((*pos) >= cap)
         return;
     va_list ap;
@@ -473,10 +489,10 @@ static fn appendFmt(char *buf, bytes cap, bytes *pos, const char *fmt, ...) {
     }
 }
 
-// --- enum → label maps ------------------------------------------------------
+/** --- enum → label maps ------------------------------------------------------ */
 
 /** Maps an AI provider family enum to its protocol-facing label. */
-static const char *familyName(AiProviderFamily f) {
+static string familyName(AiProviderFamily f) {
     switch (f) {
         case AI_PROVIDER_FAMILY_OPENAI_COMPAT: return "openai-compat";
         case AI_PROVIDER_FAMILY_ANTHROPIC:     return "anthropic";
@@ -488,7 +504,7 @@ static const char *familyName(AiProviderFamily f) {
 }
 
 /** Maps an AI provider auth enum to its protocol-facing label. */
-static const char *authName(AiProviderAuth a) {
+static string authName(AiProviderAuth a) {
     switch (a) {
         case AI_PROVIDER_AUTH_BEARER:    return "bearer";
         case AI_PROVIDER_AUTH_API_KEY:   return "api-key-header";
@@ -500,7 +516,7 @@ static const char *authName(AiProviderAuth a) {
 }
 
 /** Maps an AI provider region enum to its display label. */
-static const char *regionName(AiProviderRegion r) {
+static string regionName(AiProviderRegion r) {
     switch (r) {
         case AI_PROVIDER_REGION_GLOBAL: return "global";
         case AI_PROVIDER_REGION_CHINA:  return "china";
@@ -511,7 +527,7 @@ static const char *regionName(AiProviderRegion r) {
 }
 
 /** Maps a database provider family enum to its display label. */
-static const char *dbFamilyName(DbProviderFamily f) {
+static string dbFamilyName(DbProviderFamily f) {
     switch (f) {
         case DB_PROVIDER_FAMILY_SQL:        return "sql";
         case DB_PROVIDER_FAMILY_SQL_COMPAT: return "sql-compat";
@@ -522,7 +538,7 @@ static const char *dbFamilyName(DbProviderFamily f) {
 }
 
 /** Maps a capture kind enum to its display label. */
-static const char *kindName(CaptureKind kind) {
+static string kindName(CaptureKind kind) {
     switch (kind) {
         case CAPTURE_KIND_SCREEN: return "screen";
         case CAPTURE_KIND_STREAM: return "stream";
@@ -532,7 +548,7 @@ static const char *kindName(CaptureKind kind) {
 }
 
 /** Maps a CLI engine family enum to its display label. */
-static const char *engineFamilyName(EngineProviderFamily f) {
+static string engineFamilyName(EngineProviderFamily f) {
     switch (f) {
         case ENGINE_PROVIDER_FAMILY_CLI:    return "cli";
         case ENGINE_PROVIDER_FAMILY_LOCAL:  return "local";
@@ -542,7 +558,7 @@ static const char *engineFamilyName(EngineProviderFamily f) {
 }
 
 /** Maps an engine authentication enum to its display label. */
-static const char *engineAuthName(EngineProviderAuth a) {
+static string engineAuthName(EngineProviderAuth a) {
     switch (a) {
         case ENGINE_PROVIDER_AUTH_NONE:    return "none";
         case ENGINE_PROVIDER_AUTH_API_KEY: return "api-key";
@@ -553,7 +569,7 @@ static const char *engineAuthName(EngineProviderAuth a) {
 }
 
 /** Maps an app automation family enum to its display label. */
-static const char *appFamilyName(AppProviderFamily f) {
+static string appFamilyName(AppProviderFamily f) {
     switch (f) {
         case APP_PROVIDER_FAMILY_OSA_SCRIPT:    return "osa-script";
         case APP_PROVIDER_FAMILY_SHORTCUTS_CLI: return "shortcuts-cli";
@@ -566,7 +582,7 @@ static const char *appFamilyName(AppProviderFamily f) {
 }
 
 /** Maps an app authentication enum to its display label. */
-static const char *appAuthName(AppProviderAuth a) {
+static string appAuthName(AppProviderAuth a) {
     switch (a) {
         case APP_PROVIDER_AUTH_NONE:   return "none";
         case APP_PROVIDER_AUTH_SYSTEM: return "system";
@@ -576,7 +592,7 @@ static const char *appAuthName(AppProviderAuth a) {
 }
 
 /** Maps a harness job status enum to its response label. */
-static const char *harnessStatusName(HarnessStatus s) {
+static string harnessStatusName(HarnessStatus s) {
     switch (s) {
         case HARNESS_STATUS_IDLE:      return "IDLE";
         case HARNESS_STATUS_RUNNING:   return "RUNNING";
@@ -588,7 +604,7 @@ static const char *harnessStatusName(HarnessStatus s) {
 }
 
 /** Maps an app action status enum to its response label. */
-static const char *appStatusName(AppStatus s) {
+static string appStatusName(AppStatus s) {
     switch (s) {
         case APP_STATUS_IDLE:      return "IDLE";
         case APP_STATUS_RUNNING:   return "RUNNING";
@@ -600,7 +616,7 @@ static const char *appStatusName(AppStatus s) {
 }
 
 /** Maps a search provider family enum to its display label. */
-static const char *searchFamilyName(SearchProviderFamily f) {
+static string searchFamilyName(SearchProviderFamily f) {
     switch (f) {
         case SEARCH_FAMILY_SEARXNG:    return "searxng";
         case SEARCH_FAMILY_GOOGLE_CSE: return "google-cse";
@@ -610,7 +626,7 @@ static const char *searchFamilyName(SearchProviderFamily f) {
 }
 
 /** Maps a search authentication enum to its display label. */
-static const char *searchAuthName(SearchProviderAuth a) {
+static string searchAuthName(SearchProviderAuth a) {
     switch (a) {
         case SEARCH_AUTH_NONE:   return "none";
         case SEARCH_AUTH_KEY_CX: return "key-cx-env";
@@ -618,18 +634,20 @@ static const char *searchAuthName(SearchProviderAuth a) {
     return "?";
 }
 
-// Copy a JSON string view into a caller buffer (NUL always, silent
-// truncation past cap). False on non-string refs or empty caps.
+/**
+ * Copy a JSON string view into a caller buffer (NUL always, silent
+ * truncation past cap). False on non-string refs or empty caps.
+ */
 /** Copies a JSON string node to out, truncating at capacity and terminating it. */
 static bool copyJsonString(const JsonDoc *doc, JsonRef ref,
-                           char *out, bytes cap) {
+                           utf8 *out, bytes cap) {
     if (!out || cap == 0)
         return false;
     out[0] = '\0';
     if (ref < 0 || Json_type(doc, ref) != JSON_STRING)
         return false;
     u32 len = 0;
-    const char *view = Json_string(doc, ref, &len);
+    string view = Json_string(doc, ref, &len);
     if ((bytes)len >= cap)
         len = (u32)(cap - 1);
     memcpy(out, view, len);
@@ -637,15 +655,17 @@ static bool copyJsonString(const JsonDoc *doc, JsonRef ref,
     return true;
 }
 
-// Drop <...> spans in place (MediaWiki search snippets ship HTML).
-// Always NUL-terminated; never grows the text.
+/**
+ * Drop <...> spans in place (MediaWiki search snippets ship HTML).
+ * Always NUL-terminated; never grows the text.
+ */
 /** Copies source text while removing spans enclosed by angle brackets. */
-static fn stripHtmlTags(char *dst, bytes dcap, const char *src) {
+static fn stripHtmlTags(utf8 *dst, bytes dcap, string src) {
     if (!dst || dcap == 0)
         return;
     bytes o = 0;
     bool inTag = false;
-    for (const char *p = src; *p && o + 1 < dcap; p++) {
+    for (string p = src; *p && o + 1 < dcap; p++) {
         if ((*p) == '<') {
             inTag = true;
             continue;
@@ -660,12 +680,14 @@ static fn stripHtmlTags(char *dst, bytes dcap, const char *src) {
     dst[o] = '\0';
 }
 
-// Percent-encode one query component: unreserved Bytes pass through,
-// everything else becomes %XX (space ⇒ %20, never +). False when out
-// is too small — the caller degrades instead of sending a corrupt URL.
+/**
+ * Percent-encode one query component: unreserved Bytes pass through,
+ * everything else becomes %XX (space ⇒ %20, never +). False when out
+ * is too small, the caller degrades instead of sending a corrupt URL.
+ */
 /** Percent-encodes a URL query component into a bounded output buffer. */
-static bool encodeQueryComponent(const char *src, char *out, bytes cap) {
-    static const char *hex = "0123456789ABCDEF";
+static bool encodeQueryComponent(string src, utf8 *out, bytes cap) {
+    static string hex = "0123456789ABCDEF";
     if (!src || !out || cap == 0)
         return false;
     bytes o = 0;
@@ -677,7 +699,7 @@ static bool encodeQueryComponent(const char *src, char *out, bytes cap) {
         if (unreserved) {
             if (o + 1 >= cap)
                 return false;
-            out[o++] = (char)c;
+            out[o++] = (utf8)c;
         } else {
             if (o + 3 >= cap)
                 return false;
@@ -692,7 +714,7 @@ static bool encodeQueryComponent(const char *src, char *out, bytes cap) {
     return true;
 }
 
-// --- harness/app seam (file-static instances behind the bind seam) --------
+/** --- harness/app seam (file-static instances behind the bind seam) -------- */
 
 static Harness sHarnessJobs;
 static AppBroker sAppJobs;
@@ -719,10 +741,10 @@ fn McpServer_bindAppDriver(any driverCtx, AppDriverTable table) {
     AppBroker_setDriver(&sAppJobs, driverCtx, table);
 }
 
-// --- string helpers ---------------------------------------------------------
+/** --- string helpers --------------------------------------------------------- */
 
 /** Tests for an ASCII case-insensitive substring match. */
-static bool containsFold(const char *haystack, const char *needle) {
+static bool containsFold(string haystack, string needle) {
     if (!haystack || !needle)
         return false;
     const bytes nl = strlen(needle);
@@ -734,12 +756,12 @@ static bool containsFold(const char *haystack, const char *needle) {
     for (bytes i = 0; i + nl <= hl; i++) {
         bytes j = 0;
         while (j < nl) {
-            char a = haystack[i + j];
-            char b = needle[j];
+            utf8 a = haystack[i + j];
+            utf8 b = needle[j];
             if (a >= 'A' && a <= 'Z')
-                a = (char)(a + 32);
+                a = (utf8)(a + 32);
             if (b >= 'A' && b <= 'Z')
-                b = (char)(b + 32);
+                b = (utf8)(b + 32);
             if (a != b)
                 break;
             j++;
@@ -751,10 +773,10 @@ static bool containsFold(const char *haystack, const char *needle) {
 }
 
 /** Escapes JSON string characters into the supplied output buffer. */
-static fn escapeJsonText(const char *src, char *out, bytes cap) {
+static fn escapeJsonText(string src, utf8 *out, bytes cap) {
     bytes o = 0;
-    for (const char *p = src; *p && o + 6 < cap; p++) {
-        char c = *p;
+    for (string p = src; *p && o + 6 < cap; p++) {
+        utf8 c = *p;
         switch (c) {
             case '"':  appendStr(out, cap, &o, "\\\""); break;
             case '\\': appendStr(out, cap, &o, "\\\\"); break;
@@ -770,20 +792,22 @@ static fn escapeJsonText(const char *src, char *out, bytes cap) {
 }
 
 /** Compares a parsed JSON string method value with an exact method name. */
-static bool methodIs(const JsonDoc *doc, JsonRef method, const char *want) {
+static bool methodIs(const JsonDoc *doc, JsonRef method, string want) {
     u32 len = 0;
-    const char *s = Json_string(doc, method, &len);
+    string s = Json_string(doc, method, &len);
     if (!s)
         return false;
     const bytes wl = strlen(want);
     return (bytes)len == wl && memcmp(s, want, wl) == 0;
 }
 
-// Copy one numeric argument from an args subobject. Returns false when
-// the member is absent or not a number (outNum untouched; args < 0 ⇒ false).
+/**
+ * Copy one numeric argument from an args subobject. Returns false when
+ * the member is absent or not a number (outNum untouched; args < 0 ⇒ false).
+ */
 /** Reads a numeric member from an argument object without changing output on failure. */
 static bool readNumberArg(const JsonDoc *doc, JsonRef args,
-                          const char *key, d64 *outNum) {
+                          string key, d64 *outNum) {
     if (args < 0 || !outNum)
         return false;
     JsonRef v = Json_member(doc, args, key);
@@ -793,11 +817,13 @@ static bool readNumberArg(const JsonDoc *doc, JsonRef args,
     return true;
 }
 
-// Copy one string argument from an args subobject. Returns false when the
-// member is absent or not a string (out stays ""). Safe for args < 0.
+/**
+ * Copy one string argument from an args subobject. Returns false when the
+ * member is absent or not a string (out stays ""). Safe for args < 0.
+ */
 /** Copies a string member from an argument object into a bounded buffer. */
 static bool readStringArg(const JsonDoc *doc, JsonRef args,
-                          const char *key, char *out, bytes cap) {
+                          string key, utf8 *out, bytes cap) {
     out[0] = '\0';
     if (args < 0 || !out || cap == 0)
         return false;
@@ -805,7 +831,7 @@ static bool readStringArg(const JsonDoc *doc, JsonRef args,
     if (v < 0)
         return false;
     u32 len = 0;
-    const char *s = Json_string(doc, v, &len);
+    string s = Json_string(doc, v, &len);
     if (!s)
         return false;
     if (len >= cap)
@@ -815,21 +841,22 @@ static bool readStringArg(const JsonDoc *doc, JsonRef args,
     return true;
 }
 
-// Raw "id" token extraction from the client line — echoed verbatim per
-// JSON-RPC 2.0 (a quoted string id keeps its quotes; a bare numeric id or
-// "null" literal is copied as-is). Returns false when absent so the caller
-// treats the message as a notification.
+/**
+ * Raw "id" token extraction from the client line, echoed verbatim per
+ * JSON-RPC 2.0 (a quoted string id keeps its quotes; a bare numeric id or
+ * "null" literal is copied as-is). Returns false when absent so the caller
+ * treats the message as a notification.
+ */
 /** Copies the JSON-RPC id token verbatim for echoing in the response. */
-static bool rawIdExtract(const char *line, bytes lineLen,
-                         char *out, bytes cap) {
+static bool rawIdExtract(string line, bytes lineLen,
+                         utf8 *out, bytes cap) {
     if (!line || !out || cap == 0)
         return false;
     out[0] = '\0';
-    const char *end = line + lineLen;
-    const char *p = line;
+    string end = line + lineLen;
+    string p = line;
     bool found = false;
     while (p + 4 <= end) {
-        // the exact 4-byte token "id"
         if (p[0] == '"' && p[1] == 'i' && p[2] == 'd' && p[3] == '"') {
             found = true;
             break;
@@ -849,12 +876,11 @@ static bool rawIdExtract(const char *line, bytes lineLen,
         return false;
     bytes o = 0;
     if ((*p) == '"') {
-        // quoted string id — copy through the closing unescaped quote
         if (o + 1 < cap)
-            out[o++] = (*p); // opening quote
+            out[o++] = (*p);
         p++;
         while (p < end && o + 1 < cap) {
-            char c = *p;
+            utf8 c = *p;
             if (c == '\\' && p + 1 < end) {
                 if (o + 2 < cap) {
                     out[o++] = *p;
@@ -865,7 +891,7 @@ static bool rawIdExtract(const char *line, bytes lineLen,
             }
             if (c == '"') {
                 if (o + 1 < cap)
-                    out[o++] = c; // closing quote
+                    out[o++] = c;
                 out[o] = '\0';
                 return true;
             }
@@ -875,9 +901,8 @@ static bool rawIdExtract(const char *line, bytes lineLen,
         }
         return false;
     }
-    // number or null literal
     while (p < end && o + 1 < cap) {
-        char c = *p;
+        utf8 c = *p;
         if (c == ',' || c == '}' || c == ' ' || c == '\t' || c == '\n')
             break;
         out[o++] = c;
@@ -887,11 +912,11 @@ static bool rawIdExtract(const char *line, bytes lineLen,
     return o > 0;
 }
 
-// --- error envelope ---------------------------------------------------------
+/** --- error envelope --------------------------------------------------------- */
 
 /** Writes a JSON-RPC error response using the supplied code, message, and id. */
-static fn respondError(i32 code, const char *message, const char *id,
-                         char *out, bytes cap) {
+static fn respondError(i32 code, string message, string id,
+                         utf8 *out, bytes cap) {
     bytes pos = 0;
     appendStr(out, cap, &pos, "{\"jsonrpc\":\"2.0\",\"id\":");
     appendStr(out, cap, &pos, id && (*id) != '\0' ? id : "null");
@@ -899,10 +924,10 @@ static fn respondError(i32 code, const char *message, const char *id,
               code, message);
 }
 
-// --- plain responses --------------------------------------------------------
+/** --- plain responses -------------------------------------------------------- */
 
 /** Writes the empty successful JSON-RPC response used for ping. */
-static fn respondPing(const char *id, char *out, bytes cap) {
+static fn respondPing(string id, utf8 *out, bytes cap) {
     bytes pos = 0;
     appendStr(out, cap, &pos, "{\"jsonrpc\":\"2.0\",\"id\":");
     appendStr(out, cap, &pos, id);
@@ -910,7 +935,7 @@ static fn respondPing(const char *id, char *out, bytes cap) {
 }
 
 /** Serializes the static hosted-tool registry as a JSON-RPC result. */
-static fn respondToolsList(const char *id, char *out, bytes cap) {
+static fn respondToolsList(string id, utf8 *out, bytes cap) {
     bytes pos = 0;
     appendStr(out, cap, &pos, "{\"jsonrpc\":\"2.0\",\"id\":");
     appendStr(out, cap, &pos, id);
@@ -930,7 +955,7 @@ static fn respondToolsList(const char *id, char *out, bytes cap) {
 }
 
 /** Serializes the static resource registry as a JSON-RPC result. */
-static fn respondResourcesList(const char *id, char *out, bytes cap) {
+static fn respondResourcesList(string id, utf8 *out, bytes cap) {
     bytes pos = 0;
     appendStr(out, cap, &pos, "{\"jsonrpc\":\"2.0\",\"id\":");
     appendStr(out, cap, &pos, id);
@@ -951,25 +976,24 @@ static fn respondResourcesList(const char *id, char *out, bytes cap) {
 
 /** Negotiates a supported MCP version and emits the initialize response. */
 static bool respondInitializeReal(McpServer *self, const JsonDoc *doc,
-                                  const char *id, char *out, bytes cap) {
-    // negotiate: echo a supported client version, else our latest
+                                  string id, utf8 *out, bytes cap) {
     JsonRef params = Json_member(doc, Json_root(doc), "params");
     JsonRef pv = params >= 0 ? Json_member(doc, params, "protocolVersion") : -1;
-    const char *chosen = MCP_PROTOCOL_LATEST;
+    string chosen = MCP_PROTOCOL_LATEST;
     if (pv >= 0) {
         u32 len = 0;
-        const char *s = Json_string(doc, pv, &len);
+        string s = Json_string(doc, pv, &len);
         if (s) {
-            char buf[40];
+            utf8 buf[40];
             if (len >= sizeof(buf))
                 len = (u32)(sizeof(buf) - 1);
             memcpy(buf, s, len);
             buf[len] = '\0';
-            if (strcmp(buf, "2024-11-05") == 0)
+            if (string_equals(buf, "2024-11-05"))
                 chosen = "2024-11-05";
-            else if (strcmp(buf, "2025-03-26") == 0)
+            else if (string_equals(buf, "2025-03-26"))
                 chosen = "2025-03-26";
-            else if (strcmp(buf, "2025-06-18") == 0)
+            else if (string_equals(buf, "2025-06-18"))
                 chosen = "2025-06-18";
         }
     }
@@ -987,23 +1011,22 @@ static bool respondInitializeReal(McpServer *self, const JsonDoc *doc,
     return true;
 }
 
-// --- tool renderers (plain text bodies) -------------------------------------
+/** --- tool renderers (plain text bodies) ------------------------------------- */
 
 /** Renders known application presence, optionally for one requested app. */
 static bool renderAppDetect(const JsonDoc *doc, JsonRef args,
-                            char *out, bytes cap) {
+                            utf8 *out, bytes cap) {
     bytes pos = 0;
     AppDetect *detect = AppDetect_shared();
-    char name[128];
+    utf8 name[128];
     const bool haveName = readStringArg(doc, args, "name", name, sizeof(name));
     if (haveName && (*name) != '\0') {
-        // single-app detail
         const AppSlot *slot = AppDetect_get(detect, name);
         if (!slot) {
             appendFmt(out, cap, &pos, "unknown app: %s", name);
             return false;
         }
-        const char *nm = AppDetect_getName(detect, slot);
+        string nm = AppDetect_getName(detect, slot);
         appendFmt(out, cap, &pos, "app: %s\n", nm);
         appendFmt(out, cap, &pos, "  display: %s\n",
                   AppDetect_getDisplayName(detect, slot));
@@ -1013,17 +1036,17 @@ static bool renderAppDetect(const JsonDoc *doc, JsonRef args,
                   AppDetect_isAppBundle(detect, nm) ? 1 : 0);
         appendFmt(out, cap, &pos, "  running: %d\n",
                   AppDetect_isRunning(detect, slot) ? 1 : 0);
-        const char *note = AppDetect_getNote(detect, slot);
+        string note = AppDetect_getNote(detect, slot);
         if (note)
             appendFmt(out, cap, &pos, "  note: %s\n", note);
         return true;
     }
     const u32 total = AppDetect_count(detect);
-    appendFmt(out, cap, &pos, "KNOWN APPS (%u) — onPath | appBundle | running\n",
+    appendFmt(out, cap, &pos, "KNOWN APPS (%u), onPath | appBundle | running\n",
               total);
     for (u32 i = 0; i < total; i++) {
         const AppSlot *slot = AppDetect_at(detect, i);
-        const char *nm = AppDetect_getName(detect, slot);
+        string nm = AppDetect_getName(detect, slot);
         appendFmt(out, cap, &pos, "- %s | %s | onPath=%d bundle=%d running=%d\n",
                   nm, AppDetect_getDisplayName(detect, slot),
                   AppDetect_isOnPath(detect, nm) ? 1 : 0,
@@ -1035,20 +1058,20 @@ static bool renderAppDetect(const JsonDoc *doc, JsonRef args,
 
 /** Renders capture-tool process liveness, optionally filtered by capture kind. */
 static bool renderCaptureStatus(const JsonDoc *doc, JsonRef args,
-                                char *out, bytes cap) {
+                                utf8 *out, bytes cap) {
     bytes pos = 0;
     CaptureTool *tools = CaptureTool_shared();
-    char kind[32];
+    utf8 kind[32];
     const bool haveKind = readStringArg(doc, args, "kind", kind, sizeof(kind));
-    const bool wantScreen = !haveKind || strcmp(kind, "screen") == 0;
-    const bool wantStream = !haveKind || strcmp(kind, "stream") == 0;
-    const bool wantAudio = !haveKind || strcmp(kind, "audio") == 0;
+    const bool wantScreen = !haveKind || string_equals(kind, "screen");
+    const bool wantStream = !haveKind || string_equals(kind, "stream");
+    const bool wantAudio = !haveKind || string_equals(kind, "audio");
     appendStr(out, cap, &pos,
-              "CAPTURE STATUS — known capture tools alive now\n"
+              "CAPTURE STATUS, known capture tools alive now\n"
               "(privacy wall: other apps' screen-capture sessions are not\n"
               "visible to macOS APIs; liveness is the honest contract)\n");
     const u32 total = CaptureTool_count(tools);
-    const char *sections[3] = {"SCREEN:", "STREAM:", "AUDIO:"};
+    string sections[3] = {"SCREEN:", "STREAM:", "AUDIO:"};
     const bool wants[3] = {wantScreen, wantStream, wantAudio};
     const CaptureKind kinds[3] = {CAPTURE_KIND_SCREEN, CAPTURE_KIND_STREAM,
                                   CAPTURE_KIND_AUDIO};
@@ -1082,11 +1105,11 @@ static bool renderCaptureStatus(const JsonDoc *doc, JsonRef args,
 
 /** Renders an exact AI-provider lookup or a bounded substring result list. */
 static bool renderAiLookup(const JsonDoc *doc, JsonRef args,
-                           char *out, bytes cap) {
+                           utf8 *out, bytes cap) {
     bytes pos = 0;
     AiProvider *dir = AiProvider_shared();
-    char slug[128];
-    char query[128];
+    utf8 slug[128];
+    utf8 query[128];
     const bool haveSlug = readStringArg(doc, args, "slug", slug, sizeof(slug));
     const bool haveQuery = readStringArg(doc, args, "query", query,
                                          sizeof(query));
@@ -1107,13 +1130,13 @@ static bool renderAiLookup(const JsonDoc *doc, JsonRef args,
                   authName(AiProvider_getAuth(dir, slot)));
         appendFmt(out, cap, &pos, "  region: %s\n",
                   regionName(AiProvider_getRegion(dir, slot)));
-        const char *base = AiProvider_getBaseUrl(dir, slot);
+        string base = AiProvider_getBaseUrl(dir, slot);
         appendFmt(out, cap, &pos, "  base: %s\n",
-                  base ? base : "(null — family default)");
-        const char *resolved = AiProvider_resolveBaseUrl(dir, slot);
+                  base ? base : "(null, family default)");
+        string resolved = AiProvider_resolveBaseUrl(dir, slot);
         appendFmt(out, cap, &pos, "  resolved: %s\n",
                   resolved ? resolved : "?");
-        const char *note = AiProvider_getNote(dir, slot);
+        string note = AiProvider_getNote(dir, slot);
         if (note)
             appendFmt(out, cap, &pos, "  note: %s\n", note);
         return true;
@@ -1126,22 +1149,21 @@ static bool renderAiLookup(const JsonDoc *doc, JsonRef args,
         return false;
     }
 
-    // substring scan (cap 20 matches, counted)
     const u32 total = AiProvider_count(dir);
     u32 shown = 0;
     u32 hits = 0;
     for (u32 i = 0; i < total; i++) {
         const AiProviderSlot *slot = AiProvider_at(dir, i);
-        const char *sl = AiProvider_getSlug(dir, slot);
+        string sl = AiProvider_getSlug(dir, slot);
         if (!containsFold(sl, query)) {
-            const char *display = AiProvider_getDisplayName(dir, slot);
-            const char *note = AiProvider_getNote(dir, slot);
+            string display = AiProvider_getDisplayName(dir, slot);
+            string note = AiProvider_getNote(dir, slot);
             if (!containsFold(display, query) && !containsFold(note, query))
                 continue;
         }
         hits++;
         if (shown < 20) {
-            const char *resolved = AiProvider_resolveBaseUrl(dir, slot);
+            string resolved = AiProvider_resolveBaseUrl(dir, slot);
             appendFmt(out, cap, &pos, "- %s | %s | %s | %s | %s\n",
                       sl, AiProvider_getDisplayName(dir, slot),
                       familyName(AiProvider_getFamily(dir, slot)),
@@ -1156,12 +1178,12 @@ static bool renderAiLookup(const JsonDoc *doc, JsonRef args,
 
 /** Renders database-source lookup results by slug, engine, or substring. */
 static bool renderDbLookup(const JsonDoc *doc, JsonRef args,
-                           char *out, bytes cap) {
+                           utf8 *out, bytes cap) {
     bytes pos = 0;
     DbProvider *dir = DbProvider_shared();
-    char slug[128];
-    char engine[128];
-    char query[128];
+    utf8 slug[128];
+    utf8 engine[128];
+    utf8 query[128];
     const bool haveSlug = readStringArg(doc, args, "slug", slug, sizeof(slug));
     const bool haveEngine = readStringArg(doc, args, "engine", engine,
                                           sizeof(engine));
@@ -1184,7 +1206,7 @@ static bool renderDbLookup(const JsonDoc *doc, JsonRef args,
                   DbProvider_getDefaultPort(dir, slot));
         appendFmt(out, cap, &pos, "  family: %s\n",
                   dbFamilyName(DbProvider_getFamily(dir, slot)));
-        const char *note = DbProvider_getNote(dir, slot);
+        string note = DbProvider_getNote(dir, slot);
         if (note)
             appendFmt(out, cap, &pos, "  note: %s\n", note);
         return true;
@@ -1205,14 +1227,13 @@ static bool renderDbLookup(const JsonDoc *doc, JsonRef args,
         return true;
     }
 
-    // bare (or query-filtered) listing of the full 25-row table
     const u32 total = DbProvider_count(dir);
     for (u32 i = 0; i < total; i++) {
         const DbProviderSlot *slot = DbProvider_at(dir, i);
         if (haveQuery && (*query) != '\0') {
-            const char *sl = DbProvider_getSlug(dir, slot);
-            const char *display = DbProvider_getDisplayName(dir, slot);
-            const char *note = DbProvider_getNote(dir, slot);
+            string sl = DbProvider_getSlug(dir, slot);
+            string display = DbProvider_getDisplayName(dir, slot);
+            string note = DbProvider_getNote(dir, slot);
             if (!containsFold(sl, query) && !containsFold(display, query) &&
                 !containsFold(note, query))
                 continue;
@@ -1229,21 +1250,21 @@ static bool renderDbLookup(const JsonDoc *doc, JsonRef args,
 
 /** Renders the engine catalog, optionally filtered by a substring query. */
 static bool renderEngineList(const JsonDoc *doc, JsonRef args,
-                             char *out, bytes cap) {
+                             utf8 *out, bytes cap) {
     bytes pos = 0;
     EngineProvider *dir = EngineProvider_shared();
-    char query[128];
+    utf8 query[128];
     const bool haveQuery = readStringArg(doc, args, "query", query,
                                          sizeof(query));
     const u32 total = EngineProvider_count(dir);
-    appendFmt(out, cap, &pos, "ENGINES (%u) — slug | display | cli | family | auth\n",
+    appendFmt(out, cap, &pos, "ENGINES (%u), slug | display | cli | family | auth\n",
               total);
     for (u32 i = 0; i < total; i++) {
         const EngineProviderSlot *slot = EngineProvider_at(dir, i);
         if (haveQuery && (*query) != '\0') {
-            const char *sl = EngineProvider_getSlug(dir, slot);
-            const char *display = EngineProvider_getDisplayName(dir, slot);
-            const char *cli = EngineProvider_getCliName(dir, slot);
+            string sl = EngineProvider_getSlug(dir, slot);
+            string display = EngineProvider_getDisplayName(dir, slot);
+            string cli = EngineProvider_getCliName(dir, slot);
             if (!containsFold(sl, query) && !containsFold(display, query) &&
                 !containsFold(cli, query))
                 continue;
@@ -1260,12 +1281,12 @@ static bool renderEngineList(const JsonDoc *doc, JsonRef args,
 
 /** Admits a bounded harness job and renders its id or an observable rejection. */
 static bool renderHarnessRun(const JsonDoc *doc, JsonRef args,
-                             char *out, bytes cap) {
+                             utf8 *out, bytes cap) {
     bytes pos = 0;
     ensureSeam();
     EngineProvider *dir = EngineProvider_shared();
-    char slug[128];
-    static char prompt[32768];
+    utf8 slug[128];
+    static utf8 prompt[32768];
     d64 timeoutNum = 0;
     const bool haveTimeout = readNumberArg(doc, args, "timeoutMs", &timeoutNum);
     if (!readStringArg(doc, args, "engine", slug, sizeof(slug)) ||
@@ -1292,20 +1313,20 @@ static bool renderHarnessRun(const JsonDoc *doc, JsonRef args,
         HarnessStatus verdict = Harness_getLastStatus(&sHarnessJobs);
         if (verdict == HARNESS_STATUS_BUSY_FULL) {
             appendStr(out, cap, &pos,
-                      "BUSY_FULL: all 16 harness slots RUNNING — "
+                      "BUSY_FULL: all 16 harness slots RUNNING, "
                       "poll an old job, then retry");
             return false;
         }
         appendFmt(out, cap, &pos,
                   "UNBOUND_DRIVER: engine '%s' (cli '%s') resolved, but no "
-                  "Harness driver is bound in this process — exec lives in "
+                  "Harness driver is bound in this process, exec lives in "
                   "vexspoke/R3 (McpServer_bindHarnessDriver); nothing spawned",
                   EngineProvider_getSlug(dir, slot),
                   EngineProvider_getCliName(dir, slot));
         return false;
     }
     appendFmt(out, cap, &pos,
-              "job %u RUNNING engine=%s cli=%s — poll with harness_poll",
+              "job %u RUNNING engine=%s cli=%s, poll with harness_poll",
               jobId, EngineProvider_getSlug(dir, slot),
               EngineProvider_getCliName(dir, slot));
     return true;
@@ -1313,7 +1334,7 @@ static bool renderHarnessRun(const JsonDoc *doc, JsonRef args,
 
 /** Renders the stored status for a previously issued harness job id. */
 static bool renderHarnessPoll(const JsonDoc *doc, JsonRef args,
-                              char *out, bytes cap) {
+                              utf8 *out, bytes cap) {
     bytes pos = 0;
     ensureSeam();
     d64 idNum = 0;
@@ -1341,7 +1362,7 @@ static bool renderHarnessPoll(const JsonDoc *doc, JsonRef args,
     }
     EngineProvider *dir = EngineProvider_shared();
     const EngineProviderSlot *engine = HarnessJob_engine(job);
-    const char *engineSlug = engine
+    string engineSlug = engine
         ? EngineProvider_getSlug(dir, engine) : "?";
     appendFmt(out, cap, &pos, "job %u: %s engine=%s", jobId,
               harnessStatusName(st), engineSlug);
@@ -1350,21 +1371,21 @@ static bool renderHarnessPoll(const JsonDoc *doc, JsonRef args,
 
 /** Renders the app automation catalog, optionally filtered by query. */
 static bool renderAppList(const JsonDoc *doc, JsonRef args,
-                          char *out, bytes cap) {
+                          utf8 *out, bytes cap) {
     bytes pos = 0;
     AppProvider *dir = AppProvider_shared();
-    char query[128];
+    utf8 query[128];
     const bool haveQuery = readStringArg(doc, args, "query", query,
                                          sizeof(query));
     const u32 total = AppProvider_count(dir);
-    appendFmt(out, cap, &pos, "APPS (%u) — slug | display | family | auth | target\n",
+    appendFmt(out, cap, &pos, "APPS (%u), slug | display | family | auth | target\n",
               total);
     for (u32 i = 0; i < total; i++) {
         const AppProviderSlot *slot = AppProvider_at(dir, i);
         if (haveQuery && (*query) != '\0') {
-            const char *sl = AppProvider_getSlug(dir, slot);
-            const char *display = AppProvider_getDisplayName(dir, slot);
-            const char *target = AppProvider_getBundleIdOrScheme(dir, slot);
+            string sl = AppProvider_getSlug(dir, slot);
+            string display = AppProvider_getDisplayName(dir, slot);
+            string target = AppProvider_getBundleIdOrScheme(dir, slot);
             if (!containsFold(sl, query) && !containsFold(display, query) &&
                 !containsFold(target, query))
                 continue;
@@ -1381,14 +1402,14 @@ static bool renderAppList(const JsonDoc *doc, JsonRef args,
 
 /** Runs a bounded app action and renders its result, output, or rejection. */
 static bool renderAppAction(const JsonDoc *doc, JsonRef args,
-                            char *out, bytes cap) {
+                            utf8 *out, bytes cap) {
     bytes pos = 0;
     ensureSeam();
     AppProvider *dir = AppProvider_shared();
-    char slug[128];
-    char action[128];
-    static char params[16384];
-    static char actionOut[16384];
+    utf8 slug[128];
+    utf8 action[128];
+    static utf8 params[16384];
+    static utf8 actionOut[16384];
     d64 timeoutNum = 0;
     const bool haveTimeout = readNumberArg(doc, args, "timeoutMs", &timeoutNum);
     if (!readStringArg(doc, args, "target", slug, sizeof(slug)) ||
@@ -1409,7 +1430,7 @@ static bool renderAppAction(const JsonDoc *doc, JsonRef args,
     }
     params[0] = '\0';
     readStringArg(doc, args, "params", params, sizeof(params));
-    const char *paramsText = (*params) != '\0' ? params : "{}";
+    string paramsText = (*params) != '\0' ? params : "{}";
     AppBroker_setTarget(&sAppJobs, slot);
     if (haveTimeout && timeoutNum > 0)
         AppBroker_setTimeout(&sAppJobs, (u64)timeoutNum);
@@ -1421,7 +1442,7 @@ static bool renderAppAction(const JsonDoc *doc, JsonRef args,
         AppStatus verdict = AppBroker_getLastStatus(&sAppJobs);
         if (verdict == APP_STATUS_BUSY_FULL) {
             appendStr(out, cap, &pos,
-                      "BUSY_FULL: all 16 app slots RUNNING — "
+                      "BUSY_FULL: all 16 app slots RUNNING, "
                       "poll an old job, then retry");
             return false;
         }
@@ -1432,7 +1453,7 @@ static bool renderAppAction(const JsonDoc *doc, JsonRef args,
         }
         appendFmt(out, cap, &pos,
                   "UNBOUND_DRIVER: target '%s' action '%s' resolved, but no "
-                  "App driver is bound in this process — exec lives in "
+                  "App driver is bound in this process, exec lives in "
                   "vexspoke/R3 (McpServer_bindAppDriver); nothing ran",
                   AppProvider_getSlug(dir, slot), action);
         return false;
@@ -1456,7 +1477,7 @@ static bool renderAppAction(const JsonDoc *doc, JsonRef args,
 
 /** Renders the stored status for a previously issued app action id. */
 static bool renderAppPoll(const JsonDoc *doc, JsonRef args,
-                          char *out, bytes cap) {
+                          utf8 *out, bytes cap) {
     bytes pos = 0;
     ensureSeam();
     d64 idNum = 0;
@@ -1482,7 +1503,7 @@ static bool renderAppPoll(const JsonDoc *doc, JsonRef args,
     }
     AppProvider *dir = AppProvider_shared();
     const AppProviderSlot *target = AppJob_target(job);
-    const char *targetSlug = target
+    string targetSlug = target
         ? AppProvider_getSlug(dir, target) : "?";
     appendFmt(out, cap, &pos, "job %u: %s target=%s", jobId,
               appStatusName(st), targetSlug);
@@ -1491,22 +1512,22 @@ static bool renderAppPoll(const JsonDoc *doc, JsonRef args,
 
 /** Renders the blessed search-provider catalog, optionally filtered by query. */
 static bool renderSearchList(const JsonDoc *doc, JsonRef args,
-                             char *out, bytes cap) {
+                             utf8 *out, bytes cap) {
     bytes pos = 0;
     SearchProvider *dir = SearchProvider_shared();
-    char query[128];
+    utf8 query[128];
     const bool haveQuery = readStringArg(doc, args, "query", query,
                                          sizeof(query));
     const u32 total = SearchProvider_count(dir);
     appendFmt(out, cap, &pos,
-              "SEARCH PROVIDERS (%u) — slug | display | family | auth | endpoint\n",
+              "SEARCH PROVIDERS (%u), slug | display | family | auth | endpoint\n",
               total);
     for (u32 i = 0; i < total; i++) {
         const SearchProviderSlot *slot = SearchProvider_at(dir, i);
         if (haveQuery && (*query) != '\0') {
-            const char *sl = SearchProvider_getSlug(dir, slot);
-            const char *display = SearchProvider_getDisplayName(dir, slot);
-            const char *ep = SearchProvider_getEndpoint(dir, slot);
+            string sl = SearchProvider_getSlug(dir, slot);
+            string display = SearchProvider_getDisplayName(dir, slot);
+            string ep = SearchProvider_getEndpoint(dir, slot);
             if (!containsFold(sl, query) && !containsFold(display, query) &&
                 !containsFold(ep, query))
                 continue;
@@ -1523,12 +1544,12 @@ static bool renderSearchList(const JsonDoc *doc, JsonRef args,
 
 /** Queries a configured documented search API and renders bounded result rows. */
 static bool renderWebSearch(const JsonDoc *doc, JsonRef args,
-                            char *out, bytes cap) {
+                            utf8 *out, bytes cap) {
     bytes pos = 0;
     SearchProvider *dir = SearchProvider_shared();
-    static char query[2048];
-    char slug[128];
-    char base[512];
+    static utf8 query[2048];
+    utf8 slug[128];
+    utf8 base[512];
     d64 countNum = 0;
     if (!readStringArg(doc, args, "query", query, sizeof(query)) ||
         (*query) == '\0') {
@@ -1538,7 +1559,7 @@ static bool renderWebSearch(const JsonDoc *doc, JsonRef args,
     slug[0] = '\0';
     readStringArg(doc, args, "provider", slug, sizeof(slug));
     if ((*slug) == '\0') {
-        const char *dflt = "searxng";
+        string dflt = "searxng";
         bytes dl = strlen(dflt) + 1;
         if (dl > sizeof(slug))
             dl = sizeof(slug);
@@ -1555,18 +1576,17 @@ static bool renderWebSearch(const JsonDoc *doc, JsonRef args,
         if (want > 10)
             want = 10;
     }
-    static char encoded[4096];
+    static utf8 encoded[4096];
     if (!encodeQueryComponent(query, encoded, sizeof(encoded))) {
         appendStr(out, cap, &pos, "query too long to encode (4KiB cap)");
         return false;
     }
 
-    // --- build the backend URL (documented APIs only, never scraping) ---
-    static char url[2048];
+    static utf8 url[2048];
     url[0] = '\0';
     SearchProviderFamily fam = SearchProvider_getFamily(dir, slot);
     if (fam == SEARCH_FAMILY_SEARXNG) {
-        const char *ep = SearchProvider_getEndpoint(dir, slot);
+        string ep = SearchProvider_getEndpoint(dir, slot);
         base[0] = '\0';
         if (readStringArg(doc, args, "base", base, sizeof(base)) &&
             (*base) != '\0')
@@ -1581,8 +1601,8 @@ static bool renderWebSearch(const JsonDoc *doc, JsonRef args,
             return false;
         }
     } else if (fam == SEARCH_FAMILY_GOOGLE_CSE) {
-        const char *key = getenv("GOOGLE_CSE_KEY");
-        const char *cx = getenv("GOOGLE_CSE_CX");
+        string key = getenv("GOOGLE_CSE_KEY");
+        string cx = getenv("GOOGLE_CSE_CX");
         if (!key || (*key) == '\0' || !cx || (*cx) == '\0') {
             appendStr(out, cap, &pos,
                       "missing GOOGLE_CSE_KEY/GOOGLE_CSE_CX env: export both "
@@ -1609,24 +1629,23 @@ static bool renderWebSearch(const JsonDoc *doc, JsonRef args,
         }
     }
 
-    // --- bounded fetch (Rest_get: 5s; caller-owned buffers, no alloc) ---
-    static char fetch[32768];
+    static utf8 fetch[32768];
     HttpResponse resp;
     resp.body = fetch;
     resp.bodyCap = sizeof(fetch);
     resp.bodyLen = 0;
     ApiAuth none = ApiAuth_none();
     if (!Rest_get(url, &none, &resp) || !resp.ok) {
-        if (strncmp(url, "https://", 8) == 0) {
+        if (string_startsWith(url, "https://")) {
             appendFmt(out, cap, &pos,
                       "TLS_BACKEND_MISSING: '%s' needs https and this build "
-                      "speaks http:// only (no TLS backend yet) — use the "
+                      "speaks http:// only (no TLS backend yet), use the "
                       "searxng provider, or wait for the curl backend",
                       SearchProvider_getSlug(dir, slot));
             return false;
         }
         appendFmt(out, cap, &pos,
-                  "transport error: no response from '%s' (status %d) — "
+                  "transport error: no response from '%s' (status %d), "
                   "is the backend up? SearXNG defaults to "
                   "http://localhost:8888",
                   SearchProvider_getSlug(dir, slot), resp.status);
@@ -1638,9 +1657,8 @@ static bool renderWebSearch(const JsonDoc *doc, JsonRef args,
         return false;
     }
 
-    // --- parse the documented JSON shape per family ---
     JsonNode nodes[256];
-    static char scratch[65536];
+    static utf8 scratch[65536];
     JsonDoc rdoc;
     if (!Json_parse(&rdoc, nodes, 256, scratch, sizeof(scratch), fetch)) {
         appendFmt(out, cap, &pos,
@@ -1649,9 +1667,9 @@ static bool renderWebSearch(const JsonDoc *doc, JsonRef args,
         return false;
     }
     JsonRef items = -1;
-    const char *tKey = "title";
-    const char *uKey = "url";
-    const char *sKey = "content";
+    string tKey = "title";
+    string uKey = "url";
+    string sKey = "content";
     if (fam == SEARCH_FAMILY_SEARXNG) {
         items = Json_member(&rdoc, Json_root(&rdoc), "results");
     } else if (fam == SEARCH_FAMILY_GOOGLE_CSE) {
@@ -1666,15 +1684,15 @@ static bool renderWebSearch(const JsonDoc *doc, JsonRef args,
     }
     u32 total = items >= 0 ? Json_count(&rdoc, items) : 0;
     u32 shown = total < want ? total : want;
-    appendFmt(out, cap, &pos, "WEB SEARCH '%s' via %s — %u result%s (showing %u)\n",
+    appendFmt(out, cap, &pos, "WEB SEARCH '%s' via %s, %u result%s (showing %u)\n",
               query, SearchProvider_getSlug(dir, slot),
               total, total == 1 ? "" : "s", shown);
     if (total == 0)
         return true;
-    static char title[256];
-    static char link[512];
-    static char snippet[1024];
-    static char plain[1024];
+    static utf8 title[256];
+    static utf8 link[512];
+    static utf8 snippet[1024];
+    static utf8 plain[1024];
     for (u32 i = 0; i < shown; i++) {
         JsonRef item = Json_at(&rdoc, items, i);
         title[0] = '\0';
@@ -1688,7 +1706,7 @@ static bool renderWebSearch(const JsonDoc *doc, JsonRef args,
             copyJsonString(&rdoc, Json_member(&rdoc, item, sKey),
                            snippet, sizeof(snippet));
         }
-        const char *text = snippet;
+        string text = snippet;
         if (fam == SEARCH_FAMILY_MEDIAWIKI) {
             stripHtmlTags(plain, sizeof(plain), snippet);
             text = plain;
@@ -1700,15 +1718,15 @@ static bool renderWebSearch(const JsonDoc *doc, JsonRef args,
     return true;
 }
 
-// --- asset renderers (Rule 34 catalog surface; lookup precedent: renderDbLookup) ---
+/** --- asset renderers (Rule 34 catalog surface; lookup precedent: renderDbLookup) --- */
 
 /** Renders asset-source details or a filtered catalog listing. */
 static bool renderAssetLookup(const JsonDoc *doc, JsonRef args,
-                              char *out, bytes cap) {
+                              utf8 *out, bytes cap) {
     bytes pos = 0;
     AssetProvider *dir = AssetProvider_shared();
-    char slug[128];
-    char query[128];
+    utf8 slug[128];
+    utf8 query[128];
     const bool haveSlug = readStringArg(doc, args, "slug", slug, sizeof(slug));
     const bool haveQuery = readStringArg(doc, args, "query", query,
                                          sizeof(query));
@@ -1723,9 +1741,9 @@ static bool renderAssetLookup(const JsonDoc *doc, JsonRef args,
                   AssetProvider_getSlug(dir, slot));
         appendFmt(out, cap, &pos, "  display: %s\n",
                   AssetProvider_getDisplayName(dir, slot));
-        const char *api = AssetProvider_getApiBase(dir, slot);
+        string api = AssetProvider_getApiBase(dir, slot);
         appendFmt(out, cap, &pos, "  api: %s\n",
-                  api ? api : "(catalog-only — curated manifest, no search API)");
+                  api ? api : "(catalog-only, curated manifest, no search API)");
         appendFmt(out, cap, &pos, "  license: %s\n",
                   AssetProvider_getLicenseFamily(dir, slot));
         appendFmt(out, cap, &pos, "  sample: %s by %s\n",
@@ -1735,25 +1753,24 @@ static bool renderAssetLookup(const JsonDoc *doc, JsonRef args,
                   AssetProvider_getSamplePreview(dir, slot));
         appendFmt(out, cap, &pos, "  download: %s\n",
                   AssetProvider_getSampleDownload(dir, slot));
-        const char *note = AssetProvider_getNote(dir, slot);
+        string note = AssetProvider_getNote(dir, slot);
         if (note)
             appendFmt(out, cap, &pos, "  note: %s\n", note);
         return true;
     }
 
-    // bare (or query-filtered) listing of the full 12-row table
     const u32 total = AssetProvider_count(dir);
     for (u32 i = 0; i < total; i++) {
         const AssetProviderSlot *slot = AssetProvider_at(dir, i);
         if (haveQuery && (*query) != '\0') {
-            const char *sl = AssetProvider_getSlug(dir, slot);
-            const char *display = AssetProvider_getDisplayName(dir, slot);
-            const char *note = AssetProvider_getNote(dir, slot);
+            string sl = AssetProvider_getSlug(dir, slot);
+            string display = AssetProvider_getDisplayName(dir, slot);
+            string note = AssetProvider_getNote(dir, slot);
             if (!containsFold(sl, query) && !containsFold(display, query) &&
                 !containsFold(note, query))
                 continue;
         }
-        const char *api = AssetProvider_getApiBase(dir, slot);
+        string api = AssetProvider_getApiBase(dir, slot);
         appendFmt(out, cap, &pos, "- %s | %s | %s | %s\n",
                   AssetProvider_getSlug(dir, slot),
                   AssetProvider_getDisplayName(dir, slot),
@@ -1765,11 +1782,11 @@ static bool renderAssetLookup(const JsonDoc *doc, JsonRef args,
 
 /** Renders a cache-confined download plan without fetching or executing anything. */
 static bool renderAssetDownload(const JsonDoc *doc, JsonRef args,
-                                char *out, bytes cap) {
+                                utf8 *out, bytes cap) {
     bytes pos = 0;
     AssetProvider *dir = AssetProvider_shared();
-    char slug[128];
-    char file[128];
+    utf8 slug[128];
+    utf8 file[128];
     if (!readStringArg(doc, args, "slug", slug, sizeof(slug)) ||
         (*slug) == '\0') {
         appendStr(out, cap, &pos, "missing slug: pass an asset-source slug, e.g. poly-haven");
@@ -1782,7 +1799,7 @@ static bool renderAssetDownload(const JsonDoc *doc, JsonRef args,
     }
     file[0] = '\0';
     readStringArg(doc, args, "file", file, sizeof(file));
-    char fileName[160];
+    utf8 fileName[160];
     if ((*file) == '\0') {
         i32 n = snprintf(fileName, sizeof(fileName), "%s-sample",
                          AssetProvider_getSlug(dir, slot));
@@ -1799,7 +1816,7 @@ static bool renderAssetDownload(const JsonDoc *doc, JsonRef args,
         memcpy(fileName, file, fl + 1);
     }
     AssetBroker broker = AssetBroker();
-    char cachePath[256];
+    utf8 cachePath[256];
     if (!AssetBroker_cachePath(&broker, fileName, cachePath, sizeof(cachePath))) {
         appendStr(out, cap, &pos, "cache path overflow (256 cap)");
         return false;
@@ -1817,41 +1834,39 @@ static bool renderAssetDownload(const JsonDoc *doc, JsonRef args,
     appendStr(out, cap, &pos,
               "  terms: Bytes stream via AssetBroker 64KiB chunked copies, "
               "per-chunk 100ms budget + cancel, VexHome_cache-confined, "
-              "closed before Memory_freeAll — this tool answers the plan, "
+              "closed before Memory_freeAll, this tool answers the plan, "
               "never fetches (no network, no exec)");
     return true;
 }
 
-// --- resource read ----------------------------------------------------------
+/** --- resource read ---------------------------------------------------------- */
 
 /** Looks up a hosted resource by exact URI. */
-static const McpResourceSlot *findResource(const char *uri) {
+static const McpResourceSlot *findResource(string uri) {
     if (!uri)
         return nullptr;
     for (bytes i = 0; i < kMcpResourceCount; i++) {
-        if (strcmp(kMcpResources[i].uri, uri) == 0)
+        if (string_equals(kMcpResources[i].uri, uri))
             return &kMcpResources[i];
     }
     return nullptr;
 }
 
-// --- _main dispatch ----------------------------------------------------------
+/** --- _main dispatch ---------------------------------------------------------- */
 
 /** Parses one JSON-RPC input line and writes a response when it is a request. */
-bool McpServer_handleLine(McpServer *self, const char *line, bytes lineLen,
-                          char *outBuf, bytes outCap) {
+bool McpServer_handleLine(McpServer *self, string line, bytes lineLen,
+                          utf8 *outBuf, bytes outCap) {
     if (!self || !line || !outBuf || outCap < 2)
         return false;
     outBuf[0] = '\0';
 
-    // Raw id echo (verbatim, per JSON-RPC).
-    char id[64];
+    utf8 id[64];
     const bool hasId = rawIdExtract(line, lineLen, id, sizeof(id));
-    const bool idNull = hasId && strcmp(id, "null") == 0;
-    const char *idS = idNull ? "null" : (hasId ? id : "null");
+    const bool idNull = hasId && string_equals(id, "null");
+    string idS = idNull ? "null" : (hasId ? id : "null");
 
-    // Reject batches deterministically (the core is line-oriented).
-    const char *first = line;
+    string first = line;
     while (first < line + lineLen && ((*first) == ' ' || (*first) == '\t'))
         first++;
     if (first < line + lineLen && (*first) == '[') {
@@ -1860,12 +1875,8 @@ bool McpServer_handleLine(McpServer *self, const char *line, bytes lineLen,
         return true;
     }
 
-    // Parse (failed parse => parse error). Note: line must be
-    // NUL-terminated by the caller (in practice a read-line buffer).
-    // Pools sized for run/action prompts: 256 nodes, 64KiB of decoded
-    // escapes (a 32KiB prompt with escapes must still fit).
     JsonNode nodes[256];
-    char scratch[65536];
+    utf8 scratch[65536];
     JsonDoc doc;
     if (!Json_parse(&doc, nodes, 256, scratch, sizeof(scratch), line)) {
         respondError(-32700, "Parse error", idS, outBuf, outCap);
@@ -1880,7 +1891,6 @@ bool McpServer_handleLine(McpServer *self, const char *line, bytes lineLen,
         return hasId && !idNull;
     }
 
-    // Notifications never answer (JSON-RPC 2.0).
     if (!hasId || idNull)
         return false;
 
@@ -1900,17 +1910,17 @@ bool McpServer_handleLine(McpServer *self, const char *line, bytes lineLen,
     }
     if (methodIs(&doc, method, "resources/read")) {
         JsonRef params = Json_member(&doc, root, "params");
-        char uri[256];
+        utf8 uri[256];
         readStringArg(&doc, params, "uri", uri, sizeof(uri));
         const McpResourceSlot *res = findResource(uri);
         if (!res) {
             respondError(-32602, "Unknown resource", idS, outBuf, outCap);
             return true;
         }
-        char body[65536];
+        utf8 body[65536];
         body[0] = '\0';
         (discard) McpResourceSlot_render(res)(&doc, -1, body, sizeof(body));
-        char escaped[131072];
+        utf8 escaped[131072];
         escapeJsonText(body, escaped, sizeof(escaped));
         bytes pos = 0;
         appendStr(outBuf, outCap, &pos, "{\"jsonrpc\":\"2.0\",\"id\":");
@@ -1923,7 +1933,7 @@ bool McpServer_handleLine(McpServer *self, const char *line, bytes lineLen,
     }
     if (methodIs(&doc, method, "tools/call")) {
         JsonRef params = Json_member(&doc, root, "params");
-        char toolName[128];
+        utf8 toolName[128];
         readStringArg(&doc, params, "name", toolName, sizeof(toolName));
         if ((*toolName) == '\0') {
             respondError(-32602, "Unknown tool", idS, outBuf, outCap);
@@ -1931,7 +1941,7 @@ bool McpServer_handleLine(McpServer *self, const char *line, bytes lineLen,
         }
         const McpToolSlot *tool = nullptr;
         for (bytes i = 0; i < kMcpToolCount; i++) {
-            if (strcmp(kMcpTools[i].name, toolName) == 0) {
+            if (string_equals(kMcpTools[i].name, toolName)) {
                 tool = &kMcpTools[i];
                 break;
             }
@@ -1941,10 +1951,10 @@ bool McpServer_handleLine(McpServer *self, const char *line, bytes lineLen,
             return true;
         }
         JsonRef args = Json_member(&doc, params, "arguments");
-        char body[65536];
+        utf8 body[65536];
         body[0] = '\0';
         const bool ok = McpToolSlot_handle(tool)(&doc, args, body, sizeof(body));
-        char escaped[131072];
+        utf8 escaped[131072];
         escapeJsonText(body, escaped, sizeof(escaped));
         bytes pos = 0;
         appendStr(outBuf, outCap, &pos, "{\"jsonrpc\":\"2.0\",\"id\":");
@@ -1963,33 +1973,33 @@ bool McpServer_handleLine(McpServer *self, const char *line, bytes lineLen,
     return true;
 }
 
-// CONSTRUCTORS
+/** CONSTRUCTORS */
 
 /** Returns the shared server instance with its static identity initialized. */
 McpServer *McpServer_shared() {
-    static McpServer sServerShared; // zero-init singleton
+    static McpServer sServerShared;
     sServerShared.name = "vexgraph-mcp";
     sServerShared.version = MCP_SERVER_VERSION;
     return &sServerShared;
 }
 
-// GETTERS
+/** GETTERS */
 
 /** Returns the configured server name, or nullptr for a null receiver. */
 ;;GETTER
-const char *McpServer_getName(const McpServer *self) {
+string McpServer_getName(const McpServer *self) {
     return self ? (*self).name : nullptr;
 }
 
 /** Returns the configured server version, or nullptr for a null receiver. */
 ;;GETTER
-const char *McpServer_getVersion(const McpServer *self) {
+string McpServer_getVersion(const McpServer *self) {
     return self ? (*self).version : nullptr;
 }
 
 /** Returns the negotiated protocol version, or nullptr before initialization. */
 ;;GETTER
-const char *McpServer_getProtocolVersion(const McpServer *self) {
+string McpServer_getProtocolVersion(const McpServer *self) {
     return self ? (*self).protocolVersion : nullptr;
 }
 

@@ -4,70 +4,86 @@
 #include "vex.h"
 #include "api/haven_ws_fanout.h"
 
-// ai/ai_sse.h — the AiSse class: pure incremental SSE stream decoder
-// (L2 behavior, R2 api-haven).
-//
-// Caller-fed Bytes only: a host caller may poll one bound HavenWsFanout slot
-// (100ms slices via HavenWsFanout_pollStep) and feeds the delivered Bytes
-// here with AiSse_feed. No sockets, no threads, no allocation, no logging
-// on the feed path (Rule 35 hot-minimal: one nullptr entry guard only).
-// Truncation is never silent: textOut overflow returns false and sets the
-// flag (Rule 35.3). Cold-seam matrix (nullptr/empty/overflow/truncation/
-// cancelled/timeout) lives in ai/tests/ai_sse_test.c only.
+/**
+ * ai/ai_sse.h, the AiSse class: pure incremental SSE stream decoder
+ * (L2 behavior, R2 api-haven).
+ *
+ * Caller-fed Bytes only: a host caller may poll one bound HavenWsFanout slot
+ * (100ms slices via HavenWsFanout_pollStep) and feeds the delivered Bytes
+ * here with AiSse_feed. No sockets, no threads, no allocation, no logging
+ * on the feed path (Rule 35 hot-minimal: one nullptr entry guard only).
+ * Truncation is never silent: textOut overflow returns false and sets the
+ * flag (Rule 35.3). Cold-seam matrix (nullptr/empty/overflow/truncation/
+ * cancelled/timeout) lives in ai/tests/ai_sse_test.c only.
+ */
 
-// Per-slice poll bound (Rule 27): one caller-supplied slice never exceeds 100ms.
+/** Per-slice poll bound (Rule 27): one caller-supplied slice never exceeds 100ms. */
 #define AI_SSE_POLL_BUDGET_MS 100u
-// Longest buffered partial line (SSE comment churn included).
+/** Longest buffered partial line (SSE comment churn included). */
 #define AI_SSE_LINE_CAP 2048u
-// Longest remembered event name ("message", "done", ...).
+/** Longest remembered event name ("message", "done", ...). */
 #define AI_SSE_EVENT_CAP 64u
 
+/**
+ * any slotHandle                  - borrowed fanout handle (nullptr = unbound)
+ * const HavenWsSource *slotSource - borrowed fn-table (nullptr = unbound)
+ * u64 timeoutMs                   - per-slice bound (default AI_SSE_POLL_BUDGET_MS)
+ * bool cancelled                  - cancel flag: feed degrades to false
+ * bool done                       - true once a "[DONE]" event dispatches
+ * utf8 lineBuf[AI_SSE_LINE_CAP]   - partial line staging (no alloc)
+ * u32 lineLen                     - staged Bytes in lineBuf
+ * utf8 eventBuf[AI_SSE_EVENT_CAP] - current event name ("message" default)
+ */
 typedef struct AiSse {
-    any slotHandle;                    // borrowed fanout handle (NULL = unbound)
-    const HavenWsSource *slotSource;     // borrowed fn-table (NULL = unbound)
-    u64 timeoutMs;                  // per-slice bound (default AI_SSE_POLL_BUDGET_MS)
-    bool cancelled;                      // cancel flag: feed degrades to false
-    bool done;                           // true once a "[DONE]" event dispatches
-    char lineBuf[AI_SSE_LINE_CAP];       // partial line staging (no alloc)
-    u32 lineLen;                    // staged Bytes in lineBuf
-    char eventBuf[AI_SSE_EVENT_CAP];     // current event name ("message" default)
+    any slotHandle;
+    const HavenWsSource *slotSource;
+    u64 timeoutMs;
+    bool cancelled;
+    bool done;
+    utf8 lineBuf[AI_SSE_LINE_CAP];
+    u32 lineLen;
+    utf8 eventBuf[AI_SSE_EVENT_CAP];
 } AiSse;
 
-// --- Constructor (value struct, no allocation) ---
+/** --- Constructor (value struct, no allocation) --- */
 AiSse AiSse_0();
 #define AiSse(...) CONSTRUCTOR_DISPATCH(AiSse, __VA_ARGS__)
 
-// --- Core functions ---
-// Feed caller-owned Bytes; decoded data: payloads append into textOut
-// (NUL-terminated, events separated by "\n"). Returns true when at least
-// one event dispatched. Drop-degrade false on NULL self/Bytes(out,cap),
-// cancelled, "[DONE]"-already-seen, or textCap overflow (flag set).
-// outTruncated is last (dest-last, Rule 9); NULL flag = degrade silently.
-bool AiSse_feed(AiSse *self, const char *Bytes, bytes byteLen,
-                char *textOut, bytes textCap, bool *outTruncated);
-// Explicit one-slot binding over the existing WsSource table (Rule 33
-// canonical move): borrows handle + table, never closes/frees (detach
-// via AiSse_unbind before the fanout detaches, per Rule 26).
+/**
+ * --- Core functions ---
+ * Feed caller-owned Bytes; decoded data: payloads append into textOut
+ * (NUL-terminated, events separated by "\n"). Returns true when at least
+ * one event dispatched. Drop-degrade false on nullptr self/Bytes(out,cap),
+ * cancelled, "[DONE]"-already-seen, or textCap overflow (flag set).
+ * outTruncated is last (dest-last, Rule 9); nullptr flag = degrade silently.
+ */
+bool AiSse_feed(AiSse *self, string Bytes, bytes byteLen,
+                utf8 *textOut, bytes textCap, bool *outTruncated);
+/**
+ * Explicit one-slot binding over the existing WsSource table (Rule 33
+ * canonical move): borrows handle + table, never closes/frees (detach
+ * via AiSse_unbind before the fanout detaches, per Rule 26).
+ */
 bool AiSse_bind(AiSse *self, any handle, const HavenWsSource *source);
 fn AiSse_unbind(AiSse *self);
-// Drop staged state (line/event/done) without unbinding the slot.
+/** Drop staged state (line/event/done) without unbinding the slot. */
 fn AiSse_reset(AiSse *self);
-// Latch the cancel flag (feed degrades to false until reset).
+/** Latch the cancel flag (feed degrades to false until reset). */
 fn AiSse_cancel(AiSse *self);
 
-// --- Setters ---
+/** --- Setters --- */
 fn AiSse_setTimeout(AiSse *self, u64 timeoutMs);
 fn AiSse_setCancelled(AiSse *self, bool cancelled);
 fn AiSse_setDone(AiSse *self, bool done);
 
-// --- Getters (Rule 24, null-safe) ---
+/** --- Getters (Rule 24, null-safe) --- */
 any AiSse_getSlotHandle(const AiSse *self);
 const HavenWsSource *AiSse_getSlotSource(const AiSse *self);
 u64 AiSse_getTimeout(const AiSse *self);
 bool AiSse_isCancelled(const AiSse *self);
 bool AiSse_isDone(const AiSse *self);
 u32 AiSse_getLineLen(const AiSse *self);
-// Borrowed current event name, valid until the next feed/reset or destruction.
-const char *AiSse_getEvent(const AiSse *self);
+/** Borrowed current event name, valid until the next feed/reset or destruction. */
+string AiSse_getEvent(const AiSse *self);
 
 #endif

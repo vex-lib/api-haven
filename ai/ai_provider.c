@@ -1,5 +1,6 @@
 #include "vex.h"
 #include "ai/ai_provider.h"
+#include "re/primitive/vex-string.h"
 
 #include <string.h>
 
@@ -8,7 +9,7 @@
  * editing a row instead of a code path: ~260 static descriptors carry name,
  * endpoint, wire family, auth scheme and region bucket, read by linear slug
  * lookup. The table is immutable and the lookup allocates nothing, so
- * concurrent readers need no lock. It resolves identity only — no request is
+ * concurrent readers need no lock. It resolves identity only, no request is
  * ever sent from here. */
 
 ;;OVERVIEW
@@ -18,45 +19,45 @@
  * with zero code changes: edit regenerate data, never touch logic)
  * ============================================================================
  * The AI provider directory: ~260 static descriptor rows for every provider
- * the engine may talk to — names, native endpoints, wire-contract families,
+ * the engine may talk to, names, native endpoints, wire-contract families,
  * auth schemes, region buckets. One table, linear slug lookup, zero
  * allocation, immutable (thread-safe reads without locks).
  *
- * STRUCT FIELDS (Mirroring ai/ai_provider.h — exactly this file's class):
+ * STRUCT FIELDS (Mirroring ai/ai_provider.h, exactly this file's class):
  * ----------------------------------------------------------------------------
- *   u32 reserved;   // singleton marker; no mutable state — all data
+ *   u32 reserved;   // singleton marker; no mutable state, all data
  *                        // lives in the static const AiProviderSlot rows
  *
-  * SLOT RECORD (AiProviderSlot — Rule 3 co-location, zero behavior of its own:
+  * SLOT RECORD (AiProviderSlot, Rule 3 co-location, zero behavior of its own:
   * all query behavior hangs off this table class):
   * ----------------------------------------------------------------------------
-  *   const char *slug;         // canonical key, e.g. "openai", "deepseek"
-  *   const char *displayName;  // human label, master list verbatim
-  *   const char *baseUrl;      // verified native endpoint; NULL = unverified
+  *   string slug;         // canonical key, e.g. "openai", "deepseek"
+  *   string displayName;  // human label, master list verbatim
+  *   string baseUrl;      // verified native endpoint; nullptr = unverified
   *   AiProviderFamily family;  // wire contract enum
   *   AiProviderAuth   auth;    // credential scheme enum
   *   AiProviderRegion region;  // region bucket enum
-  *   const char *note;         // caveat / variant note; NULL when none
+  *   string note;         // caveat / variant note; nullptr when none
   *   u32 quotaPerDay;     // free-tier requests/day (0 = unknown)
   *   u32 quotaRemaining;  // free-tier remainder (0 = unknown/exhausted)
   *   i64  resetUnix;       // quota window reset epoch secs (0 = unknown)
-  *   const char *authKind;     // credential kind label; NULL = see auth
-  *   const char *licenseFamily;// license family label; NULL = UNKNOWN
+  *   string authKind;     // credential kind label; nullptr = see auth
+  *   string licenseFamily;// license family label; nullptr = UNKNOWN
   *
   * Quota columns (tools/gen_providers.py QUOTA table): HF/Groq/Cloudflare
   * rows carry first-pass quotaPerDay/authKind/licenseFamily values; every
-  * other generated row reads 0/NULL (unknown) until verified per-provider
+  * other generated row reads 0/nullptr (unknown) until verified per-provider
   * numbers land. Supabase/Neon are database rows (db_provider.c), not AI
-  * rows — their quotas belong to the database catalog when it gains them.
+  * rows, their quotas belong to the database catalog when it gains them.
  *
- * PRIVATE HELPERS (generated data fragments — each row carries exactly the
+ * PRIVATE HELPERS (generated data fragments, each row carries exactly the
  * SLOT RECORD fields above; fragments are included ONLY by this file):
  * ----------------------------------------------------------------------------
- *   kAiProvidersGlobal[]  — src/ai/data/providers_global.inc (215 rows)
- *   kAiProvidersChina[]   — src/ai/data/providers_china.inc  ( 32 rows)
- *   kAiProvidersEurope[]  — src/ai/data/providers_europe.inc ( 13 rows)
- *   kAiProviderGroups[]   — pointer table over the three fragments
- *   kAiProviderGroupSizes[] / kAiProviderGroupCount — row counts per fragment
+ *   kAiProvidersGlobal[] , src/ai/data/providers_global.inc (215 rows)
+ *   kAiProvidersChina[]  , src/ai/data/providers_china.inc  ( 32 rows)
+ *   kAiProvidersEurope[] , src/ai/data/providers_europe.inc ( 13 rows)
+ *   kAiProviderGroups[]  , pointer table over the three fragments
+ *   kAiProviderGroupSizes[] / kAiProviderGroupCount, row counts per fragment
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
@@ -69,15 +70,15 @@
  *   - AiProvider_get(self, slug)            : row by slug (linear scan)
  *   - AiProvider_resolveBaseUrl(self, slot) : baseUrl or family default
  *
-  * Getters (Rule 24; null-safe. Setters omitted — immutable rows, waiver):
+  * Getters (Rule 24; null-safe. Setters omitted, immutable rows, waiver):
   *   - AiProvider_getSlug / getDisplayName / getBaseUrl / getFamily /
   *     getAuth / getRegion / getNote / getQuotaPerDay / getQuotaRemaining /
   *     getResetUnix / getAuthKind / getLicenseFamily(self, slot)
  * ============================================================================
  */
-;;INTENTION("slot records decomposed into per-region .inc fragments for mechanical maintainability; included only by ai_provider.c — Rule 3 managed exception")
-;;INTENTION("immutable slot records — setters omitted; data is static const; access via AiProvider_* table functions — Rule 33 Tier-2 waiver")
-;;INTENTION("schema-first overview — 260 rows documented as schema + fragment counts, not an enumeration; each fragment header lists its set — Rule 23 zero-drift")
+;;INTENTION("slot records decomposed into per-region .inc fragments for mechanical maintainability; included only by ai_provider.c, Rule 3 managed exception")
+;;INTENTION("immutable slot records, setters omitted; data is static const; access via AiProvider_* table functions, Rule 33 Tier-2 waiver")
+;;INTENTION("schema-first overview, 260 rows documented as schema + fragment counts, not an enumeration; each fragment header lists its set, Rule 23 zero-drift")
 
 #include "ai/data/providers_global.inc"
 #include "ai/data/providers_china.inc"
@@ -98,16 +99,16 @@ static const u32 kAiProviderGroupSizes[] = {
 static const u32 kAiProviderGroupCount =
     (u32)(sizeof(kAiProviderGroups) / sizeof(kAiProviderGroups[0]));
 
-static AiProvider sAiProviderShared; // zero-init singleton
+static AiProvider sAiProviderShared; /** zero-init singleton */
 
-// CONSTRUCTORS
+/** CONSTRUCTORS */
 
 /** Returns the process-wide immutable AI-provider directory handle. */
 AiProvider *AiProvider_shared() {
     return &sAiProviderShared;
 }
 
-// CORE FUNCTIONS
+/** CORE FUNCTIONS */
 
 /** Returns the number of directory rows, or zero for a null receiver. */
 u32 AiProvider_count(const AiProvider *self) {
@@ -132,25 +133,26 @@ const AiProviderSlot *AiProvider_at(const AiProvider *self, u32 i) {
 }
 
 /** Finds a provider by exact slug, returning nullptr when absent or invalid. */
-const AiProviderSlot *AiProvider_get(const AiProvider *self, const char *slug) {
+const AiProviderSlot *AiProvider_get(const AiProvider *self, string slug) {
     if (!self || !slug || (*slug) == '\0')
         return nullptr;
     const u32 total = AiProvider_count(self);
+    string target = slug;
     for (u32 i = 0; i < total; i++) {
         const AiProviderSlot *slot = AiProvider_at(self, i);
-        const char *rowSlug = AiProvider_getSlug(self, slot);
-        if (rowSlug && strcmp(rowSlug, slug) == 0)
+        string rowSlug = AiProvider_getSlug(self, slot);
+        if (rowSlug && string_equals(rowSlug, target))
             return slot;
     }
     return nullptr;
 }
 
 /** Returns a row's configured endpoint or the fallback for its provider family. */
-const char *AiProvider_resolveBaseUrl(const AiProvider *self,
+string AiProvider_resolveBaseUrl(const AiProvider *self,
                                       const AiProviderSlot *slot) {
     if (!self || !slot)
         return nullptr;
-    const char *baseUrl = AiProvider_getBaseUrl(self, slot);
+    string baseUrl = AiProvider_getBaseUrl(self, slot);
     if (baseUrl)
         return baseUrl;
     switch (AiProvider_getFamily(self, slot)) {
@@ -166,25 +168,25 @@ const char *AiProvider_resolveBaseUrl(const AiProvider *self,
     }
 }
 
-// GETTERS
+/** GETTERS */
 
 /** Returns the slot's canonical slug, or nullptr when no slot is supplied. */
 ;;GETTER
-const char *AiProvider_getSlug(const AiProvider *self, const AiProviderSlot *slot) {
+string AiProvider_getSlug(const AiProvider *self, const AiProviderSlot *slot) {
     (discard) self;
     return slot ? (*slot).slug : nullptr;
 }
 
 /** Returns the slot's display label, or nullptr when no slot is supplied. */
 ;;GETTER
-const char *AiProvider_getDisplayName(const AiProvider *self, const AiProviderSlot *slot) {
+string AiProvider_getDisplayName(const AiProvider *self, const AiProviderSlot *slot) {
     (discard) self;
     return slot ? (*slot).displayName : nullptr;
 }
 
 /** Returns the slot's explicitly configured endpoint, if any. */
 ;;GETTER
-const char *AiProvider_getBaseUrl(const AiProvider *self, const AiProviderSlot *slot) {
+string AiProvider_getBaseUrl(const AiProvider *self, const AiProviderSlot *slot) {
     (discard) self;
     return slot ? (*slot).baseUrl : nullptr;
 }
@@ -193,7 +195,7 @@ const char *AiProvider_getBaseUrl(const AiProvider *self, const AiProviderSlot *
 ;;GETTER
 AiProviderFamily AiProvider_getFamily(const AiProvider *self, const AiProviderSlot *slot) {
     if (!self || !slot)
-        return AI_PROVIDER_FAMILY_OPENAI_COMPAT; // safe default
+        return AI_PROVIDER_FAMILY_OPENAI_COMPAT;
     return (*slot).family;
 }
 
@@ -201,7 +203,7 @@ AiProviderFamily AiProvider_getFamily(const AiProvider *self, const AiProviderSl
 ;;GETTER
 AiProviderAuth AiProvider_getAuth(const AiProvider *self, const AiProviderSlot *slot) {
     if (!self || !slot)
-        return AI_PROVIDER_AUTH_BEARER; // safe default
+        return AI_PROVIDER_AUTH_BEARER;
     return (*slot).auth;
 }
 
@@ -209,13 +211,13 @@ AiProviderAuth AiProvider_getAuth(const AiProvider *self, const AiProviderSlot *
 ;;GETTER
 AiProviderRegion AiProvider_getRegion(const AiProvider *self, const AiProviderSlot *slot) {
     if (!self || !slot)
-        return AI_PROVIDER_REGION_GLOBAL; // safe default
+        return AI_PROVIDER_REGION_GLOBAL;
     return (*slot).region;
 }
 
 /** Returns the slot's optional note, or nullptr when absent. */
 ;;GETTER
-const char *AiProvider_getNote(const AiProvider *self, const AiProviderSlot *slot) {
+string AiProvider_getNote(const AiProvider *self, const AiProviderSlot *slot) {
     (discard) self;
     return slot ? (*slot).note : nullptr;
 }
@@ -246,14 +248,14 @@ i64 AiProvider_getResetUnix(const AiProvider *self, const AiProviderSlot *slot) 
 
 /** Returns the slot's optional human-readable credential-kind label. */
 ;;GETTER
-const char *AiProvider_getAuthKind(const AiProvider *self, const AiProviderSlot *slot) {
+string AiProvider_getAuthKind(const AiProvider *self, const AiProviderSlot *slot) {
     (discard) self;
     return slot ? (*slot).authKind : nullptr;
 }
 
 /** Returns the slot's optional license-family label. */
 ;;GETTER
-const char *AiProvider_getLicenseFamily(const AiProvider *self, const AiProviderSlot *slot) {
+string AiProvider_getLicenseFamily(const AiProvider *self, const AiProviderSlot *slot) {
     (discard) self;
     return slot ? (*slot).licenseFamily : nullptr;
 }

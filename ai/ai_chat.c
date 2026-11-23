@@ -11,7 +11,7 @@
  * provider row becomes a request here: the row resolves to a native endpoint
  * (falling back to the family default), the chat/completions envelope is
  * rendered into caller-owned scratch, and Rest_postJson carries it. Nothing is
- * retained between calls — no socket, no thread, no owned buffer — so the class
+ * retained between calls, no socket, no thread, no owned buffer, so the class
  * is a function over (provider row, messages, scratch). */
 
 ;;OVERVIEW
@@ -25,22 +25,22 @@
  * the chat/completions envelope JSON into caller-owned scratch, and sends
  * it via Rest_postJson. Zero allocation on every path.
  *
- * STRUCT FIELDS (Mirroring ai/ai_chat.h — exactly this file's class):
+ * STRUCT FIELDS (Mirroring ai/ai_chat.h, exactly this file's class):
  * ----------------------------------------------------------------------------
- *   const AiProvider *provider;  // directory handle; NULL = shared default
- *   const AiProviderSlot *peer;  // selected provider row; NULL = gateway
- *   const char *model;           // e.g. "grok-2-latest"; must be set
- *   const char *apiKey;          // Bearer credential; NULL = no auth
- *   const char *baseUrlOverride; // wins over peer base / family default
+ *   const AiProvider *provider;  // directory handle; nullptr = shared default
+ *   const AiProviderSlot *peer;  // selected provider row; nullptr = gateway
+ *   string model;           // e.g. "grok-2-latest"; must be set
+ *   string apiKey;          // Bearer credential; nullptr = no auth
+ *   string baseUrlOverride; // wins over peer base / family default
  *
- * SLOT RECORD (AiMessage — Rule 3 co-location, zero behavior of its own):
+ * SLOT RECORD (AiMessage, Rule 3 co-location, zero behavior of its own):
  * ----------------------------------------------------------------------------
- *   const char *role;    // "system" | "user" | "assistant"
- *   const char *content; // message body
+ *   string role;    // "system" | "user" | "assistant"
+ *   string content; // message body
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
- * Constructors (value structs — ApiAuth precedent):
+ * Constructors (value structs, ApiAuth precedent):
  *   - AiChat_0()
  *   - AiChat_1(model)
  *   - AiChat_2(model, apiKey)
@@ -58,12 +58,12 @@
  *   - AiChat_getProvider / getPeer / getModel / getApiKey / getBaseUrl
  * ============================================================================
  */
-;;INTENTION("OpenAI-compatible envelope only — Anthropic Messages gets its own class pair (ai_chat_anthropic) in a later cycle; a mode flag would fake the two-layer cap")
+;;INTENTION("OpenAI-compatible envelope only, Anthropic Messages gets its own class pair (ai_chat_anthropic) in a later cycle; a mode flag would fake the two-layer cap")
 
-// --- static helpers ---------------------------------------------------------
+/** --- static helpers --------------------------------------------------------- */
 
 /** Appends a literal and terminator when the remaining output capacity permits. */
-static bool appendLiteral(char *out, bytes cap, bytes *used, const char *s) {
+static bool appendLiteral(utf8 *out, bytes cap, bytes *used, string s) {
     const bytes n = strlen(s);
     if (!out || !used || *used + n + 1 > cap)
         return false;
@@ -74,7 +74,7 @@ static bool appendLiteral(char *out, bytes cap, bytes *used, const char *s) {
 }
 
 /** Appends one JSON-escaped string to the current bounded output position. */
-static bool appendJsonString(char *out, bytes cap, bytes *used, const char *s) {
+static bool appendJsonString(utf8 *out, bytes cap, bytes *used, string s) {
     const i64 w = Json_writeString(out + *used, cap - *used, s);
     if (w < 0)
         return false;
@@ -82,7 +82,7 @@ static bool appendJsonString(char *out, bytes cap, bytes *used, const char *s) {
     return true;
 }
 
-// CONSTRUCTORS
+/** CONSTRUCTORS */
 
 /** Returns an AiChat value with all fields cleared. */
 AiChat AiChat_0() {
@@ -92,34 +92,39 @@ AiChat AiChat_0() {
 }
 
 /** Initializes a chat value with a model and the shared provider directory. */
-AiChat AiChat_1(const char *model) {
+AiChat AiChat_1(string model) {
     AiChat chat = AiChat();
-    // provider borrows the shared singleton so directory calls are legal.
     chat.provider = AiProvider_shared();
     chat.model = model;
     return chat;
 }
 
 /** Initializes a chat value with a model and borrowed API key. */
-AiChat AiChat_2(const char *model, const char *apiKey) {
+AiChat AiChat_2(string model, string apiKey) {
     AiChat chat = AiChat(model);
     chat.apiKey = apiKey;
     return chat;
 }
 
-// CORE FUNCTIONS
+/** CORE FUNCTIONS */
 
 ;;GETTER
-static inline const char *AiMessage_role(const AiMessage *self) { return (*self).role; }
+static inline string AiMessage_role(const AiMessage *self)
+{
+    return (*self).role;
+}
 ;;GETTER
-static inline const char *AiMessage_content(const AiMessage *self) { return (*self).content; }
+static inline string AiMessage_content(const AiMessage *self)
+{
+    return (*self).content;
+}
 
 /** Renders the OpenAI-compatible request URL, JSON body, and auth descriptor. */
 bool AiChat_buildRequest(const AiChat *self, const AiMessage *msgs, u32 msgCount,
-                         char *bodyBuf, bytes bodyCap,
-                         char *urlBuf, bytes urlCap,
+                         utf8 *bodyBuf, bytes bodyCap,
+                         utf8 *urlBuf, bytes urlCap,
                          ApiAuth *authOut) {
-    const char *model = AiChat_getModel(self);
+    string model = AiChat_getModel(self);
     if (!self || !bodyBuf || !urlBuf || !authOut || !model)
         return false;
     if (!msgs && msgCount > 0)
@@ -127,16 +132,15 @@ bool AiChat_buildRequest(const AiChat *self, const AiMessage *msgs, u32 msgCount
     if (urlCap == 0 || bodyCap == 0)
         return false;
 
-    // Resolve endpoint: override > peer native base > family default > gateway.
-    const char *base = "https://openrouter.ai/api/v1";
-    const char *baseUrlOverride = AiChat_getBaseUrl(self);
+    string base = "https://openrouter.ai/api/v1";
+    string baseUrlOverride = AiChat_getBaseUrl(self);
     const AiProviderSlot *peer = AiChat_getPeer(self);
     if (baseUrlOverride)
         base = baseUrlOverride;
     else if (peer) {
         const AiProvider *provider = AiChat_getProvider(self);
         const AiProvider *table = provider ? provider : AiProvider_shared();
-        const char *resolved = AiProvider_resolveBaseUrl(table, peer);
+        string resolved = AiProvider_resolveBaseUrl(table, peer);
         if (resolved)
             base = resolved;
     }
@@ -145,14 +149,12 @@ bool AiChat_buildRequest(const AiChat *self, const AiMessage *msgs, u32 msgCount
     if (printed < 0 || (bytes)printed >= urlCap)
         return false;
 
-    // Credential: peer row may dictate scheme; only Bearer is modeled today.
-    const char *apiKey = AiChat_getApiKey(self);
+    string apiKey = AiChat_getApiKey(self);
     if (apiKey)
         (*authOut) = ApiAuth_bearer(apiKey);
     else
         (*authOut) = ApiAuth_none();
 
-    // Render {"model":"...","messages":[{"role":"...","content":"..."},...]}
     bytes used = 0;
     if (!appendLiteral(bodyBuf, bodyCap, &used, "{\"model\":"))
         return false;
@@ -182,11 +184,11 @@ bool AiChat_buildRequest(const AiChat *self, const AiMessage *msgs, u32 msgCount
 
 /** Builds and sends a chat-completion request, returning the REST result. */
 bool AiChat_complete(const AiChat *self, const AiMessage *msgs, u32 msgCount,
-                     char *bodyBuf, bytes bodyCap,
+                     utf8 *bodyBuf, bytes bodyCap,
                      HttpResponse *resp) {
     if (!resp)
         return false;
-    char urlBuf[512];
+    utf8 urlBuf[512];
     ApiAuth auth = ApiAuth_none();
     if (!AiChat_buildRequest(self, msgs, msgCount, bodyBuf, bodyCap,
                              urlBuf, sizeof(urlBuf), &auth))
@@ -194,7 +196,7 @@ bool AiChat_complete(const AiChat *self, const AiMessage *msgs, u32 msgCount,
     return Rest_postJson(urlBuf, &auth, bodyBuf, strlen(bodyBuf), resp);
 }
 
-// SETTERS
+/** SETTERS */
 
 /** Sets the borrowed provider directory used to resolve the selected peer. */
 fn AiChat_setProvider(AiChat *self, const AiProvider *provider) {
@@ -209,25 +211,25 @@ fn AiChat_setPeer(AiChat *self, const AiProviderSlot *peer) {
 }
 
 /** Sets the borrowed model identifier used in the request envelope. */
-fn AiChat_setModel(AiChat *self, const char *model) {
+fn AiChat_setModel(AiChat *self, string model) {
     if (self)
         (*self).model = model;
 }
 
 /** Sets the borrowed bearer credential, or nullptr to omit authentication. */
-fn AiChat_setApiKey(AiChat *self, const char *apiKey) {
+fn AiChat_setApiKey(AiChat *self, string apiKey) {
     if (self)
         (*self).apiKey = apiKey;
 }
 
 /** Sets an optional borrowed endpoint override. */
 ;;SETTER
-fn AiChat_setBaseUrl(AiChat *self, const char *baseUrlOverride) {
+fn AiChat_setBaseUrl(AiChat *self, string baseUrlOverride) {
     if (self)
         (*self).baseUrlOverride = baseUrlOverride;
 }
 
-// GETTERS
+/** GETTERS */
 
 /** Returns the configured provider directory, or nullptr for a null receiver. */
 ;;GETTER
@@ -243,18 +245,18 @@ const AiProviderSlot *AiChat_getPeer(const AiChat *self) {
 
 /** Returns the borrowed model identifier, or nullptr when unset. */
 ;;GETTER
-const char *AiChat_getModel(const AiChat *self) {
+string AiChat_getModel(const AiChat *self) {
     return self ? (*self).model : nullptr;
 }
 
 /** Returns the borrowed API key, or nullptr when unset. */
 ;;GETTER
-const char *AiChat_getApiKey(const AiChat *self) {
+string AiChat_getApiKey(const AiChat *self) {
     return self ? (*self).apiKey : nullptr;
 }
 
 /** Returns the endpoint override, or nullptr when unset. */
 ;;GETTER
-const char *AiChat_getBaseUrl(const AiChat *self) {
+string AiChat_getBaseUrl(const AiChat *self) {
     return self ? (*self).baseUrlOverride : nullptr;
 }

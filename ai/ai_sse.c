@@ -21,7 +21,7 @@
  * Incremental Server-Sent Events decoder for AI token streams. A host
  * caller may poll one bound HavenWsFanout slot in 100ms slices
  * (HavenWsFanout_pollStep) and feeds the delivered Bytes here with
- * AiSse_feed — this file never touches a socket, spawns a thread, or
+ * AiSse_feed, this file never touches a socket, spawns a thread, or
  * allocates. Feed parses `event:` / `data:` lines (`:` comments
  * ignored, `\r` stripped), joins multi-line `data:` payloads with
  * `\n`, and reports a `"[DONE]"` payload by latching done. Overlong
@@ -29,16 +29,16 @@
  * overflows); textOut overflow returns false with the truncation flag
  * set (Rule 35.3, never silent).
  *
- * STRUCT FIELDS (Mirroring ai/ai_sse.h — exactly this file's class):
+ * STRUCT FIELDS (Mirroring ai/ai_sse.h, exactly this file's class):
  * ----------------------------------------------------------------------------
- *   any slotHandle;                // borrowed fanout handle (NULL = unbound)
- *   const HavenWsSource *slotSource; // borrowed fn-table (NULL = unbound)
+ *   any slotHandle;                // borrowed fanout handle (nullptr = unbound)
+ *   const HavenWsSource *slotSource; // borrowed fn-table (nullptr = unbound)
  *   u64 timeoutMs;              // per-slice bound (default 100)
  *   bool cancelled;                  // cancel flag: feed degrades to false
  *   bool done;                       // true once a "[DONE]" event dispatches
- *   char lineBuf[AI_SSE_LINE_CAP];   // partial line staging (no alloc)
+ *   utf8 lineBuf[AI_SSE_LINE_CAP];   // partial line staging (no alloc)
  *   u32 lineLen;                // staged Bytes in lineBuf
- *   char eventBuf[AI_SSE_EVENT_CAP]; // current event name ("message" default,
+ *   utf8 eventBuf[AI_SSE_EVENT_CAP]; // current event name ("message" default,
  *                                    // sticky until the next event: line)
  *
  * FUNCTION REGISTRY:
@@ -70,29 +70,44 @@
  */
 ;;INTENTION("fanout-slot SSE binding: AiSse borrows one HavenWsFanout slot via the existing WsSource table; this class only decodes caller-fed Bytes. No socket adapter is implemented in this workspace.")
 
-// --- static helpers ---------------------------------------------------------
+/** --- static helpers --------------------------------------------------------- */
 
 ;;GETTER
-static inline char *AiSse_eventBuf(AiSse *self) { return (*self).eventBuf; }
+static inline utf8 *AiSse_eventBuf(AiSse *self)
+{
+    return (*self).eventBuf;
+}
 ;;GETTER
-static inline char *AiSse_lineBuf(AiSse *self) { return (*self).lineBuf; }
+static inline utf8 *AiSse_lineBuf(AiSse *self)
+{
+    return (*self).lineBuf;
+}
 ;;SETTER
-static inline fn AiSse_setLineLen(AiSse *self, u32 lineLen) { (*self).lineLen = lineLen; }
+static inline fn AiSse_setLineLen(AiSse *self, u32 lineLen)
+{
+    (*self).lineLen = lineLen;
+}
 ;;SETTER
-static inline fn AiSse_setSlotHandle(AiSse *self, any slotHandle) { (*self).slotHandle = slotHandle; }
+static inline fn AiSse_setSlotHandle(AiSse *self, any slotHandle)
+{
+    (*self).slotHandle = slotHandle;
+}
 ;;SETTER
-static inline fn AiSse_setSlotSource(AiSse *self, const HavenWsSource *slotSource) { (*self).slotSource = slotSource; }
+static inline fn AiSse_setSlotSource(AiSse *self, const HavenWsSource *slotSource)
+{
+    (*self).slotSource = slotSource;
+}
 
 /** Restores the default SSE event name in the parser's event buffer. */
 static fn setDefaultEvent(AiSse *self) {
-    const char *dflt = "message";
+    string dflt = "message";
     bytes n = strlen(dflt);
     memcpy(AiSse_eventBuf(self), dflt, n + 1);
 }
 
 /** Appends a payload fragment and flags truncation when the output cannot hold it. */
-static bool appendText(char *textOut, bytes textCap, bytes *used,
-                       const char *s, bytes n, bool *outTruncated) {
+static bool appendText(utf8 *textOut, bytes textCap, bytes *used,
+                       string s, bytes n, bool *outTruncated) {
     if (*used + n + 1 > textCap) {
         if (outTruncated)
             *outTruncated = true;
@@ -104,12 +119,14 @@ static bool appendText(char *textOut, bytes textCap, bytes *used,
     return true;
 }
 
-// Dispatch one complete line (no trailing newline). Appends data:
-// payloads into textOut; latches done on "[DONE]". Returns false only
-// on textOut overflow (flag set) — dispatch state still advances.
+/**
+ * Dispatch one complete line (no trailing newline). Appends data:
+ * payloads into textOut; latches done on "[DONE]". Returns false only
+ * on textOut overflow (flag set), dispatch state still advances.
+ */
 /** Applies one parsed SSE line, appending data or updating event completion state. */
-static bool dispatchLine(AiSse *self, const char *line, bytes lineLen,
-                         char *textOut, bytes textCap, bytes *used,
+static bool dispatchLine(AiSse *self, string line, bytes lineLen,
+                         utf8 *textOut, bytes textCap, bytes *used,
                          bool *hasData, bool *dispatched,
                          bool *outTruncated) {
     if (lineLen == 0) {
@@ -122,7 +139,7 @@ static bool dispatchLine(AiSse *self, const char *line, bytes lineLen,
     if ((*line) == ':')
         return true;
     if (lineLen >= 6 && memcmp(line, "event:", 6) == 0) {
-        const char *v = line + 6;
+        string v = line + 6;
         bytes vlen = lineLen - 6;
         if (vlen > 0 && (*v) == ' ') {
             v++;
@@ -131,13 +148,13 @@ static bool dispatchLine(AiSse *self, const char *line, bytes lineLen,
         bytes take = vlen;
         if (take >= AI_SSE_EVENT_CAP)
             take = AI_SSE_EVENT_CAP - 1;
-        char *eventBuf = AiSse_eventBuf(self);
+        utf8 *eventBuf = AiSse_eventBuf(self);
         memcpy(eventBuf, v, take);
         eventBuf[take] = '\0';
         return true;
     }
     if (lineLen >= 5 && memcmp(line, "data:", 5) == 0) {
-        const char *v = line + 5;
+        string v = line + 5;
         bytes vlen = lineLen - 5;
         if (vlen > 0 && (*v) == ' ') {
             v++;
@@ -158,7 +175,7 @@ static bool dispatchLine(AiSse *self, const char *line, bytes lineLen,
     return true;
 }
 
-// CONSTRUCTORS
+/** CONSTRUCTORS */
 
 /** Returns an empty SSE decoder with its default polling timeout and event name. */
 AiSse AiSse_0() {
@@ -169,11 +186,11 @@ AiSse AiSse_0() {
     return sse;
 }
 
-// CORE FUNCTIONS
+/** CORE FUNCTIONS */
 
 /** Feeds an input byte span and emits complete SSE data events into textOut. */
-bool AiSse_feed(AiSse *self, const char *Bytes, bytes byteLen,
-                char *textOut, bytes textCap, bool *outTruncated) {
+bool AiSse_feed(AiSse *self, string Bytes, bytes byteLen,
+                utf8 *textOut, bytes textCap, bool *outTruncated) {
     if (self == nullptr)
         return false;
     if (outTruncated)
@@ -192,9 +209,9 @@ bool AiSse_feed(AiSse *self, const char *Bytes, bytes byteLen,
     bytes used = 0;
     bool hasData = false;
     bool dispatched = false;
-    char *lineBuf = AiSse_lineBuf(self);
+    utf8 *lineBuf = AiSse_lineBuf(self);
     for (bytes i = 0; i < byteLen; i++) {
-        char c = Bytes[i];
+        utf8 c = Bytes[i];
         if (c == '\n') {
             bytes llen = AiSse_getLineLen(self);
             if (llen > 0 && lineBuf[llen - 1] == '\r')
@@ -260,7 +277,7 @@ fn AiSse_cancel(AiSse *self) {
     AiSse_setCancelled(self, true);
 }
 
-// SETTERS
+/** SETTERS */
 
 /** Sets the timeout value associated with the bound polling slice. */
 ;;SETTER
@@ -286,7 +303,7 @@ fn AiSse_setDone(AiSse *self, bool done) {
     (*self).done = done;
 }
 
-// GETTERS
+/** GETTERS */
 
 /** Returns the borrowed fan-out handle, or nullptr for an unbound decoder. */
 ;;GETTER
@@ -338,6 +355,6 @@ u32 AiSse_getLineLen(const AiSse *self) {
 
 /** Returns a borrowed view of the current event name. */
 ;;GETTER
-const char *AiSse_getEvent(const AiSse *self) {
+string AiSse_getEvent(const AiSse *self) {
     return self ? (*self).eventBuf : nullptr;
 }

@@ -9,7 +9,7 @@
  * bounds and the owner's fn-table, with no sqlite3.h include or link. It exists
  * so the directory can describe a SQLite source without owning a database
  * engine; execution delegates through the bound opaque handle, and an unbound
- * row drop-degrades to false. Read-only by construction — no write path exists
+ * row drop-degrades to false. Read-only by construction, no write path exists
  * on this class. */
 
 ;;OVERVIEW
@@ -20,24 +20,24 @@
  * ============================================================================
  * Catalog-only read-only SQLite file row for the DbProvider directory:
  * a borrowed path, capability caps, byte bounds, and the owner's
- * fn-table — with zero sqlite3.h include/link. Execution delegates
+ * fn-table, with zero sqlite3.h include/link. Execution delegates
  * through the bound opaque handle to the database owner (db-haven /
  * darkbase-engine Database interface) or vexspoke File/VFS; unbound exec
  * drop-degrades to false. Read-only by construction: no write path
  * exists on this class. Value struct, zero allocation, immutable reads
  * without locks.
  *
- * STRUCT FIELDS (Mirroring database/db_sqlite_file.h — exactly this
+ * STRUCT FIELDS (Mirroring database/db_sqlite_file.h, exactly this
  * file's class):
  * ----------------------------------------------------------------------------
- *   const char *path;              // borrowed file path (NULL = undescribed)
+ *   string path;              // borrowed file path (nullptr = undescribed)
  *   u32 caps;                 // capability bits (DB_SQLITE_CAP_*)
  *   u64 maxBytes;             // read bound (0 = unknown)
  *   bool readOnly;                 // always true on _0/_1; no writer exists
- *   any execHandle;              // borrowed owner handle (NULL = unbound)
- *   const DbSqliteExec *execTable; // borrowed fn-table (NULL = unbound)
+ *   any execHandle;              // borrowed owner handle (nullptr = unbound)
+ *   const DbSqliteExec *execTable; // borrowed fn-table (nullptr = unbound)
  *
- * SLOT RECORD: none — this file owns one behavior class only (the
+ * SLOT RECORD: none, this file owns one behavior class only (the
  * DbSqliteExec fn-table is a borrowed seam, not a row table).
  *
  * FUNCTION REGISTRY:
@@ -60,10 +60,10 @@
  *     getExecHandle / getExecTable
  * ============================================================================
  */
-;;INTENTION("catalog-only SQLite: api-haven describes the file and delegates reads — the driver, the engine, and sqlite3.h all live with the database owner (Rule 17)")
-;;INTENTION("borrowed execution seam: handle + table are detach-only views — unbind before the owner frees, per Rule 26 (Rule 33 canonical move)")
+;;INTENTION("catalog-only SQLite: api-haven describes the file and delegates reads, the driver, the engine, and sqlite3.h all live with the database owner (Rule 17)")
+;;INTENTION("borrowed execution seam: handle + table are detach-only views, unbind before the owner frees, per Rule 26 (Rule 33 canonical move)")
 
-// CONSTRUCTORS
+/** CONSTRUCTORS */
 
 /** Creates an undescribed read-only file descriptor with no execution binding. */
 DbSqliteFile DbSqliteFile_0() {
@@ -74,21 +74,32 @@ DbSqliteFile DbSqliteFile_0() {
 }
 
 /** Creates a read-only descriptor for the borrowed path with read capability. */
-DbSqliteFile DbSqliteFile_1(const char *path) {
+DbSqliteFile DbSqliteFile_1(string path) {
     DbSqliteFile file = DbSqliteFile();
     file.path = path;
     file.caps = DB_SQLITE_CAP_READ;
     return file;
 }
 
-// CORE FUNCTIONS
+/** CORE FUNCTIONS */
+
+typedef bool (*DbSqliteExecFn)(any handle, string sql, utf8 *out, bytes outCap);
 
 ;;GETTER
-static inline DbSqliteExecFn DbSqliteExec_exec(const DbSqliteExec *self) { return (*self).exec; }
+static inline DbSqliteExecFn DbSqliteExec_exec(const DbSqliteExec *self)
+{
+    return (*self).exec;
+}
 ;;SETTER
-static inline fn DbSqliteFile_setExecHandle(DbSqliteFile *self, any execHandle) { (*self).execHandle = execHandle; }
+static inline fn DbSqliteFile_setExecHandle(DbSqliteFile *self, any execHandle)
+{
+    (*self).execHandle = execHandle;
+}
 ;;SETTER
-static inline fn DbSqliteFile_setExecTable(DbSqliteFile *self, const DbSqliteExec *execTable) { (*self).execTable = execTable; }
+static inline fn DbSqliteFile_setExecTable(DbSqliteFile *self, const DbSqliteExec *execTable)
+{
+    (*self).execTable = execTable;
+}
 
 /** Binds a borrowed owner handle and its execution callback table. */
 bool DbSqliteFile_bind(DbSqliteFile *self, any handle, const DbSqliteExec *table) {
@@ -114,12 +125,12 @@ fn DbSqliteFile_unbind(DbSqliteFile *self) {
 }
 
 /** Formats this descriptor into out when the complete text fits. */
-bool DbSqliteFile_describe(const DbSqliteFile *self, char *out, bytes outCap) {
+bool DbSqliteFile_describe(const DbSqliteFile *self, utf8 *out, bytes outCap) {
     if (self == nullptr)
         return false;
     if (out == nullptr || outCap == 0)
         return false;
-    const char *path = DbSqliteFile_getPath(self);
+    string path = DbSqliteFile_getPath(self);
     if (path == nullptr || (*path) == '\0')
         return false;
     const i32 n = snprintf(out, outCap, "sqlite file: path=%s readOnly=%d caps=%u maxBytes=%llu",
@@ -131,8 +142,8 @@ bool DbSqliteFile_describe(const DbSqliteFile *self, char *out, bytes outCap) {
 }
 
 /** Delegates a read request to the bound database owner's execution callback. */
-bool DbSqliteFile_exec(const DbSqliteFile *self, const char *sql,
-                       char *out, bytes outCap) {
+bool DbSqliteFile_exec(const DbSqliteFile *self, string sql,
+                       utf8 *out, bytes outCap) {
     if (self == nullptr)
         return false;
     if (sql == nullptr || (*sql) == '\0')
@@ -149,11 +160,11 @@ bool DbSqliteFile_exec(const DbSqliteFile *self, const char *sql,
     return execFn(handle, sql, out, outCap);
 }
 
-// SETTERS
+/** SETTERS */
 
 /** Sets the borrowed path described by this catalog row. */
 ;;SETTER
-fn DbSqliteFile_setPath(DbSqliteFile *self, const char *path) {
+fn DbSqliteFile_setPath(DbSqliteFile *self, string path) {
     if (self == nullptr)
         return;
     (*self).path = path;
@@ -183,11 +194,11 @@ fn DbSqliteFile_setReadOnly(DbSqliteFile *self, bool readOnly) {
     (*self).readOnly = readOnly;
 }
 
-// GETTERS
+/** GETTERS */
 
 /** Returns the borrowed file path, or nullptr for a null receiver. */
 ;;GETTER
-const char *DbSqliteFile_getPath(const DbSqliteFile *self) {
+string DbSqliteFile_getPath(const DbSqliteFile *self) {
     if (self == nullptr)
         return nullptr;
     return (*self).path;

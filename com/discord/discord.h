@@ -4,25 +4,25 @@
 #include "vex.h"
 
 typedef struct DiscordEmbed {
-    const char *title;
-    const char *description;
+    string title;
+    string description;
     i32     color;
-    const char *imageUrl;
+    string imageUrl;
 } DiscordEmbed;
 
 /**
  * Sends a simple text-only message to a Discord Webhook.
  * Returns true if transmitted successfully and status 2xx received.
  */
-bool DiscordWebhook_sendText(const char *webhookUrl, const char *content,
-                             const char *username, const char *avatarUrl);
+bool DiscordWebhook_sendText(string webhookUrl, string content,
+                             string username, string avatarUrl);
 
 /**
  * Sends a rich embed message to a Discord Webhook.
  * Returns true if transmitted successfully and status 2xx received.
  */
-bool DiscordWebhook_sendEmbed(const char *webhookUrl, const char *content,
-                              const char *username, const char *avatarUrl,
+bool DiscordWebhook_sendEmbed(string webhookUrl, string content,
+                              string username, string avatarUrl,
                               const DiscordEmbed *embed);
 
 #endif

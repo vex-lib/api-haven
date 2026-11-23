@@ -4,6 +4,7 @@
 #include "net/json.h"
 #include "net/url.h"
 #include "nio/mem.h"
+#include "re/primitive/vex-string.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,7 +13,7 @@
 ;;DEFINITION
 /** The Discord webhook client: text and rich-embed payloads rendered off-heap
  * and transmitted through the vexspoke HTTP client. It exists as the vendor
- * driver over the shared transport — it owns no socket and no buffer, and every
+ * driver over the shared transport, it owns no socket and no buffer, and every
  * payload is written into caller-owned storage. */
 
 ;;OVERVIEW
@@ -26,10 +27,10 @@
  *
  * STRUCT FIELDS (Mirroring com/discord/discord.h):
  * ----------------------------------------------------------------------------
- *   const char *title;         // Embed card headline
- *   const char *description;   // Embed body markdown
+ *   string title;         // Embed card headline
+ *   string description;   // Embed body markdown
  *   i32     color;         // Hex color integer (e.g. 0x00FF00)
- *   const char *imageUrl;      // Optional image attachment/embed URL
+ *   string imageUrl;      // Optional image attachment/embed URL
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
@@ -40,16 +41,19 @@
  */
 
 /** Splits a webhook URL into bounded scheme, host, port, and path outputs. */
-static bool parseUrl(const char *url, char *scheme, bytes schemeCap,
-                     char *host, bytes hostCap, i32 *port,
-                     char *path, bytes pathCap) {
-    if (!url || url[0] == '\0') return false;
+static bool parseUrl(string url, utf8 *scheme, bytes schemeCap,
+                     utf8 *host, bytes hostCap, i32 *port,
+                     utf8 *path, bytes pathCap) {
+    if (!url || url[0] == '\0')
+        return false;
 
-    const char *p = url;
-    const char *schemeEnd = strstr(p, "://");
+    string p = url;
+    bytes schemeIdx = string_indexOf(p, "://");
+    string schemeEnd = (schemeIdx != SIZE_MAX) ? (p + schemeIdx) : nullptr;
     if (schemeEnd) {
         bytes sLen = (bytes)(schemeEnd - p);
-        if (sLen >= schemeCap) return false;
+        if (sLen >= schemeCap)
+            return false;
         memcpy(scheme, p, sLen);
         scheme[sLen] = '\0';
         p = schemeEnd + 3;
@@ -60,23 +64,28 @@ static bool parseUrl(const char *url, char *scheme, bytes schemeCap,
 
     *port = Url_defaultPort(scheme);
 
-    const char *slash = strchr(p, '/');
-    const char *colon = strchr(p, ':');
+    bytes slashIdx = string_findChar(p, '/');
+    string slash = (slashIdx != SIZE_MAX) ? (p + slashIdx) : nullptr;
+    bytes colonIdx = string_findChar(p, ':');
+    string colon = (colonIdx != SIZE_MAX) ? (p + colonIdx) : nullptr;
 
     if (colon && (!slash || colon < slash)) {
         bytes hLen = (bytes)(colon - p);
-        if (hLen >= hostCap) return false;
+        if (hLen >= hostCap)
+            return false;
         memcpy(host, p, hLen);
         host[hLen] = '\0';
         *port = atoi(colon + 1);
     } else if (slash) {
         bytes hLen = (bytes)(slash - p);
-        if (hLen >= hostCap) return false;
+        if (hLen >= hostCap)
+            return false;
         memcpy(host, p, hLen);
         host[hLen] = '\0';
     } else {
         bytes hLen = strlen(p);
-        if (hLen >= hostCap) return false;
+        if (hLen >= hostCap)
+            return false;
         memcpy(host, p, hLen);
         host[hLen] = '\0';
     }
@@ -93,39 +102,43 @@ static bool parseUrl(const char *url, char *scheme, bytes schemeCap,
 }
 
 /** Appends an optional JSON string field while tracking field separators. */
-static bool appendStringField(char *buf, bytes cap, bytes *offset, const char *key, const char *val, bool *first) {
-    if (!val) return true;
+static bool appendStringField(utf8 *buf, bytes cap, bytes *offset, string key, string val, bool *first) {
+    if (!val)
+        return true;
     bytes o = *offset;
     if (!(*first)) {
-        if (o + 1 >= cap) return false;
+        if (o + 1 >= cap)
+            return false;
         buf[o++] = ',';
     }
     *first = false;
     i32 n = snprintf(buf + o, cap - o, "\"%s\":", key);
-    if (n < 0 || o + (bytes)n >= cap) return false;
+    if (n < 0 || o + (bytes)n >= cap)
+        return false;
     o += (bytes)n;
     i64 w = Json_writeString(buf + o, cap - o, val);
-    if (w < 0) return false;
+    if (w < 0)
+        return false;
     o += (bytes)w;
     *offset = o;
     return true;
 }
 
 /** Sends a Discord text webhook payload and reports whether the response is 2xx. */
-bool DiscordWebhook_sendText(const char *webhookUrl, const char *content,
-                             const char *username, const char *avatarUrl) {
-    if (!webhookUrl || webhookUrl[0] == '\0') return false;
+bool DiscordWebhook_sendText(string webhookUrl, string content,
+                             string username, string avatarUrl) {
+    if (!webhookUrl || webhookUrl[0] == '\0')
+        return false;
 
-    char scheme[16] = {0};
-    char host[256] = {0};
-    char path[512] = {0};
+    utf8 scheme[16] = {0};
+    utf8 host[256] = {0};
+    utf8 path[512] = {0};
     i32 port = 80;
 
-    if (!parseUrl(webhookUrl, scheme, sizeof(scheme), host, sizeof(host), &port, path, sizeof(path))) {
+    if (!parseUrl(webhookUrl, scheme, sizeof(scheme), host, sizeof(host), &port, path, sizeof(path)))
         return false;
-    }
 
-    char jsonBuf[4096];
+    utf8 jsonBuf[4096];
     bytes offset = 0;
     jsonBuf[offset++] = '{';
     bool first = true;
@@ -143,7 +156,8 @@ bool DiscordWebhook_sendText(const char *webhookUrl, const char *content,
             return false;
     }
 
-    if (offset + 2 >= sizeof(jsonBuf)) return false;
+    if (offset + 2 >= sizeof(jsonBuf))
+        return false;
     jsonBuf[offset++] = '}';
     jsonBuf[offset] = '\0';
 
@@ -165,7 +179,7 @@ bool DiscordWebhook_sendText(const char *webhookUrl, const char *content,
         .timeoutMs = 5000
     };
 
-    char respBody[2048];
+    utf8 respBody[2048];
     HttpResponse resp = { 0 };
     resp.body = respBody;
     resp.bodyCap = sizeof(respBody);
@@ -174,30 +188,42 @@ bool DiscordWebhook_sendText(const char *webhookUrl, const char *content,
 }
 
 ;;GETTER
-static inline const char *DiscordEmbed_title(const DiscordEmbed *self) { return (*self).title; }
+static inline string DiscordEmbed_title(const DiscordEmbed *self)
+{
+    return (*self).title;
+}
 ;;GETTER
-static inline const char *DiscordEmbed_description(const DiscordEmbed *self) { return (*self).description; }
+static inline string DiscordEmbed_description(const DiscordEmbed *self)
+{
+    return (*self).description;
+}
 ;;GETTER
-static inline i32 DiscordEmbed_color(const DiscordEmbed *self) { return (*self).color; }
+static inline i32 DiscordEmbed_color(const DiscordEmbed *self)
+{
+    return (*self).color;
+}
 ;;GETTER
-static inline const char *DiscordEmbed_imageUrl(const DiscordEmbed *self) { return (*self).imageUrl; }
+static inline string DiscordEmbed_imageUrl(const DiscordEmbed *self)
+{
+    return (*self).imageUrl;
+}
 
 /** Sends a Discord webhook payload with optional embed fields. */
-bool DiscordWebhook_sendEmbed(const char *webhookUrl, const char *content,
-                              const char *username, const char *avatarUrl,
+bool DiscordWebhook_sendEmbed(string webhookUrl, string content,
+                              string username, string avatarUrl,
                               const DiscordEmbed *embed) {
-    if (!webhookUrl || webhookUrl[0] == '\0') return false;
+    if (!webhookUrl || webhookUrl[0] == '\0')
+        return false;
 
-    char scheme[16] = {0};
-    char host[256] = {0};
-    char path[512] = {0};
+    utf8 scheme[16] = {0};
+    utf8 host[256] = {0};
+    utf8 path[512] = {0};
     i32 port = 80;
 
-    if (!parseUrl(webhookUrl, scheme, sizeof(scheme), host, sizeof(host), &port, path, sizeof(path))) {
+    if (!parseUrl(webhookUrl, scheme, sizeof(scheme), host, sizeof(host), &port, path, sizeof(path)))
         return false;
-    }
 
-    char jsonBuf[8192];
+    utf8 jsonBuf[8192];
     bytes offset = 0;
     jsonBuf[offset++] = '{';
     bool first = true;
@@ -217,24 +243,26 @@ bool DiscordWebhook_sendEmbed(const char *webhookUrl, const char *content,
 
     if (embed) {
         if (!first) {
-            if (offset + 1 >= sizeof(jsonBuf)) return false;
+            if (offset + 1 >= sizeof(jsonBuf))
+                return false;
             jsonBuf[offset++] = ',';
         }
         first = false;
 
-        const char *embedsKey = "\"embeds\":[{";
+        string embedsKey = "\"embeds\":[{";
         bytes kLen = strlen(embedsKey);
-        if (offset + kLen >= sizeof(jsonBuf)) return false;
+        if (offset + kLen >= sizeof(jsonBuf))
+            return false;
         memcpy(jsonBuf + offset, embedsKey, kLen);
         offset += kLen;
 
         bool embedFirst = true;
-        const char *title = DiscordEmbed_title(embed);
+        string title = DiscordEmbed_title(embed);
         if (title) {
             if (!appendStringField(jsonBuf, sizeof(jsonBuf), &offset, "title", title, &embedFirst))
                 return false;
         }
-        const char *description = DiscordEmbed_description(embed);
+        string description = DiscordEmbed_description(embed);
         if (description) {
             if (!appendStringField(jsonBuf, sizeof(jsonBuf), &offset, "description", description, &embedFirst))
                 return false;
@@ -242,41 +270,49 @@ bool DiscordWebhook_sendEmbed(const char *webhookUrl, const char *content,
         i32 color = DiscordEmbed_color(embed);
         if (color != 0) {
             if (!embedFirst) {
-                if (offset + 1 >= sizeof(jsonBuf)) return false;
+                if (offset + 1 >= sizeof(jsonBuf))
+                    return false;
                 jsonBuf[offset++] = ',';
             }
             embedFirst = false;
             i32 n = snprintf(jsonBuf + offset, sizeof(jsonBuf) - offset, "\"color\":%d", color);
-            if (n < 0 || offset + (bytes)n >= sizeof(jsonBuf)) return false;
+            if (n < 0 || offset + (bytes)n >= sizeof(jsonBuf))
+                return false;
             offset += (bytes)n;
         }
-        const char *imageUrl = DiscordEmbed_imageUrl(embed);
+        string imageUrl = DiscordEmbed_imageUrl(embed);
         if (imageUrl) {
             if (!embedFirst) {
-                if (offset + 1 >= sizeof(jsonBuf)) return false;
+                if (offset + 1 >= sizeof(jsonBuf))
+                    return false;
                 jsonBuf[offset++] = ',';
             }
             embedFirst = false;
-            const char *imgKey = "\"image\":{\"url\":";
+            string imgKey = "\"image\":{\"url\":";
             bytes ikLen = strlen(imgKey);
-            if (offset + ikLen >= sizeof(jsonBuf)) return false;
+            if (offset + ikLen >= sizeof(jsonBuf))
+                return false;
             memcpy(jsonBuf + offset, imgKey, ikLen);
             offset += ikLen;
 
             i64 w = Json_writeString(jsonBuf + offset, sizeof(jsonBuf) - offset, imageUrl);
-            if (w < 0) return false;
+            if (w < 0)
+                return false;
             offset += (bytes)w;
 
-            if (offset + 2 >= sizeof(jsonBuf)) return false;
+            if (offset + 2 >= sizeof(jsonBuf))
+                return false;
             jsonBuf[offset++] = '}';
         }
 
-        if (offset + 3 >= sizeof(jsonBuf)) return false;
+        if (offset + 3 >= sizeof(jsonBuf))
+            return false;
         jsonBuf[offset++] = '}';
         jsonBuf[offset++] = ']';
     }
 
-    if (offset + 2 >= sizeof(jsonBuf)) return false;
+    if (offset + 2 >= sizeof(jsonBuf))
+        return false;
     jsonBuf[offset++] = '}';
     jsonBuf[offset] = '\0';
 
@@ -298,7 +334,7 @@ bool DiscordWebhook_sendEmbed(const char *webhookUrl, const char *content,
         .timeoutMs = 5000
     };
 
-    char respBody[2048];
+    utf8 respBody[2048];
     HttpResponse resp = { 0 };
     resp.body = respBody;
     resp.bodyCap = sizeof(respBody);

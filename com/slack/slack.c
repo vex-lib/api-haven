@@ -11,7 +11,7 @@
 ;;DEFINITION
 /** The Slack webhook driver: it POSTs {"text","username","icon_url"} through the
  * Rest core and owns no transport of its own. It exists as the second vendor on
- * api/rest.h — proof that the core carries a vendor with zero transport code
+ * api/rest.h, proof that the core carries a vendor with zero transport code
  * added beside it. No state is retained between calls. */
 
 ;;OVERVIEW
@@ -23,7 +23,7 @@
  * the Rest core. First driver on api/rest.h: proves the core carries a
  * second vendor with zero transport code of its own.
  *
- * STRUCT FIELDS: none — procedural driver over Rest_postJson.
+ * STRUCT FIELDS: none, procedural driver over Rest_postJson.
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
@@ -33,8 +33,8 @@
  */
 
 /** Appends one optional JSON string field, updating the comma state and offset. */
-static bool appendField(char *buf, bytes cap, bytes *offset,
-                        const char *key, const char *val, bool *first) {
+static bool appendField(utf8 *buf, bytes cap, bytes *offset,
+                        string key, string val, bool *first) {
     if (!val)
         return true;
     bytes o = *offset;
@@ -56,15 +56,15 @@ static bool appendField(char *buf, bytes cap, bytes *offset,
     return true;
 }
 
-// CORE FUNCTIONS
+/** CORE FUNCTIONS */
 /** Sends a Slack incoming-webhook text payload and reports a 2xx response. */
-bool SlackWebhook_sendText(const char *webhookUrl, const char *text,
-                           const char *username, const char *iconUrl) {
+bool SlackWebhook_sendText(string webhookUrl, string text,
+                           string username, string iconUrl) {
     if (!webhookUrl || webhookUrl[0] == '\0')
         return false;
     if (!text)
         return false;
-    char jsonBuf[4096];
+    utf8 jsonBuf[4096];
     bytes offset = 0;
     jsonBuf[offset++] = '{';
     bool first = true;
@@ -78,7 +78,7 @@ bool SlackWebhook_sendText(const char *webhookUrl, const char *text,
         return false;
     jsonBuf[offset++] = '}';
     jsonBuf[offset] = '\0';
-    char respBody[2048];
+    utf8 respBody[2048];
     HttpResponse resp = { 0 };
     resp.body = respBody;
     resp.bodyCap = sizeof(respBody);

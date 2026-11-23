@@ -4,6 +4,7 @@
  */
 
 #include "vex.h"
+#include "re/primitive/vex-string.h"
 #include "ai/ai_chat_anthropic.h"
 #include "ai/ai_chat_gemini.h"
 #include "net/json.h"
@@ -67,7 +68,7 @@ static i32 s_ai_chat_sisters_sFailures = 0;
 #define CHECK(cond)                                                    \
     do {                                                               \
         if (!(cond)) {                                                 \
-            printf("FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond);     \
+            print("FAIL ", __FILE__, ":", __LINE__, ": ", #cond);     \
             s_ai_chat_sisters_sFailures++;                                               \
         }                                                              \
     } while (0)
@@ -91,19 +92,19 @@ static i32 suite_ai_chat_sisters(i32 argc, utf8 **argv) {
     AiChatAnthropic_setPeer(&achat, anthropic);
     CHECK(AiChatAnthropic_getMaxTokens(&achat) == AI_CHAT_ANTHROPIC_DEFAULT_MAX_TOKENS);
 
-    char body[2048];
-    char url[512];
+    utf8 body[2048];
+    utf8 url[512];
     ApiAuth auth = ApiAuth_none();
     CHECK(AiChatAnthropic_buildRequest(&achat, sMessages, 2,
                                        body, sizeof(body), url, sizeof(url), &auth));
-    CHECK(strcmp(url, "https://api.anthropic.com/v1/v1/messages") == 0 ||
-          strstr(url, "/v1/messages") != nullptr);
+    CHECK(string_equals(url, "https://api.anthropic.com/v1/v1/messages") ||
+          string_contains(url, "/v1/messages"));
     CHECK(auth.kind == API_AUTH_API_KEY);
-    CHECK(strcmp(auth.headerName, "x-api-key") == 0);
-    CHECK(strcmp(auth.credential, "ant-key") == 0);
+    CHECK(string_equals(auth.headerName, "x-api-key"));
+    CHECK(string_equals(auth.credential, "ant-key"));
 
     JsonNode nodes[128];
-    char scratch[1024];
+    utf8 scratch[1024];
     JsonDoc doc;
     CHECK(Json_parse(&doc, nodes, 128, scratch, sizeof(scratch), body));
     JsonRef root = Json_root(&doc);
@@ -114,14 +115,14 @@ static i32 suite_ai_chat_sisters(i32 argc, utf8 **argv) {
     CHECK(Json_count(&doc, msgs) == 2);
     JsonRef m0 = Json_at(&doc, msgs, 0);
     JsonRef c0 = Json_member(&doc, m0, "content");
-    CHECK(c0 >= 0 && strcmp(Json_string(&doc, c0, nullptr), "explain \"sse\" \n briefly") == 0);
+    CHECK(c0 >= 0 && string_equals(Json_string(&doc, c0, nullptr), "explain \"sse\" \n briefly"));
 
     AiChatAnthropic_setBaseUrl(&achat, "https://proxy.example/anthropic");
     AiChatAnthropic_setMaxTokens(&achat, 512);
     CHECK(AiChatAnthropic_buildRequest(&achat, sMessages, 1,
                                        body, sizeof(body), url, sizeof(url), &auth));
-    CHECK(strcmp(url, "https://proxy.example/anthropic/v1/messages") == 0);
-    CHECK(strstr(body, "\"max_tokens\":512") != nullptr);
+    CHECK(string_equals(url, "https://proxy.example/anthropic/v1/messages"));
+    CHECK(string_contains(body, "\"max_tokens\":512"));
 
     AiChatAnthropic bare = AiChatAnthropic("claude-haiku");
     CHECK(AiChatAnthropic_buildRequest(&bare, sMessages, 1,
@@ -139,7 +140,7 @@ static i32 suite_ai_chat_sisters(i32 argc, utf8 **argv) {
     AiChatAnthropic_setMaxTokens(&zeroTok, 0);
     CHECK(!AiChatAnthropic_buildRequest(&zeroTok, sMessages, 1,
                                         body, sizeof(body), url, sizeof(url), &auth));
-    char tiny[16];
+    utf8 tiny[16];
     CHECK(!AiChatAnthropic_buildRequest(&bare, sMessages, 2,
                                         tiny, sizeof(tiny), url, sizeof(url), &auth));
     CHECK(!AiChatAnthropic_complete(&bare, sMessages, 1, body, sizeof(body), nullptr));
@@ -156,9 +157,9 @@ static i32 suite_ai_chat_sisters(i32 argc, utf8 **argv) {
     AiChatAnthropic_setMaxTokens(&ac, 2048);
     CHECK(AiChatAnthropic_getProvider(&ac) == dir);
     CHECK(AiChatAnthropic_getPeer(&ac) == anthropic);
-    CHECK(strcmp(AiChatAnthropic_getModel(&ac), "claude-opus") == 0);
-    CHECK(strcmp(AiChatAnthropic_getApiKey(&ac), "k") == 0);
-    CHECK(strcmp(AiChatAnthropic_getBaseUrl(&ac), "https://o") == 0);
+    CHECK(string_equals(AiChatAnthropic_getModel(&ac), "claude-opus"));
+    CHECK(string_equals(AiChatAnthropic_getApiKey(&ac), "k"));
+    CHECK(string_equals(AiChatAnthropic_getBaseUrl(&ac), "https://o"));
     CHECK(AiChatAnthropic_getMaxTokens(&ac) == 2048);
     CHECK(AiChatAnthropic_getProvider(nullptr) == nullptr);
     CHECK(AiChatAnthropic_getPeer(nullptr) == nullptr);
@@ -168,10 +169,10 @@ static i32 suite_ai_chat_sisters(i32 argc, utf8 **argv) {
     AiChatGemini gchat = AiChatGemini("gemini-2.0-flash", "goog-key");
     CHECK(AiChatGemini_buildRequest(&gchat, sMessages, 2,
                                     body, sizeof(body), url, sizeof(url), &auth));
-    CHECK(strcmp(url, "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent") == 0);
+    CHECK(string_equals(url, "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"));
     CHECK(auth.kind == API_AUTH_API_KEY);
-    CHECK(strcmp(auth.headerName, "x-goog-api-key") == 0);
-    CHECK(strcmp(auth.credential, "goog-key") == 0);
+    CHECK(string_equals(auth.headerName, "x-goog-api-key"));
+    CHECK(string_equals(auth.credential, "goog-key"));
 
     CHECK(Json_parse(&doc, nodes, 128, scratch, sizeof(scratch), body));
     root = Json_root(&doc);
@@ -183,24 +184,24 @@ static i32 suite_ai_chat_sisters(i32 argc, utf8 **argv) {
     JsonRef r1 = Json_member(&doc, g1, "role");
     u32 r0len = 0;
     u32 r1len = 0;
-    const char *r0v = r0 >= 0 ? Json_string(&doc, r0, &r0len) : "";
-    const char *r1v = r1 >= 0 ? Json_string(&doc, r1, &r1len) : "";
+    string r0v = r0 >= 0 ? Json_string(&doc, r0, &r0len) : "";
+    string r1v = r1 >= 0 ? Json_string(&doc, r1, &r1len) : "";
     CHECK(r0len == 4 && memcmp(r0v, "user", 4) == 0);
     CHECK(r1len == 5 && memcmp(r1v, "model", 5) == 0);
     JsonRef p0 = Json_member(&doc, g0, "parts");
     CHECK(Json_count(&doc, p0) == 1);
     JsonRef t0 = Json_member(&doc, Json_at(&doc, p0, 0), "text");
-    CHECK(t0 >= 0 && strcmp(Json_string(&doc, t0, nullptr), "explain \"sse\" \n briefly") == 0);
+    CHECK(t0 >= 0 && string_equals(Json_string(&doc, t0, nullptr), "explain \"sse\" \n briefly"));
 
     const AiMessage sysMsg[1] = {{"system", "be brief"}};
     CHECK(AiChatGemini_buildRequest(&gchat, sysMsg, 1,
                                     body, sizeof(body), url, sizeof(url), &auth));
-    CHECK(strstr(body, "\"role\":\"user\"") != nullptr);
+    CHECK(string_contains(body, "\"role\":\"user\""));
 
     AiChatGemini_setBaseUrl(&gchat, "https://proxy.example/gemini");
     CHECK(AiChatGemini_buildRequest(&gchat, sMessages, 1,
                                     body, sizeof(body), url, sizeof(url), &auth));
-    CHECK(strstr(url, "https://proxy.example/gemini/v1beta/models/") != nullptr);
+    CHECK(string_contains(url, "https://proxy.example/gemini/v1beta/models/"));
 
     AiChatGemini gbare = AiChatGemini("gemini-flash-lite");
     CHECK(AiChatGemini_buildRequest(&gbare, sMessages, 1,
@@ -227,19 +228,19 @@ static i32 suite_ai_chat_sisters(i32 argc, utf8 **argv) {
     AiChatGemini_setBaseUrl(&gc, "https://go");
     CHECK(AiChatGemini_getProvider(&gc) == dir);
     CHECK(AiChatGemini_getPeer(&gc) == anthropic);
-    CHECK(strcmp(AiChatGemini_getModel(&gc), "gemini-pro") == 0);
-    CHECK(strcmp(AiChatGemini_getApiKey(&gc), "gk") == 0);
-    CHECK(strcmp(AiChatGemini_getBaseUrl(&gc), "https://go") == 0);
+    CHECK(string_equals(AiChatGemini_getModel(&gc), "gemini-pro"));
+    CHECK(string_equals(AiChatGemini_getApiKey(&gc), "gk"));
+    CHECK(string_equals(AiChatGemini_getBaseUrl(&gc), "https://go"));
     CHECK(AiChatGemini_getProvider(nullptr) == nullptr);
     CHECK(AiChatGemini_getPeer(nullptr) == nullptr);
     CHECK(AiChatGemini_getApiKey(nullptr) == nullptr);
     CHECK(AiChatGemini_getBaseUrl(nullptr) == nullptr);
 
     if (s_ai_chat_sisters_sFailures == 0) {
-        printf("ai_chat_sisters_test: ALL CHECKS PASSED\n");
+        print("ai_chat_sisters_test: ALL CHECKS PASSED");
         return 0;
     }
-    printf("ai_chat_sisters_test: %d FAILURES\n", s_ai_chat_sisters_sFailures);
+    print("ai_chat_sisters_test: ", s_ai_chat_sisters_sFailures, " FAILURES");
     return 1;
 }
 #undef CHECK
@@ -273,7 +274,7 @@ static i32 s_ai_provider_sFailures = 0;
 #define CHECK(cond)                                                    \
     do {                                                               \
         if (!(cond)) {                                                 \
-            printf("FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond);     \
+            print("FAIL ", __FILE__, ":", __LINE__, ": ", #cond);     \
             s_ai_provider_sFailures++;                                               \
         }                                                              \
     } while (0)
@@ -283,11 +284,11 @@ static const AiMessage s2_sMessages[2] = {
     {"assistant", "hello"},
 };
 
-static i32 isSlugValid(const char *slug) {
+static i32 isSlugValid(string slug) {
     if (!slug || (*slug) == '\0')
         return 0;
-    for (const char *p = slug; *p; p++) {
-        char c = *p;
+    for (string p = slug; *p; p++) {
+        utf8 c = *p;
         i32 isAlnum = (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9');
         if (c == '-') {
             if (p == slug || *(p + 1) == '\0' || *(p + 1) == '-')
@@ -300,11 +301,11 @@ static i32 isSlugValid(const char *slug) {
 }
 
 /* Returns whether a provider identifier contains whitespace forbidden by the slug contract. */
-static i32 hasWhitespace(const char *s) {
+static i32 hasWhitespace(string s) {
     if (!s)
         return 0;
-    for (const char *p = s; *p; p++) {
-        char c = *p;
+    for (string p = s; *p; p++) {
+        utf8 c = *p;
         if (c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\v' || c == '\f')
             return 1;
     }
@@ -319,7 +320,7 @@ static i32 suite_ai_provider(i32 argc, utf8 **argv) {
     AiProvider *dir = AiProvider_shared();
     CHECK(dir != nullptr);
     const u32 total = AiProvider_count(dir);
-    printf("AiProvider_count = %u\n", total);
+    print("AiProvider_count = ", total);
     CHECK(total >= 255 && total <= 280);
     CHECK(AiProvider_at(dir, 0) != nullptr);
     CHECK(AiProvider_at(dir, total) == nullptr);
@@ -327,12 +328,11 @@ static i32 suite_ai_provider(i32 argc, utf8 **argv) {
 
     const AiProviderSlot *openai = AiProvider_get(dir, "openai");
     CHECK(openai != nullptr);
-    CHECK(openai && strcmp(AiProvider_getDisplayName(dir, openai), "OpenAI") == 0);
+    CHECK(openai && string_equals(AiProvider_getDisplayName(dir, openai), "OpenAI"));
     CHECK(openai && AiProvider_getFamily(dir, openai) == AI_PROVIDER_FAMILY_OPENAI_COMPAT);
     CHECK(openai && AiProvider_getAuth(dir, openai) == AI_PROVIDER_AUTH_BEARER);
     CHECK(openai && AiProvider_getBaseUrl(dir, openai) != nullptr);
-    CHECK(openai && strcmp(AiProvider_resolveBaseUrl(dir, openai),
-                           "https://api.openai.com/v1") == 0);
+    CHECK(openai && string_equals(AiProvider_resolveBaseUrl(dir, openai), "https://api.openai.com/v1"));
 
     const AiProviderSlot *anthropic = AiProvider_get(dir, "anthropic");
     CHECK(anthropic && AiProvider_getFamily(dir, anthropic) == AI_PROVIDER_FAMILY_ANTHROPIC);
@@ -351,26 +351,26 @@ static i32 suite_ai_provider(i32 argc, utf8 **argv) {
     CHECK(AiProvider_get(dir, "lilac") != nullptr);
     CHECK(AiProvider_get(dir, "definitely-not-a-provider") == nullptr);
 
-    const char *names[280];
+    string names[280];
     u32 nameCount = 0;
     for (u32 i = 0; i < total; i++) {
         const AiProviderSlot *row = AiProvider_at(dir, i);
         CHECK(row != nullptr);
         CHECK(row && isSlugValid(AiProvider_getSlug(dir, row)));
         CHECK(row && AiProvider_get(dir, AiProvider_getSlug(dir, row)) == row);
-        const char *rowName = row ? AiProvider_getDisplayName(dir, row) : nullptr;
+        string rowName = row ? AiProvider_getDisplayName(dir, row) : nullptr;
         CHECK(rowName && (*rowName) != '\0');
         if (row && rowName) {
             i32 dup = 0;
             for (u32 j = 0; j < nameCount; j++) {
-                if (strcmp(names[j], rowName) == 0)
+                if (string_equals(names[j], rowName))
                     dup = 1;
             }
             CHECK(!dup);
             names[nameCount++] = rowName;
-            const char *base = AiProvider_getBaseUrl(dir, row);
+            string base = AiProvider_getBaseUrl(dir, row);
             if (base) {
-                CHECK(strncmp(base, "https://", 8) == 0 || strncmp(base, "http://", 7) == 0);
+                CHECK(string_startsWith(base, "https://", 8) || string_startsWith(base, "http://", 7));
                 CHECK(!hasWhitespace(base));
                 bytes baseLen = strlen(base);
                 CHECK(baseLen > 0 && base[baseLen - 1] != '/');
@@ -380,13 +380,11 @@ static i32 suite_ai_provider(i32 argc, utf8 **argv) {
 
     const AiProviderSlot *meta = AiProvider_get(dir, "meta");
     CHECK(meta && AiProvider_getBaseUrl(dir, meta) == nullptr);
-    CHECK(meta && strcmp(AiProvider_resolveBaseUrl(dir, meta),
-                         "https://openrouter.ai/api/v1") == 0);
+    CHECK(meta && string_equals(AiProvider_resolveBaseUrl(dir, meta), "https://openrouter.ai/api/v1"));
 
     const AiProviderSlot *vertexAnthropic = AiProvider_get(dir, "vertex-anthropic");
     CHECK(vertexAnthropic && AiProvider_getBaseUrl(dir, vertexAnthropic) == nullptr);
-    CHECK(vertexAnthropic && strcmp(AiProvider_resolveBaseUrl(dir, vertexAnthropic),
-                                    "https://api.anthropic.com/v1") == 0);
+    CHECK(vertexAnthropic && string_equals(AiProvider_resolveBaseUrl(dir, vertexAnthropic), "https://api.anthropic.com/v1"));
 
     CHECK(AiProvider_count(nullptr) == 0);
     CHECK(AiProvider_get(nullptr, nullptr) == nullptr);
@@ -401,25 +399,25 @@ static i32 suite_ai_provider(i32 argc, utf8 **argv) {
     AiChat chat = AiChat("gpt-4o-mini", "sk-test");
     AiChat_setPeer(&chat, openai);
 
-    char body[2048];
-    char url[512];
+    utf8 body[2048];
+    utf8 url[512];
     ApiAuth auth = ApiAuth_none();
 
     CHECK(AiChat_buildRequest(&chat, s2_sMessages, 2,
                               body, sizeof(body), url, sizeof(url), &auth));
-    CHECK(strcmp(url, "https://api.openai.com/v1/chat/completions") == 0);
+    CHECK(string_equals(url, "https://api.openai.com/v1/chat/completions"));
     CHECK(auth.kind == API_AUTH_BEARER);
-    CHECK(strcmp(auth.credential, "sk-test") == 0);
+    CHECK(string_equals(auth.credential, "sk-test"));
 
     JsonNode nodes[128];
-    char scratch[1024];
+    utf8 scratch[1024];
     JsonDoc doc;
     CHECK(Json_parse(&doc, nodes, 128, scratch, sizeof(scratch), body));
     JsonRef root = Json_root(&doc);
 
     JsonRef model = Json_member(&doc, root, "model");
     u32 modelLen = 0;
-    const char *modelView = model >= 0 ? Json_string(&doc, model, &modelLen) : "";
+    string modelView = model >= 0 ? Json_string(&doc, model, &modelLen) : "";
     CHECK(model >= 0 && modelLen == 11 && memcmp(modelView, "gpt-4o-mini", 11) == 0);
 
     JsonRef msgs = Json_member(&doc, root, "messages");
@@ -427,22 +425,22 @@ static i32 suite_ai_provider(i32 argc, utf8 **argv) {
     JsonRef m0 = Json_at(&doc, msgs, 0);
     JsonRef c0 = Json_member(&doc, m0, "content");
     CHECK(c0 >= 0);
-    CHECK(c0 >= 0 && strcmp(Json_string(&doc, c0, nullptr), "say \"hi\" \n to me") == 0);
+    CHECK(c0 >= 0 && string_equals(Json_string(&doc, c0, nullptr), "say \"hi\" \n to me"));
     JsonRef m1 = Json_at(&doc, msgs, 1);
     JsonRef r1 = Json_member(&doc, m1, "role");
     u32 roleLen = 0;
-    const char *roleView = r1 >= 0 ? Json_string(&doc, r1, &roleLen) : "";
+    string roleView = r1 >= 0 ? Json_string(&doc, r1, &roleLen) : "";
     CHECK(r1 >= 0 && roleLen == 9 && memcmp(roleView, "assistant", 9) == 0);
 
     AiChat_setBaseUrl(&chat, "https://gateway.example");
     CHECK(AiChat_buildRequest(&chat, s2_sMessages, 2,
                               body, sizeof(body), url, sizeof(url), &auth));
-    CHECK(strcmp(url, "https://gateway.example/chat/completions") == 0);
+    CHECK(string_equals(url, "https://gateway.example/chat/completions"));
 
     AiChat bare = AiChat("grok-2-latest");
     CHECK(AiChat_buildRequest(&bare, s2_sMessages, 1,
                               body, sizeof(body), url, sizeof(url), &auth));
-    CHECK(strcmp(url, "https://openrouter.ai/api/v1/chat/completions") == 0);
+    CHECK(string_equals(url, "https://openrouter.ai/api/v1/chat/completions"));
     CHECK(auth.kind == API_AUTH_NONE);
 
     CHECK(!AiChat_buildRequest(nullptr, s2_sMessages, 1,
@@ -467,13 +465,13 @@ static i32 suite_ai_provider(i32 argc, utf8 **argv) {
     AiChat_setBaseUrl(&c, "https://override");
     CHECK(AiChat_getProvider(&c) == dir);
     CHECK(AiChat_getPeer(&c) == zhipu);
-    CHECK(strcmp(AiChat_getModel(&c), "glm-4.5") == 0);
-    CHECK(strcmp(AiChat_getApiKey(&c), "k2") == 0);
-    CHECK(strcmp(AiChat_getBaseUrl(&c), "https://override") == 0);
+    CHECK(string_equals(AiChat_getModel(&c), "glm-4.5"));
+    CHECK(string_equals(AiChat_getApiKey(&c), "k2"));
+    CHECK(string_equals(AiChat_getBaseUrl(&c), "https://override"));
 
     const AiProviderSlot *nous = AiProvider_get(dir, "nous-research");
     CHECK(nous != nullptr);
-    CHECK(nous && strcmp(AiProvider_getDisplayName(dir, nous), "Nous Research") == 0);
+    CHECK(nous && string_equals(AiProvider_getDisplayName(dir, nous), "Nous Research"));
     CHECK(nous && AiProvider_getFamily(dir, nous) == AI_PROVIDER_FAMILY_OPENAI_COMPAT);
     CHECK(nous && AiProvider_getAuth(dir, nous) == AI_PROVIDER_AUTH_BEARER);
 
@@ -482,16 +480,16 @@ static i32 suite_ai_provider(i32 argc, utf8 **argv) {
     AiChat_setApiKey(&hermes, "nous-key");
     CHECK(AiChat_buildRequest(&hermes, s2_sMessages, 1,
                               body, sizeof(body), url, sizeof(url), &auth));
-    CHECK(strcmp(url, "https://openrouter.ai/api/v1/chat/completions") == 0);
+    CHECK(string_equals(url, "https://openrouter.ai/api/v1/chat/completions"));
     CHECK(auth.kind == API_AUTH_BEARER);
-    CHECK(strcmp(auth.credential, "nous-key") == 0);
-    CHECK(strstr(body, "hermes") != nullptr);
+    CHECK(string_equals(auth.credential, "nous-key"));
+    CHECK(string_contains(body, "hermes"));
 
     if (s_ai_provider_sFailures == 0) {
-        printf("ai_provider_test: ALL CHECKS PASSED (%u providers)\n", total);
+        print("ai_provider_test: ALL CHECKS PASSED (", total, " providers)");
         return 0;
     }
-    printf("ai_provider_test: %d FAILURES\n", s_ai_provider_sFailures);
+    print("ai_provider_test: ", s_ai_provider_sFailures, " FAILURES");
     return 1;
 }
 #undef CHECK
@@ -524,7 +522,7 @@ static i32 s_ai_sse_sFailures = 0;
 #define CHECK(cond)                                                    \
     do {                                                               \
         if (!(cond)) {                                                 \
-            printf("FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond);     \
+            print("FAIL ", __FILE__, ":", __LINE__, ": ", #cond);     \
             s_ai_sse_sFailures++;                                               \
         }                                                              \
     } while (0)
@@ -576,34 +574,34 @@ static i32 suite_ai_sse(i32 argc, utf8 **argv) {
     CHECK(!AiSse_isDone(&sse));
     CHECK(AiSse_getLineLen(&sse) == 0);
 
-    char text[512];
+    utf8 text[512];
     bool truncated = false;
-    const char *one = "event: message\ndata: hello\n\n";
+    string one = "event: message\ndata: hello\n\n";
     CHECK(AiSse_feed(&sse, one, strlen(one), text, sizeof(text), &truncated));
     CHECK(!truncated);
-    CHECK(strcmp(text, "hello") == 0);
+    CHECK(string_equals(text, "hello"));
 
     AiSse multi = AiSse();
-    const char *two = "data: line1\ndata: line2\n\n";
+    string two = "data: line1\ndata: line2\n\n";
     CHECK(AiSse_feed(&multi, two, strlen(two), text, sizeof(text), &truncated));
-    CHECK(strcmp(text, "line1\nline2") == 0);
+    CHECK(string_equals(text, "line1\nline2"));
 
     AiSse cr = AiSse();
-    const char *three = ": keep-alive\r\ndata: hi\r\n\r\n";
+    string three = ": keep-alive\r\ndata: hi\r\n\r\n";
     CHECK(AiSse_feed(&cr, three, strlen(three), text, sizeof(text), &truncated));
-    CHECK(strcmp(text, "hi") == 0);
+    CHECK(string_equals(text, "hi"));
 
     AiSse part = AiSse();
     CHECK(!AiSse_feed(&part, "data: hel", 9, text, sizeof(text), &truncated));
     CHECK(AiSse_getLineLen(&part) == 9);
     CHECK(AiSse_feed(&part, "lo\n\n", 4, text, sizeof(text), &truncated));
-    CHECK(strcmp(text, "hello") == 0);
+    CHECK(string_equals(text, "hello"));
 
     AiSse ev = AiSse();
-    const char *evBytes = "event: done\ndata: x\n\n";
+    string evBytes = "event: done\ndata: x\n\n";
     CHECK(AiSse_feed(&ev, evBytes, strlen(evBytes), text, sizeof(text), &truncated));
-    const char *evName = AiSse_getEvent(&ev);
-    CHECK(evName != nullptr && strcmp(evName, "done") == 0);
+    string evName = AiSse_getEvent(&ev);
+    CHECK(evName != nullptr && string_equals(evName, "done"));
 
     AiSse fin = AiSse();
     CHECK(AiSse_feed(&fin, "data: [DONE]\n\n", 14, text, sizeof(text), &truncated));
@@ -647,7 +645,7 @@ static i32 suite_ai_sse(i32 argc, utf8 **argv) {
     CHECK(AiSse_feed(&tmo, one, strlen(one), text, sizeof(text), &truncated));
 
     AiSse trunc = AiSse();
-    char tiny[4];
+    utf8 tiny[4];
     CHECK(!AiSse_feed(&trunc, one, strlen(one), tiny, sizeof(tiny), &truncated));
     CHECK(truncated);
     CHECK(!AiSse_feed(&trunc, one, strlen(one), tiny, sizeof(tiny), nullptr));
@@ -675,10 +673,10 @@ static i32 suite_ai_sse(i32 argc, utf8 **argv) {
     CHECK(!AiSse_isDone(&st));
 
     if (s_ai_sse_sFailures == 0) {
-        printf("ai_sse_test: ALL CHECKS PASSED\n");
+        print("ai_sse_test: ALL CHECKS PASSED");
         return 0;
     }
-    printf("ai_sse_test: %d FAILURES\n", s_ai_sse_sFailures);
+    print("ai_sse_test: ", s_ai_sse_sFailures, " FAILURES");
     return 1;
 }
 #undef CHECK
@@ -720,7 +718,7 @@ static i32 sFailures = 0;
 #define CHECK(cond)                                                    \
     do {                                                               \
         if (!(cond)) {                                                 \
-            printf("FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond);     \
+            print("FAIL ", __FILE__, ":", __LINE__, ": ", #cond);     \
             sFailures++;                                               \
         }                                                              \
     } while (0)
@@ -730,16 +728,16 @@ static u64 s_app_broker_sLastTimeoutMs = 0;
 
 /* Copies the requested action into the bounded output and records successful stub dispatch. */
 static bool stubEcho(any driverCtx, const AppProviderSlot *target,
-                     const char *action, const char *paramsJson,
+                     string action, string paramsJson,
                      bytes paramsLen, u64 timeoutMs,
-                     char *outBuf, bytes outCap, bytes *outLen) {
+                     utf8 *outBuf, bytes outCap, bytes *outLen) {
     (discard) driverCtx;
     (discard) target;
     (discard) paramsJson;
     (discard) paramsLen;
     sRunCalls++;
     s_app_broker_sLastTimeoutMs = timeoutMs;
-    const char *reply = action ? action : "";
+    string reply = action ? action : "";
     bytes len = strlen(reply);
     if (len + 1 > outCap)
         return false;
@@ -751,9 +749,9 @@ static bool stubEcho(any driverCtx, const AppProviderSlot *target,
 
 /* Simulates a driver rejection without writing output or changing broker state. */
 static bool stubFail(any driverCtx, const AppProviderSlot *target,
-                     const char *action, const char *paramsJson,
+                     string action, string paramsJson,
                      bytes paramsLen, u64 timeoutMs,
-                     char *outBuf, bytes outCap, bytes *outLen) {
+                     utf8 *outBuf, bytes outCap, bytes *outLen) {
     (discard) driverCtx;
     (discard) target;
     (discard) action;
@@ -810,8 +808,7 @@ static i32 suite_app_broker(i32 argc, utf8 **argv) {
     const AppProviderSlot *notes = AppProvider_get(dir, "apple-notes");
     CHECK(notes && AppProvider_getFamily(dir, notes) == APP_PROVIDER_FAMILY_OSA_SCRIPT);
     CHECK(notes && AppProvider_getAuth(dir, notes) == APP_PROVIDER_AUTH_SYSTEM);
-    CHECK(notes && strcmp(AppProvider_getBundleIdOrScheme(dir, notes),
-                          "com.apple.Notes") == 0);
+    CHECK(notes && string_equals(AppProvider_getBundleIdOrScheme(dir, notes), "com.apple.Notes"));
 
     const AppProviderSlot *tg = AppProvider_get(dir, "telegram");
     CHECK(tg && AppProvider_getFamily(dir, tg) == APP_PROVIDER_FAMILY_REST_WEBHOOK);
@@ -820,10 +817,10 @@ static i32 suite_app_broker(i32 argc, utf8 **argv) {
     const AppProviderSlot *spotify = AppProvider_get(dir, "spotify-local");
     CHECK(spotify && AppProvider_getFamily(dir, spotify) == APP_PROVIDER_FAMILY_LOCAL_SOCKET);
 
-    char target[64];
+    utf8 target[64];
     CHECK(AppProvider_resolveTarget(dir, notes, target, sizeof(target)));
-    CHECK(strcmp(target, "com.apple.Notes") == 0);
-    char tiny[4];
+    CHECK(string_equals(target, "com.apple.Notes"));
+    utf8 tiny[4];
     CHECK(!AppProvider_resolveTarget(dir, notes, tiny, sizeof(tiny)));
     CHECK(!AppProvider_resolveTarget(dir, notes, nullptr, 64));
     CHECK(!AppProvider_resolveTarget(nullptr, notes, target, sizeof(target)));
@@ -845,7 +842,7 @@ static i32 suite_app_broker(i32 argc, utf8 **argv) {
     CHECK(AppBroker_getDriver(&bare) == nullptr);
     CHECK(AppBroker_getTimeout(&bare) == 100);
     CHECK(!AppBroker_isRunning(&bare));
-    char out[128];
+    utf8 out[128];
     u32 jobId = 0;
     CHECK(!AppBroker_action(&bare, "list-notes", "{}", 2, out, sizeof(out), &jobId));
     CHECK(AppBroker_getLastStatus(&bare) == APP_STATUS_IDLE);
@@ -871,7 +868,7 @@ static i32 suite_app_broker(i32 argc, utf8 **argv) {
     CHECK(jobId == 1);
     CHECK(sRunCalls == 1);
     CHECK(s_app_broker_sLastTimeoutMs == 250);
-    CHECK(strcmp(out, "list-notes") == 0);
+    CHECK(string_equals(out, "list-notes"));
     CHECK(AppBroker_getLastStatus(&b) == APP_STATUS_DONE);
     CHECK(AppBroker_getJobStatus(&b, jobId) == APP_STATUS_DONE);
     CHECK(AppBroker_poll(&b, jobId) == APP_STATUS_DONE);
@@ -893,10 +890,10 @@ static i32 suite_app_broker(i32 argc, utf8 **argv) {
     CHECK(AppBroker_getJobStatus(&b, failId) == APP_STATUS_TIMEOUT);
 
     if (sFailures == 0) {
-        printf("app_broker_test: ALL CHECKS PASSED\n");
+        print("app_broker_test: ALL CHECKS PASSED");
         return 0;
     }
-    printf("app_broker_test: %d FAILURES\n", sFailures);
+    print("app_broker_test: ", sFailures, " FAILURES");
     return 1;
 }
 #undef CHECK
@@ -929,16 +926,16 @@ static i32 s_asset_sFailures = 0;
 #define CHECK(cond)                                                    \
     do {                                                               \
         if (!(cond)) {                                                 \
-            printf("FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond);     \
+            print("FAIL ", __FILE__, ":", __LINE__, ": ", #cond);     \
             s_asset_sFailures++;                                               \
         }                                                              \
     } while (0)
 
-static i32 s2_isSlugValid(const char *slug) {
+static i32 s2_isSlugValid(string slug) {
     if (!slug || (*slug) == '\0')
         return 0;
-    for (const char *p = slug; *p; p++) {
-        char c = *p;
+    for (string p = slug; *p; p++) {
+        utf8 c = *p;
         i32 isAlnum = (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9');
         if (c == '-') {
             if (p == slug || *(p + 1) == '\0' || *(p + 1) == '-')
@@ -958,14 +955,14 @@ static i32 suite_asset(i32 argc, utf8 **argv) {
     AssetProvider *dir = AssetProvider_shared();
     CHECK(dir != nullptr);
     const u32 total = AssetProvider_count(dir);
-    printf("AssetProvider_count = %u\n", total);
+    print("AssetProvider_count = ", total);
     CHECK(total == 12);
     CHECK(AssetProvider_at(dir, 0) != nullptr);
     CHECK(AssetProvider_at(dir, total) == nullptr);
 
     const AssetProviderSlot *unsplash = AssetProvider_get(dir, "unsplash");
     CHECK(unsplash != nullptr);
-    CHECK(unsplash && strcmp(AssetProvider_getDisplayName(dir, unsplash), "Unsplash") == 0);
+    CHECK(unsplash && string_equals(AssetProvider_getDisplayName(dir, unsplash), "Unsplash"));
     CHECK(unsplash && AssetProvider_getApiBase(dir, unsplash) != nullptr);
     CHECK(unsplash && AssetProvider_getLicenseFamily(dir, unsplash) != nullptr);
     CHECK(unsplash && AssetProvider_getSampleTitle(dir, unsplash) != nullptr);
@@ -975,26 +972,26 @@ static i32 suite_asset(i32 argc, utf8 **argv) {
 
     const AssetProviderSlot *kenney = AssetProvider_get(dir, "kenney");
     CHECK(kenney && AssetProvider_getApiBase(dir, kenney) == nullptr);
-    CHECK(kenney && strcmp(AssetProvider_getLicenseFamily(dir, kenney), "CC0") == 0);
+    CHECK(kenney && string_equals(AssetProvider_getLicenseFamily(dir, kenney), "CC0"));
     CHECK(kenney && AssetProvider_getSampleDownload(dir, kenney) != nullptr);
     CHECK(AssetProvider_get(dir, "quaternius") != nullptr);
     CHECK(AssetProvider_get(dir, "definitely-not-a-source") == nullptr);
 
-    const char *names[12];
+    string names[12];
     u32 nameCount = 0;
     for (u32 i = 0; i < total; i++) {
         const AssetProviderSlot *row = AssetProvider_at(dir, i);
         CHECK(row != nullptr);
         CHECK(row && s2_isSlugValid(AssetProvider_getSlug(dir, row)));
         CHECK(row && AssetProvider_get(dir, AssetProvider_getSlug(dir, row)) == row);
-        const char *rowName = row ? AssetProvider_getDisplayName(dir, row) : nullptr;
+        string rowName = row ? AssetProvider_getDisplayName(dir, row) : nullptr;
         CHECK(rowName && (*rowName) != '\0');
         CHECK(row && AssetProvider_getLicenseFamily(dir, row) != nullptr);
         CHECK(row && AssetProvider_getSampleDownload(dir, row) != nullptr);
         if (row && rowName) {
             i32 dup = 0;
             for (u32 j = 0; j < nameCount; j++) {
-                if (strcmp(names[j], rowName) == 0)
+                if (string_equals(names[j], rowName))
                     dup = 1;
             }
             CHECK(!dup);
@@ -1020,8 +1017,8 @@ static i32 suite_asset(i32 argc, utf8 **argv) {
     CHECK(AssetBroker_getChunkBudget(&broker) == ASSET_BROKER_CHUNK_BUDGET_MS);
     CHECK(!AssetBroker_isCancelled(&broker));
     CHECK(AssetBroker_getBytesCopied(&broker) == 0);
-    const char *sub = AssetBroker_getCacheSub(&broker);
-    CHECK(strcmp(sub, "assets") == 0);
+    string sub = AssetBroker_getCacheSub(&broker);
+    CHECK(string_equals(sub, "assets"));
 
     u8 dest[64];
     u32 used = 0;
@@ -1087,8 +1084,8 @@ static i32 suite_asset(i32 argc, utf8 **argv) {
     CHECK(AssetBroker_setCacheSub(&st, "models", &subTrunc));
     CHECK(!subTrunc);
     sub = AssetBroker_getCacheSub(&st);
-    CHECK(strcmp(sub, "models") == 0);
-    const char *wayTooLong = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdefX";
+    CHECK(string_equals(sub, "models"));
+    string wayTooLong = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdefX";
     CHECK(!AssetBroker_setCacheSub(&st, wayTooLong, &subTrunc));
     CHECK(subTrunc);
     CHECK(!AssetBroker_setCacheSub(&st, nullptr, &subTrunc));
@@ -1098,9 +1095,9 @@ static i32 suite_asset(i32 argc, utf8 **argv) {
     AssetBroker_setBytesCopied(&st, 41);
     CHECK(AssetBroker_getBytesCopied(&st) == 41);
 
-    char path[128];
+    utf8 path[128];
     CHECK(AssetBroker_cachePath(&st, "fox.glb", path, sizeof(path)));
-    CHECK(strcmp(path, "cache/models/fox.glb") == 0);
+    CHECK(string_equals(path, "cache/models/fox.glb"));
     CHECK(!AssetBroker_cachePath(&st, "fox.glb", path, 8));
     CHECK(!AssetBroker_cachePath(nullptr, "fox.glb", path, sizeof(path)));
     CHECK(!AssetBroker_cachePath(&st, nullptr, path, sizeof(path)));
@@ -1109,10 +1106,10 @@ static i32 suite_asset(i32 argc, utf8 **argv) {
     CHECK(!AssetBroker_cachePath(&st, "fox.glb", path, 0));
 
     if (s_asset_sFailures == 0) {
-        printf("asset_test: ALL CHECKS PASSED (%u sources)\n", total);
+        print("asset_test: ALL CHECKS PASSED (", total, " sources)");
         return 0;
     }
-    printf("asset_test: %d FAILURES\n", s_asset_sFailures);
+    print("asset_test: ", s_asset_sFailures, " FAILURES");
     return 1;
 }
 #undef CHECK
@@ -1145,16 +1142,16 @@ static i32 s_db_provider_sFailures = 0;
 #define CHECK(cond)                                                    \
     do {                                                               \
         if (!(cond)) {                                                 \
-            printf("FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond);     \
+            print("FAIL ", __FILE__, ":", __LINE__, ": ", #cond);     \
             s_db_provider_sFailures++;                                               \
         }                                                              \
     } while (0)
 
-static i32 s3_isSlugValid(const char *slug) {
+static i32 s3_isSlugValid(string slug) {
     if (!slug || (*slug) == '\0')
         return 0;
-    for (const char *p = slug; *p; p++) {
-        char c = *p;
+    for (string p = slug; *p; p++) {
+        utf8 c = *p;
         i32 isAlnum = (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9');
         if (c == '-') {
             if (p == slug || *(p + 1) == '\0' || *(p + 1) == '-')
@@ -1174,13 +1171,13 @@ static i32 suite_db_provider(i32 argc, utf8 **argv) {
     DbProvider *db = DbProvider_shared();
     CHECK(db != nullptr);
     const u32 total = DbProvider_count(db);
-    printf("DbProvider_count = %u\n", total);
+    print("DbProvider_count = ", total);
     CHECK(total == 25);
 
     const DbProviderSlot *pg = DbProvider_get(db, "postgresql");
     CHECK(pg != nullptr);
-    CHECK(pg && strcmp(DbProvider_getDisplayName(db, pg), "PostgreSQL") == 0);
-    CHECK(pg && strcmp(DbProvider_getEngine(db, pg), "postgres") == 0);
+    CHECK(pg && string_equals(DbProvider_getDisplayName(db, pg), "PostgreSQL"));
+    CHECK(pg && string_equals(DbProvider_getEngine(db, pg), "postgres"));
     CHECK(pg && DbProvider_getDefaultPort(db, pg) == 5432);
     CHECK(pg && DbProvider_getFamily(db, pg) == DB_PROVIDER_FAMILY_SQL);
 
@@ -1204,28 +1201,27 @@ static i32 suite_db_provider(i32 argc, utf8 **argv) {
 
     const DbProviderSlot *sqlserver = DbProvider_findByEngine(db, "sqlserver");
     CHECK(sqlserver != nullptr);
-    CHECK(sqlserver && strcmp(DbProvider_getSlug(db, sqlserver),
-                              "azure-sql-database") == 0);
+    CHECK(sqlserver && string_equals(DbProvider_getSlug(db, sqlserver), "azure-sql-database"));
     CHECK(DbProvider_findByEngine(db, "postgres") != nullptr);
     CHECK(DbProvider_findByEngine(db, "definitely-not-an-engine") == nullptr);
 
     CHECK(DbProvider_at(db, 0) != nullptr);
     CHECK(DbProvider_at(db, total) == nullptr);
-    const char *names[25];
+    string names[25];
     u32 nameCount = 0;
     for (u32 i = 0; i < total; i++) {
         const DbProviderSlot *row = DbProvider_at(db, i);
         CHECK(row != nullptr);
         CHECK(row && s3_isSlugValid(DbProvider_getSlug(db, row)));
         CHECK(row && DbProvider_get(db, DbProvider_getSlug(db, row)) == row);
-        const char *rowName = row ? DbProvider_getDisplayName(db, row) : nullptr;
-        const char *rowEngine = row ? DbProvider_getEngine(db, row) : nullptr;
+        string rowName = row ? DbProvider_getDisplayName(db, row) : nullptr;
+        string rowEngine = row ? DbProvider_getEngine(db, row) : nullptr;
         CHECK(rowName && (*rowName) != '\0');
         CHECK(rowEngine && (*rowEngine) != '\0');
         if (row && rowName) {
             i32 dup = 0;
             for (u32 j = 0; j < nameCount; j++) {
-                if (strcmp(names[j], rowName) == 0)
+                if (string_equals(names[j], rowName))
                     dup = 1;
             }
             CHECK(!dup);
@@ -1246,10 +1242,10 @@ static i32 suite_db_provider(i32 argc, utf8 **argv) {
     CHECK(DbProvider_getFamily(nullptr, nullptr) == DB_PROVIDER_FAMILY_SQL);
 
     if (s_db_provider_sFailures == 0) {
-        printf("db_provider_test: ALL CHECKS PASSED (%u data sources)\n", total);
+        print("db_provider_test: ALL CHECKS PASSED (", total, " data sources)");
         return 0;
     }
-    printf("db_provider_test: %d FAILURES\n", s_db_provider_sFailures);
+    print("db_provider_test: ", s_db_provider_sFailures, " FAILURES");
     return 1;
 }
 #undef CHECK
@@ -1281,13 +1277,13 @@ static i32 s_db_sqlite_file_sFailures = 0;
 #define CHECK(cond)                                                    \
     do {                                                               \
         if (!(cond)) {                                                 \
-            printf("FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond);     \
+            print("FAIL ", __FILE__, ":", __LINE__, ": ", #cond);     \
             s_db_sqlite_file_sFailures++;                                               \
         }                                                              \
     } while (0)
 
 /* Implements a bounded fake execution callback and counts valid delegated calls. */
-static bool fakeExec(any handle, const char *sql, char *out, bytes outCap) {
+static bool fakeExec(any handle, string sql, utf8 *out, bytes outCap) {
     if (!handle || !sql || !out || outCap == 0)
         return false;
     i32 *calls = (i32*) handle;
@@ -1315,22 +1311,22 @@ static i32 suite_db_sqlite_file(i32 argc, utf8 **argv) {
 
     DbSqliteFile file = DbSqliteFile("/tmp/catalog.db");
     CHECK(DbSqliteFile_isReadOnly(&file));
-    CHECK(strcmp(DbSqliteFile_getPath(&file), "/tmp/catalog.db") == 0);
+    CHECK(string_equals(DbSqliteFile_getPath(&file), "/tmp/catalog.db"));
     CHECK((DbSqliteFile_getCaps(&file) & DB_SQLITE_CAP_READ) != 0);
 
-    char desc[256];
+    utf8 desc[256];
     DbSqliteFile_setMaxBytes(&file, 1048576);
     CHECK(DbSqliteFile_describe(&file, desc, sizeof(desc)));
-    CHECK(strstr(desc, "sqlite file: path=/tmp/catalog.db") != nullptr);
-    CHECK(strstr(desc, "readOnly=1") != nullptr);
-    CHECK(strstr(desc, "maxBytes=1048576") != nullptr);
+    CHECK(string_contains(desc, "sqlite file: path=/tmp/catalog.db"));
+    CHECK(string_contains(desc, "readOnly=1"));
+    CHECK(string_contains(desc, "maxBytes=1048576"));
     CHECK(!DbSqliteFile_describe(&file, desc, 8));
     CHECK(!DbSqliteFile_describe(&bare, desc, sizeof(desc)));
     CHECK(!DbSqliteFile_describe(nullptr, desc, sizeof(desc)));
     CHECK(!DbSqliteFile_describe(&file, nullptr, sizeof(desc)));
     CHECK(!DbSqliteFile_describe(&file, desc, 0));
 
-    char out[256];
+    utf8 out[256];
     CHECK(!DbSqliteFile_exec(&file, "SELECT 1", out, sizeof(out)));
 
     i32 calls = 0;
@@ -1340,7 +1336,7 @@ static i32 suite_db_sqlite_file(i32 argc, utf8 **argv) {
     CHECK(DbSqliteFile_getExecTable(&file) == &sFakeTable);
     CHECK(DbSqliteFile_exec(&file, "SELECT 1", out, sizeof(out)));
     CHECK(calls == 1);
-    CHECK(strcmp(out, "rows for: SELECT 1") == 0);
+    CHECK(string_equals(out, "rows for: SELECT 1"));
     CHECK(!DbSqliteFile_bind(&file, &calls, &sFakeTable));
     i32 other = 0;
     CHECK(!DbSqliteFile_bind(&file, &other, &sFakeTable));
@@ -1366,7 +1362,7 @@ static i32 suite_db_sqlite_file(i32 argc, utf8 **argv) {
     DbSqliteFile_setCaps(&st, DB_SQLITE_CAP_READ);
     DbSqliteFile_setMaxBytes(&st, 4096);
     DbSqliteFile_setReadOnly(&st, true);
-    CHECK(strcmp(DbSqliteFile_getPath(&st), "/data/app.db") == 0);
+    CHECK(string_equals(DbSqliteFile_getPath(&st), "/data/app.db"));
     CHECK(DbSqliteFile_getCaps(&st) == DB_SQLITE_CAP_READ);
     CHECK(DbSqliteFile_getMaxBytes(&st) == 4096);
     CHECK(DbSqliteFile_isReadOnly(&st));
@@ -1382,10 +1378,10 @@ static i32 suite_db_sqlite_file(i32 argc, utf8 **argv) {
     CHECK(DbSqliteFile_getExecTable(nullptr) == nullptr);
 
     if (s_db_sqlite_file_sFailures == 0) {
-        printf("db_sqlite_file_test: ALL CHECKS PASSED\n");
+        print("db_sqlite_file_test: ALL CHECKS PASSED");
         return 0;
     }
-    printf("db_sqlite_file_test: %d FAILURES\n", s_db_sqlite_file_sFailures);
+    print("db_sqlite_file_test: ", s_db_sqlite_file_sFailures, " FAILURES");
     return 1;
 }
 #undef CHECK
@@ -1422,7 +1418,7 @@ static i32 s_harness_run_sFailures = 0;
 #define CHECK(cond)                                                    \
     do {                                                               \
         if (!(cond)) {                                                 \
-            printf("FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond);     \
+            print("FAIL ", __FILE__, ":", __LINE__, ": ", #cond);     \
             s_harness_run_sFailures++;                                               \
         }                                                              \
     } while (0)
@@ -1434,7 +1430,7 @@ static u64 s_harness_run_sLastTimeoutMs = 0;
 
 /* Records launches and returns a synthetic handle for each accepted job. */
 static bool stubSpawn(any driverCtx, const EngineProviderSlot *engine,
-                      const char *prompt, bytes promptLen,
+                      string prompt, bytes promptLen,
                       u64 timeoutMs, any *outHandle) {
     (discard) driverCtx;
     (discard) engine;
@@ -1504,14 +1500,14 @@ static i32 suite_harness_run(i32 argc, utf8 **argv) {
     CHECK(EngineProvider_get(dir, "definitely-not-an-engine") == nullptr);
 
     const EngineProviderSlot *opencode = EngineProvider_get(dir, "opencode");
-    CHECK(opencode && strcmp(EngineProvider_getCliName(dir, opencode), "opencode") == 0);
+    CHECK(opencode && string_equals(EngineProvider_getCliName(dir, opencode), "opencode"));
     CHECK(opencode && EngineProvider_getFamily(dir, opencode) == ENGINE_PROVIDER_FAMILY_CLI);
     CHECK(opencode && EngineProvider_getAuth(dir, opencode) == ENGINE_PROVIDER_AUTH_API_KEY);
 
-    char cli[32];
+    utf8 cli[32];
     CHECK(EngineProvider_resolveCli(dir, opencode, cli, sizeof(cli)));
-    CHECK(strcmp(cli, "opencode") == 0);
-    char tiny[4];
+    CHECK(string_equals(cli, "opencode"));
+    utf8 tiny[4];
     CHECK(!EngineProvider_resolveCli(dir, opencode, tiny, sizeof(tiny)));
     CHECK(!EngineProvider_resolveCli(dir, opencode, nullptr, 32));
     CHECK(!EngineProvider_resolveCli(dir, opencode, cli, 0));
@@ -1597,10 +1593,10 @@ static i32 suite_harness_run(i32 argc, utf8 **argv) {
     CHECK(Harness_poll(&h, 1) == HARNESS_STATUS_IDLE);
 
     if (s_harness_run_sFailures == 0) {
-        printf("harness_run_test: ALL CHECKS PASSED\n");
+        print("harness_run_test: ALL CHECKS PASSED");
         return 0;
     }
-    printf("harness_run_test: %d FAILURES\n", s_harness_run_sFailures);
+    print("harness_run_test: ", s_harness_run_sFailures, " FAILURES");
     return 1;
 }
 #undef CHECK
@@ -1631,7 +1627,7 @@ static i32 s_haven_ws_fanout_sFailures = 0;
 #define CHECK(cond)                                                    \
     do {                                                               \
         if (!(cond)) {                                                 \
-            printf("FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond);     \
+            print("FAIL ", __FILE__, ":", __LINE__, ": ", #cond);     \
             s_haven_ws_fanout_sFailures++;                                               \
         }                                                              \
     } while (0)
@@ -1697,9 +1693,8 @@ static i32 suite_haven_ws_fanout(i32 argc, utf8 **argv) {
     HavenWsFanout *fanout = HavenWsFanout();
     CHECK(fanout != nullptr);
     CHECK(HavenWsFanout_getCount(fanout) == 0);
-    for (u32 i = 0; i < HAVEN_WS_FANOUT_MAX; i++) {
+    for (u32 i = 0; i < HAVEN_WS_FANOUT_MAX; i++)
         CHECK(HavenWsFanout_getHandle(fanout, i) == nullptr);
-    }
     CHECK(HavenWsFanout_getHandle(fanout, HAVEN_WS_FANOUT_MAX) == nullptr);
 
     MockTransport t1 = {0, 0, 2};
@@ -1756,9 +1751,8 @@ static i32 suite_haven_ws_fanout(i32 argc, utf8 **argv) {
 
     MockTransport extras[HAVEN_WS_FANOUT_MAX];
     memset(extras, 0, sizeof(extras));
-    for (u32 i = 2; i < HAVEN_WS_FANOUT_MAX; i++) {
+    for (u32 i = 2; i < HAVEN_WS_FANOUT_MAX; i++)
         CHECK(HavenWsFanout_attach(fanout, &extras[i], &sMockSource));
-    }
     CHECK(HavenWsFanout_getCount(fanout) == HAVEN_WS_FANOUT_MAX);
 
     MockTransport overflow = {0, 0, 0};
@@ -1767,9 +1761,8 @@ static i32 suite_haven_ws_fanout(i32 argc, utf8 **argv) {
 
     CHECK(HavenWsFanout_detach(fanout, &t1));
     CHECK(HavenWsFanout_detach(fanout, &t2));
-    for (u32 i = 2; i < HAVEN_WS_FANOUT_MAX; i++) {
+    for (u32 i = 2; i < HAVEN_WS_FANOUT_MAX; i++)
         CHECK(HavenWsFanout_detach(fanout, &extras[i]));
-    }
     CHECK(HavenWsFanout_getCount(fanout) == 0);
 
     CHECK(HavenWsFanout_pollStep(fanout, 10) == 0);
@@ -1787,10 +1780,10 @@ static i32 suite_haven_ws_fanout(i32 argc, utf8 **argv) {
     HavenWsFanout_free(fanout);
 
     if (s_haven_ws_fanout_sFailures == 0) {
-        printf("haven_ws_fanout_test: ALL CHECKS PASSED\n");
+        print("haven_ws_fanout_test: ALL CHECKS PASSED");
         return 0;
     }
-    printf("haven_ws_fanout_test: %d FAILURES\n", s_haven_ws_fanout_sFailures);
+    print("haven_ws_fanout_test: ", s_haven_ws_fanout_sFailures, " FAILURES");
     return 1;
 }
 #undef CHECK
@@ -1803,13 +1796,13 @@ static i32 suite_haven_ws_fanout_entry() {
 
 /** Suite: json_flex (from api-haven/json_flex_test.c). */
 static i32 sFail = 0;
-#define CHECK(c) do { if (!(c)) { printf("FAIL %d: %s\n", __LINE__, #c); sFail++; } } while (0)
+#define CHECK(c) do { if (!(c)) { print("FAIL ", __LINE__, ": ", #c); sFail++; } } while (0)
 
 /* Checks flexible JSON path reads and bounded writer output, including overflow and parse round-trip. */
 static i32 suite_json_flex() {
-    const char *text = "{\"a\":{\"b.sh\":[{\"c\":\"hi\"},42]},\"t\":true,\"n\":3.5}";
+    string text = "{\"a\":{\"b.sh\":[{\"c\":\"hi\"},42]},\"t\":true,\"n\":3.5}";
     JsonNode nodes[64];
-    char scratch[256];
+    utf8 scratch[256];
     JsonDoc doc;
     CHECK(Json_parse(&doc, nodes, 64, scratch, sizeof(scratch), text));
     JsonRef root = Json_root(&doc);
@@ -1825,7 +1818,7 @@ static i32 suite_json_flex() {
     CHECK(Json_path(&doc, root, "a.b.sh[9]") < 0);
     CHECK(Json_getString(&doc, Json_path(&doc, root, "t")).data == nullptr);
 
-    char out[256];
+    utf8 out[256];
     JsonWriter w = JsonWriter(out, sizeof(out));
     CHECK(Json_beginObject(&w));
     CHECK(Json_addKey(&w, "method"));
@@ -1848,26 +1841,26 @@ static i32 suite_json_flex() {
     CHECK(Json_nullVal(&w));
     CHECK(Json_endObject(&w));
     CHECK(JsonWriter_ok(&w));
-    const char *want = "{\"method\":\"harness_run\",\"params\":{\"engine\":\"codex\",\"timeout\":250},\"tags\":[\"a\",\"b.sh\"],\"live\":true,\"drop\":null}";
-    CHECK(strcmp(out, want) == 0);
+    string want = "{\"method\":\"harness_run\",\"params\":{\"engine\":\"codex\",\"timeout\":250},\"tags\":[\"a\",\"b.sh\"],\"live\":true,\"drop\":null}";
+    CHECK(string_equals(out, want));
 
-    char small[16];
+    utf8 small[16];
     JsonWriter w2 = JsonWriter(small, sizeof(small));
     CHECK(Json_beginObject(&w2));
     CHECK(!Json_addKey(&w2, "way-too-long-key-name"));
     CHECK(!JsonWriter_ok(&w2));
     JsonNode n2[32];
-    char s2[64];
+    utf8 s2[64];
     JsonDoc d2;
     CHECK(Json_parse(&d2, n2, 32, s2, sizeof(s2), out));
     JsonStringView engine = Json_getString(&d2, Json_path(&d2, Json_root(&d2), "params.engine"));
     CHECK(engine.data && engine.length == 5u && memcmp(engine.data, "codex", engine.length) == 0);
 
     if (sFail == 0) {
-        printf("json_flex_test: ALL CHECKS PASSED\n");
+        print("json_flex_test: ALL CHECKS PASSED");
         return 0;
     }
-    printf("json_flex_test: %d FAILURES\n", sFail);
+    print("json_flex_test: ", sFail, " FAILURES");
     return 1;
 }
 #undef CHECK
@@ -1896,16 +1889,16 @@ static i32 suite_json_flex() {
 static i32 s_mcp_server_sFailures = 0;
 
 /* Counts a failed protocol assertion and prints its concise diagnostic. */
-static fn check(i32 ok, const char *what) {
+static fn check(i32 ok, string what) {
     if (!ok) {
         s_mcp_server_sFailures++;
-        fprintf(stderr, "FAIL: %s\n", what);
+        fprint(stderr, "FAIL: ", what);
     }
 }
 
 /* Sends one JSON-RPC line through the server and records whether a response was produced. */
-static const char *run(McpServer *srv, const char *line, char *out,
-                       bytes cap, const char *what) {
+static string run(McpServer *srv, string line, utf8 *out,
+                       bytes cap, string what) {
     out[0] = '\0';
     const bool wrote = McpServer_handleLine(srv, line, strlen(line), out, cap);
     check(wrote, what);
@@ -1915,86 +1908,86 @@ static const char *run(McpServer *srv, const char *line, char *out,
 /* Exercises MCP negotiation, tools/resources, error classes, notifications, and parse failures. */
 static i32 suite_mcp_server() {
     McpServer *srv = McpServer_shared();
-    char out[262144];
+    utf8 out[262144];
 
     run(srv,
         "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\","
         "\"params\":{\"protocolVersion\":\"2024-11-05\",\"capabilities\":{},"
         "\"clientInfo\":{\"name\":\"test\",\"version\":\"0\"}}}",
         out, sizeof(out), "initialize writes a response");
-    check(strstr(out, "\"id\":1") != nullptr, "initialize echoes numeric id");
-    check(strstr(out, "\"protocolVersion\":\"2024-11-05\"") != nullptr,
+    check(string_contains(out, "\"id\":1"), "initialize echoes numeric id");
+    check(string_contains(out, "\"protocolVersion\":\"2024-11-05\""),
           "initialize echoes supported client version");
-    check(strstr(out, "\"serverInfo\":{\"name\":\"vexgraph-mcp\"") != nullptr,
+    check(string_contains(out, "\"serverInfo\":{\"name\":\"vexgraph-mcp\""),
           "initialize advertises server identity");
     check(McpServer_isInitialized(srv), "initialized flag set after handshake");
-    check(strcmp(McpServer_getProtocolVersion(srv), "2024-11-05") == 0,
+    check(string_equals(McpServer_getProtocolVersion(srv), "2024-11-05"),
           "negotiated version getter");
 
     run(srv,
         "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"initialize\","
         "\"params\":{\"protocolVersion\":\"2099-01-01\"}}",
         out, sizeof(out), "initialize fallback writes a response");
-    check(strstr(out, "\"protocolVersion\":\"2025-06-18\"") != nullptr,
+    check(string_contains(out, "\"protocolVersion\":\"2025-06-18\""),
           "unsupported version negotiates to latest");
 
     run(srv,
         "{\"jsonrpc\":\"2.0\",\"id\":\"p1\",\"method\":\"ping\"}",
         out, sizeof(out), "ping writes a response");
-    check(strstr(out, "\"id\":\"p1\"") != nullptr, "ping echoes string id with quotes");
-    check(strstr(out, "\"result\":{}") != nullptr, "ping has empty result");
+    check(string_contains(out, "\"id\":\"p1\""), "ping echoes string id with quotes");
+    check(string_contains(out, "\"result\":{}"), "ping has empty result");
 
     run(srv,
         "{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/list\"}",
         out, sizeof(out), "tools/list writes a response");
-    check(strstr(out, "\"name\":\"app_detect\"") != nullptr, "tool app_detect present");
-    check(strstr(out, "\"name\":\"capture_status\"") != nullptr,
+    check(string_contains(out, "\"name\":\"app_detect\""), "tool app_detect present");
+    check(string_contains(out, "\"name\":\"capture_status\""),
           "tool capture_status present");
-    check(strstr(out, "\"name\":\"ai_provider_lookup\"") != nullptr,
+    check(string_contains(out, "\"name\":\"ai_provider_lookup\""),
           "tool ai_provider_lookup present");
-    check(strstr(out, "\"name\":\"db_data_source_lookup\"") != nullptr,
+    check(string_contains(out, "\"name\":\"db_data_source_lookup\""),
           "tool db_data_source_lookup present");
-    check(strstr(out, "\"name\":\"engine_list\"") != nullptr,
+    check(string_contains(out, "\"name\":\"engine_list\""),
           "tool engine_list present");
-    check(strstr(out, "\"name\":\"harness_run\"") != nullptr,
+    check(string_contains(out, "\"name\":\"harness_run\""),
           "tool harness_run present");
-    check(strstr(out, "\"name\":\"harness_poll\"") != nullptr,
+    check(string_contains(out, "\"name\":\"harness_poll\""),
           "tool harness_poll present");
-    check(strstr(out, "\"name\":\"app_list\"") != nullptr,
+    check(string_contains(out, "\"name\":\"app_list\""),
           "tool app_list present");
-    check(strstr(out, "\"name\":\"app_action\"") != nullptr,
+    check(string_contains(out, "\"name\":\"app_action\""),
           "tool app_action present");
-    check(strstr(out, "\"name\":\"app_poll\"") != nullptr,
+    check(string_contains(out, "\"name\":\"app_poll\""),
           "tool app_poll present");
-    check(strstr(out, "\"name\":\"search_list\"") != nullptr,
+    check(string_contains(out, "\"name\":\"search_list\""),
           "tool search_list present");
-    check(strstr(out, "\"name\":\"web_search\"") != nullptr,
+    check(string_contains(out, "\"name\":\"web_search\""),
           "tool web_search present");
-    check(strstr(out, "\"name\":\"asset_lookup\"") != nullptr,
+    check(string_contains(out, "\"name\":\"asset_lookup\""),
           "tool asset_lookup present");
-    check(strstr(out, "\"name\":\"asset_download\"") != nullptr,
+    check(string_contains(out, "\"name\":\"asset_download\""),
           "tool asset_download present");
-    check(strstr(out, "\"inputSchema\"") != nullptr, "tool schemas advertised");
+    check(string_contains(out, "\"inputSchema\""), "tool schemas advertised");
 
     run(srv,
         "{\"jsonrpc\":\"2.0\",\"id\":4,\"method\":\"tools/call\","
         "\"params\":{\"name\":\"app_detect\",\"arguments\":{}}}",
         out, sizeof(out), "app_detect call writes a response");
-    check(strstr(out, "\"id\":4") != nullptr, "app_detect echoes id");
-    check(strstr(out, "\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"") != nullptr,
+    check(string_contains(out, "\"id\":4"), "app_detect echoes id");
+    check(string_contains(out, "\"result\":{\"content\":[{\"type\":\"text\",\"text\":\""),
           "app_detect renders text content");
-    check(strstr(out, "KNOWN APPS (14)") != nullptr, "app_detect lists all 14 apps");
-    check(strstr(out, "opencode") != nullptr && strstr(out, "qwen-code") != nullptr,
+    check(string_contains(out, "KNOWN APPS (14)"), "app_detect lists all 14 apps");
+    check(string_contains(out, "opencode") && string_contains(out, "qwen-code"),
           "app_detect covers first and last registry rows");
-    check(strstr(out, "\"isError\":true") == nullptr, "app_detect list is not an error");
+    check(!string_contains(out, "\"isError\":true"), "app_detect list is not an error");
 
     run(srv,
         "{\"jsonrpc\":\"2.0\",\"id\":5,\"method\":\"tools/call\","
         "\"params\":{\"name\":\"app_detect\",\"arguments\":{\"name\":\"codex\"}}}",
         out, sizeof(out), "app_detect detail writes a response");
-    check(strstr(out, "app: codex") != nullptr, "app detail renders key");
-    check(strstr(out, "display: ") != nullptr, "app detail renders display line");
-    check(strstr(out, "running: 0") != nullptr || strstr(out, "running: 1") != nullptr,
+    check(string_contains(out, "app: codex"), "app detail renders key");
+    check(string_contains(out, "display: "), "app detail renders display line");
+    check(string_contains(out, "running: 0") || string_contains(out, "running: 1"),
           "app detail renders running state");
 
     run(srv,
@@ -2002,20 +1995,20 @@ static i32 suite_mcp_server() {
         "\"params\":{\"name\":\"app_detect\","
         "\"arguments\":{\"name\":\"does-not-exist\"}}}",
         out, sizeof(out), "unknown app writes a response");
-    check(strstr(out, "\"isError\":true") != nullptr, "unknown app is an error");
-    check(strstr(out, "unknown app: does-not-exist") != nullptr,
+    check(string_contains(out, "\"isError\":true"), "unknown app is an error");
+    check(string_contains(out, "unknown app: does-not-exist"),
           "unknown app names the culprit");
 
     run(srv,
         "{\"jsonrpc\":\"2.0\",\"id\":7,\"method\":\"tools/call\","
         "\"params\":{\"name\":\"capture_status\",\"arguments\":{}}}",
         out, sizeof(out), "capture_status writes a response");
-    check(strstr(out, "SCREEN:") != nullptr && strstr(out, "STREAM:") != nullptr &&
-              strstr(out, "AUDIO:") != nullptr,
+    check(string_contains(out, "SCREEN:") && string_contains(out, "STREAM:") &&
+              string_contains(out, "AUDIO:"),
           "capture_status renders all three kinds");
-    check(strstr(out, "SUMMARY: running all=") != nullptr,
+    check(string_contains(out, "SUMMARY: running all="),
           "capture_status renders summary line");
-    check(strstr(out, "obs") != nullptr && strstr(out, "blackhole") != nullptr,
+    check(string_contains(out, "obs") && string_contains(out, "blackhole"),
           "capture_status covers screen + audio registry rows");
 
     run(srv,
@@ -2023,7 +2016,7 @@ static i32 suite_mcp_server() {
         "\"params\":{\"name\":\"capture_status\","
         "\"arguments\":{\"kind\":\"audio\"}}}",
         out, sizeof(out), "capture_status kind filter writes a response");
-    check(strstr(out, "AUDIO:") != nullptr && strstr(out, "SCREEN:") == nullptr,
+    check(string_contains(out, "AUDIO:") && !string_contains(out, "SCREEN:"),
           "kind filter keeps only the requested section");
 
     run(srv,
@@ -2031,25 +2024,25 @@ static i32 suite_mcp_server() {
         "\"params\":{\"name\":\"ai_provider_lookup\","
         "\"arguments\":{\"slug\":\"openai\"}}}",
         out, sizeof(out), "ai slug lookup writes a response");
-    check(strstr(out, "provider: openai") != nullptr, "ai slug match renders key");
-    check(strstr(out, "resolved: https://api.openai.com/v1") != nullptr,
+    check(string_contains(out, "provider: openai"), "ai slug match renders key");
+    check(string_contains(out, "resolved: https://api.openai.com/v1"),
           "ai slug match renders resolved base");
-    check(strstr(out, "auth: bearer") != nullptr, "ai slug match renders auth scheme");
+    check(string_contains(out, "auth: bearer"), "ai slug match renders auth scheme");
 
     run(srv,
         "{\"jsonrpc\":\"2.0\",\"id\":10,\"method\":\"tools/call\","
         "\"params\":{\"name\":\"ai_provider_lookup\","
         "\"arguments\":{\"query\":\"anthropic\"}}}",
         out, sizeof(out), "ai query lookup writes a response");
-    check(strstr(out, "anthropic") != nullptr, "ai substring query hits rows");
-    check(strstr(out, "matches: ") != nullptr, "ai query renders match count");
+    check(string_contains(out, "anthropic"), "ai substring query hits rows");
+    check(string_contains(out, "matches: "), "ai query renders match count");
 
     run(srv,
         "{\"jsonrpc\":\"2.0\",\"id\":11,\"method\":\"tools/call\","
         "\"params\":{\"name\":\"ai_provider_lookup\",\"arguments\":{}}}",
         out, sizeof(out), "ai bare call writes a response");
-    check(strstr(out, "\"isError\":true") != nullptr, "ai bare call hints instead");
-    check(strstr(out, "pass slug=") != nullptr,
+    check(string_contains(out, "\"isError\":true"), "ai bare call hints instead");
+    check(string_contains(out, "pass slug="),
           "ai bare call explains usage");
 
     run(srv,
@@ -2057,48 +2050,48 @@ static i32 suite_mcp_server() {
         "\"params\":{\"name\":\"db_data_source_lookup\","
         "\"arguments\":{\"slug\":\"postgresql\"}}}",
         out, sizeof(out), "db slug lookup writes a response");
-    check(strstr(out, "data-source: postgresql") != nullptr, "db slug match");
-    check(strstr(out, "port: 5432") != nullptr, "db slug match renders port");
+    check(string_contains(out, "data-source: postgresql"), "db slug match");
+    check(string_contains(out, "port: 5432"), "db slug match renders port");
 
     run(srv,
         "{\"jsonrpc\":\"2.0\",\"id\":13,\"method\":\"tools/call\","
         "\"params\":{\"name\":\"db_data_source_lookup\",\"arguments\":{}}}",
         out, sizeof(out), "db bare list writes a response");
-    check(strstr(out, "- postgresql |") != nullptr && strstr(out, "engine=postgres | port=5432 | sql") != nullptr,
+    check(string_contains(out, "- postgresql |") && string_contains(out, "engine=postgres | port=5432 | sql"),
           "db bare list renders full table");
 
     run(srv,
         "{\"jsonrpc\":\"2.0\",\"id\":100,\"method\":\"tools/call\","
         "\"params\":{\"name\":\"engine_list\",\"arguments\":{}}}",
         out, sizeof(out), "engine_list writes a response");
-    check(strstr(out, "ENGINES (20)") != nullptr, "engine_list renders header");
-    check(strstr(out, "claude-code") != nullptr && strstr(out, "copilot-cli") != nullptr,
+    check(string_contains(out, "ENGINES (20)"), "engine_list renders header");
+    check(string_contains(out, "claude-code") && string_contains(out, "copilot-cli"),
           "engine_list covers first and last rows");
-    check(strstr(out, "\"isError\":true") == nullptr, "engine_list is not an error");
+    check(!string_contains(out, "\"isError\":true"), "engine_list is not an error");
 
     run(srv,
         "{\"jsonrpc\":\"2.0\",\"id\":101,\"method\":\"tools/call\","
         "\"params\":{\"name\":\"engine_list\",\"arguments\":{\"query\":\"codex\"}}}",
         out, sizeof(out), "engine_list query writes a response");
-    check(strstr(out, "codex") != nullptr, "engine_list query hits rows");
+    check(string_contains(out, "codex"), "engine_list query hits rows");
 
     run(srv,
         "{\"jsonrpc\":\"2.0\",\"id\":102,\"method\":\"tools/call\","
         "\"params\":{\"name\":\"app_list\",\"arguments\":{}}}",
         out, sizeof(out), "app_list writes a response");
-    check(strstr(out, "APPS (29)") != nullptr, "app_list renders header");
-    check(strstr(out, "apple-notes") != nullptr && strstr(out, "imessage") != nullptr,
+    check(string_contains(out, "APPS (29)"), "app_list renders header");
+    check(string_contains(out, "apple-notes") && string_contains(out, "imessage"),
           "app_list covers first and last rows");
-    check(strstr(out, "\"isError\":true") == nullptr, "app_list is not an error");
+    check(!string_contains(out, "\"isError\":true"), "app_list is not an error");
 
     run(srv,
         "{\"jsonrpc\":\"2.0\",\"id\":103,\"method\":\"tools/call\","
         "\"params\":{\"name\":\"harness_run\",\"arguments\":{\"engine\":\"codex\","
         "\"prompt\":\"hello\"}}}",
         out, sizeof(out), "harness_run unbound writes a response");
-    check(strstr(out, "\"isError\":true") != nullptr,
+    check(string_contains(out, "\"isError\":true"),
           "harness_run without a driver is an error");
-    check(strstr(out, "UNBOUND_DRIVER") != nullptr,
+    check(string_contains(out, "UNBOUND_DRIVER"),
           "harness_run names the missing driver seam");
 
     run(srv,
@@ -2106,14 +2099,14 @@ static i32 suite_mcp_server() {
         "\"params\":{\"name\":\"harness_run\",\"arguments\":{\"engine\":\"nope\","
         "\"prompt\":\"hello\"}}}",
         out, sizeof(out), "harness_run unknown engine writes a response");
-    check(strstr(out, "unknown engine: nope") != nullptr,
+    check(string_contains(out, "unknown engine: nope"),
           "harness_run names the unknown engine");
 
     run(srv,
         "{\"jsonrpc\":\"2.0\",\"id\":105,\"method\":\"tools/call\","
         "\"params\":{\"name\":\"harness_poll\",\"arguments\":{\"jobId\":99}}}",
         out, sizeof(out), "harness_poll unknown job writes a response");
-    check(strstr(out, "\"isError\":true") != nullptr,
+    check(string_contains(out, "\"isError\":true"),
           "harness_poll of an unknown job is an error");
 
     run(srv,
@@ -2121,9 +2114,9 @@ static i32 suite_mcp_server() {
         "\"params\":{\"name\":\"app_action\",\"arguments\":{\"target\":"
         "\"apple-notes\",\"action\":\"list-notes\"}}}",
         out, sizeof(out), "app_action unbound writes a response");
-    check(strstr(out, "\"isError\":true") != nullptr,
+    check(string_contains(out, "\"isError\":true"),
           "app_action without a driver is an error");
-    check(strstr(out, "UNBOUND_DRIVER") != nullptr,
+    check(string_contains(out, "UNBOUND_DRIVER"),
           "app_action names the missing driver seam");
 
     run(srv,
@@ -2131,34 +2124,34 @@ static i32 suite_mcp_server() {
         "\"params\":{\"name\":\"app_action\",\"arguments\":{\"target\":\"nope\","
         "\"action\":\"x\"}}}",
         out, sizeof(out), "app_action unknown target writes a response");
-    check(strstr(out, "unknown target: nope") != nullptr,
+    check(string_contains(out, "unknown target: nope"),
           "app_action names the unknown target");
 
     run(srv,
         "{\"jsonrpc\":\"2.0\",\"id\":108,\"method\":\"tools/call\","
         "\"params\":{\"name\":\"app_poll\",\"arguments\":{\"jobId\":99}}}",
         out, sizeof(out), "app_poll unknown job writes a response");
-    check(strstr(out, "\"isError\":true") != nullptr,
+    check(string_contains(out, "\"isError\":true"),
           "app_poll of an unknown job is an error");
 
     run(srv,
         "{\"jsonrpc\":\"2.0\",\"id\":109,\"method\":\"tools/call\","
         "\"params\":{\"name\":\"search_list\",\"arguments\":{}}}",
         out, sizeof(out), "search_list writes a response");
-    check(strstr(out, "SEARCH PROVIDERS (3)") != nullptr,
+    check(string_contains(out, "SEARCH PROVIDERS (3)"),
           "search_list renders header");
-    check(strstr(out, "searxng") != nullptr && strstr(out, "wikimedia") != nullptr,
+    check(string_contains(out, "searxng") && string_contains(out, "wikimedia"),
           "search_list covers first and last rows");
-    check(strstr(out, "\"isError\":true") == nullptr,
+    check(!string_contains(out, "\"isError\":true"),
           "search_list is not an error");
 
     run(srv,
         "{\"jsonrpc\":\"2.0\",\"id\":110,\"method\":\"tools/call\","
         "\"params\":{\"name\":\"web_search\",\"arguments\":{}}}",
         out, sizeof(out), "web_search without query writes a response");
-    check(strstr(out, "\"isError\":true") != nullptr,
+    check(string_contains(out, "\"isError\":true"),
           "web_search without a query is an error");
-    check(strstr(out, "missing query") != nullptr,
+    check(string_contains(out, "missing query"),
           "web_search names the missing query");
 
     run(srv,
@@ -2166,7 +2159,7 @@ static i32 suite_mcp_server() {
         "\"params\":{\"name\":\"web_search\",\"arguments\":{\"query\":\"x\","
         "\"provider\":\"nope\"}}}",
         out, sizeof(out), "web_search unknown provider writes a response");
-    check(strstr(out, "unknown search provider: nope") != nullptr,
+    check(string_contains(out, "unknown search provider: nope"),
           "web_search names the unknown provider");
 
     run(srv,
@@ -2174,46 +2167,46 @@ static i32 suite_mcp_server() {
         "\"params\":{\"name\":\"web_search\",\"arguments\":{\"query\":\"hi\","
         "\"provider\":\"google-cse\"}}}",
         out, sizeof(out), "web_search google without keys writes a response");
-    check(strstr(out, "\"isError\":true") != nullptr,
+    check(string_contains(out, "\"isError\":true"),
           "web_search google without keys is an error");
-    check(strstr(out, "GOOGLE_CSE_KEY") != nullptr ||
-              strstr(out, "TLS_BACKEND_MISSING") != nullptr,
+    check(string_contains(out, "GOOGLE_CSE_KEY") ||
+              string_contains(out, "TLS_BACKEND_MISSING"),
           "web_search google names keys or the TLS gap");
 
     run(srv,
         "{\"jsonrpc\":\"2.0\",\"id\":113,\"method\":\"tools/call\","
         "\"params\":{\"name\":\"web_search\",\"arguments\":{\"query\":\"hi\"}}}",
         out, sizeof(out), "web_search searxng writes a response");
-    check(strstr(out, "\"isError\":true") != nullptr,
+    check(string_contains(out, "\"isError\":true"),
           "web_search searxng with no local server is an error");
-    check(strstr(out, "transport error") != nullptr,
+    check(string_contains(out, "transport error"),
           "web_search searxng names the transport failure");
 
     run(srv,
         "{\"jsonrpc\":\"2.0\",\"id\":214,\"method\":\"tools/call\","
         "\"params\":{\"name\":\"asset_lookup\",\"arguments\":{\"slug\":\"unsplash\"}}}",
         out, sizeof(out), "asset_lookup slug writes a response");
-    check(strstr(out, "asset-source: unsplash") != nullptr,
+    check(string_contains(out, "asset-source: unsplash"),
           "asset_lookup slug renders key");
-    check(strstr(out, "license: ") != nullptr,
+    check(string_contains(out, "license: "),
           "asset_lookup renders license line");
-    check(strstr(out, "\"isError\":true") == nullptr,
+    check(!string_contains(out, "\"isError\":true"),
           "asset_lookup slug is not an error");
 
     run(srv,
         "{\"jsonrpc\":\"2.0\",\"id\":215,\"method\":\"tools/call\","
         "\"params\":{\"name\":\"asset_lookup\",\"arguments\":{}}}",
         out, sizeof(out), "asset_lookup bare writes a response");
-    check(strstr(out, "unsplash") != nullptr && strstr(out, "kenney") != nullptr,
+    check(string_contains(out, "unsplash") && string_contains(out, "kenney"),
           "asset_lookup bare covers first and last rows");
-    check(strstr(out, "\"isError\":true") == nullptr,
+    check(!string_contains(out, "\"isError\":true"),
           "asset_lookup bare is not an error");
 
     run(srv,
         "{\"jsonrpc\":\"2.0\",\"id\":216,\"method\":\"tools/call\","
         "\"params\":{\"name\":\"asset_lookup\",\"arguments\":{\"slug\":\"nope\"}}}",
         out, sizeof(out), "asset_lookup unknown writes a response");
-    check(strstr(out, "unknown asset source: nope") != nullptr,
+    check(string_contains(out, "unknown asset source: nope"),
           "asset_lookup names the unknown source");
 
     run(srv,
@@ -2221,104 +2214,104 @@ static i32 suite_mcp_server() {
         "\"params\":{\"name\":\"asset_download\",\"arguments\":{\"slug\":\"poly-haven\","
         "\"file\":\"fox.glb\"}}}",
         out, sizeof(out), "asset_download writes a response");
-    check(strstr(out, "asset download plan: poly-haven") != nullptr,
+    check(string_contains(out, "asset download plan: poly-haven"),
           "asset_download renders plan key");
-    check(strstr(out, "cache/models/fox.glb") != nullptr ||
-              strstr(out, "cache/assets/fox.glb") != nullptr,
+    check(string_contains(out, "cache/models/fox.glb") ||
+              string_contains(out, "cache/assets/fox.glb"),
           "asset_download renders cache path");
-    check(strstr(out, "never fetches") != nullptr,
+    check(string_contains(out, "never fetches"),
           "asset_download states the no-fetch terms");
-    check(strstr(out, "\"isError\":true") == nullptr,
+    check(!string_contains(out, "\"isError\":true"),
           "asset_download is not an error");
 
     run(srv,
         "{\"jsonrpc\":\"2.0\",\"id\":218,\"method\":\"tools/call\","
         "\"params\":{\"name\":\"asset_download\",\"arguments\":{}}}",
         out, sizeof(out), "asset_download without slug writes a response");
-    check(strstr(out, "\"isError\":true") != nullptr,
+    check(string_contains(out, "\"isError\":true"),
           "asset_download without a slug is an error");
-    check(strstr(out, "missing slug") != nullptr,
+    check(string_contains(out, "missing slug"),
           "asset_download names the missing slug");
 
     run(srv,
         "{\"jsonrpc\":\"2.0\",\"id\":14,\"method\":\"tools/call\","
         "\"params\":{\"name\":\"nope\",\"arguments\":{}}}",
         out, sizeof(out), "unknown tool writes a response");
-    check(strstr(out, "\"code\":-32602") != nullptr && strstr(out, "\"isError\":true") == nullptr,
+    check(string_contains(out, "\"code\":-32602") && !string_contains(out, "\"isError\":true"),
           "unknown tool is an invalid-params error");
 
     run(srv,
         "{\"jsonrpc\":\"2.0\",\"id\":15,\"method\":\"resources/list\"}",
         out, sizeof(out), "resources/list writes a response");
-    check(strstr(out, "\"uri\":\"system://apps\"") != nullptr &&
-              strstr(out, "\"uri\":\"system://capture\"") != nullptr &&
-              strstr(out, "\"uri\":\"db://data-sources\"") != nullptr &&
-              strstr(out, "\"uri\":\"engines://catalog\"") != nullptr &&
-              strstr(out, "\"uri\":\"apps://catalog\"") != nullptr &&
-              strstr(out, "\"uri\":\"search://providers\"") != nullptr &&
-              strstr(out, "\"uri\":\"assets://catalog\"") != nullptr,
+    check(string_contains(out, "\"uri\":\"system://apps\"") &&
+              string_contains(out, "\"uri\":\"system://capture\"") &&
+              string_contains(out, "\"uri\":\"db://data-sources\"") &&
+              string_contains(out, "\"uri\":\"engines://catalog\"") &&
+              string_contains(out, "\"uri\":\"apps://catalog\"") &&
+              string_contains(out, "\"uri\":\"search://providers\"") &&
+              string_contains(out, "\"uri\":\"assets://catalog\""),
           "all seven resource URIs advertised");
-    check(strstr(out, "\"mimeType\":\"text/plain\"") != nullptr,
+    check(string_contains(out, "\"mimeType\":\"text/plain\""),
           "resources carry a mime type");
 
     run(srv,
         "{\"jsonrpc\":\"2.0\",\"id\":16,\"method\":\"resources/read\","
         "\"params\":{\"uri\":\"system://apps\"}}",
         out, sizeof(out), "resources/read writes a response");
-    check(strstr(out, "\"uri\":\"system://apps\"") != nullptr,
+    check(string_contains(out, "\"uri\":\"system://apps\""),
           "resource read echoes the uri");
-    check(strstr(out, "KNOWN APPS (14)") != nullptr,
+    check(string_contains(out, "KNOWN APPS (14)"),
           "resource read renders the same body as the tool");
 
     run(srv,
         "{\"jsonrpc\":\"2.0\",\"id\":116,\"method\":\"resources/read\","
         "\"params\":{\"uri\":\"engines://catalog\"}}",
         out, sizeof(out), "engines catalog read writes a response");
-    check(strstr(out, "ENGINES (20)") != nullptr,
+    check(string_contains(out, "ENGINES (20)"),
           "engines catalog renders the directory");
 
     run(srv,
         "{\"jsonrpc\":\"2.0\",\"id\":117,\"method\":\"resources/read\","
         "\"params\":{\"uri\":\"apps://catalog\"}}",
         out, sizeof(out), "apps catalog read writes a response");
-    check(strstr(out, "APPS (29)") != nullptr,
+    check(string_contains(out, "APPS (29)"),
           "apps catalog renders the directory");
 
     run(srv,
         "{\"jsonrpc\":\"2.0\",\"id\":118,\"method\":\"resources/read\","
         "\"params\":{\"uri\":\"search://providers\"}}",
         out, sizeof(out), "search providers read writes a response");
-    check(strstr(out, "SEARCH PROVIDERS (3)") != nullptr,
+    check(string_contains(out, "SEARCH PROVIDERS (3)"),
           "search providers read renders the directory");
 
     run(srv,
         "{\"jsonrpc\":\"2.0\",\"id\":219,\"method\":\"resources/read\","
         "\"params\":{\"uri\":\"assets://catalog\"}}",
         out, sizeof(out), "assets catalog read writes a response");
-    check(strstr(out, "unsplash") != nullptr && strstr(out, "kenney") != nullptr,
+    check(string_contains(out, "unsplash") && string_contains(out, "kenney"),
           "assets catalog renders the directory");
 
     run(srv,
         "{\"jsonrpc\":\"2.0\",\"id\":17,\"method\":\"resources/read\","
         "\"params\":{\"uri\":\"system://nope\"}}",
         out, sizeof(out), "unknown resource writes a response");
-    check(strstr(out, "\"code\":-32602") != nullptr, "unknown resource is invalid params");
+    check(string_contains(out, "\"code\":-32602"), "unknown resource is invalid params");
 
     run(srv,
         "{\"jsonrpc\":\"2.0\",\"id\":18,\"method\":\"bogus/method\"}",
         out, sizeof(out), "unknown method writes a response");
-    check(strstr(out, "\"code\":-32601") != nullptr && strstr(out, "\"message\":\"Method not found\"") != nullptr,
+    check(string_contains(out, "\"code\":-32601") && string_contains(out, "\"message\":\"Method not found\""),
           "unknown method is -32601");
 
     run(srv,
         "{\"jsonrpc\":\"2.0\",\"id\":19,\"method\":\"tools/list\",",
         out, sizeof(out), "malformed json writes a parse error");
-    check(strstr(out, "\"code\":-32700") != nullptr, "malformed line is -32700");
+    check(string_contains(out, "\"code\":-32700"), "malformed line is -32700");
 
     run(srv,
         "[{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"ping\"}]",
         out, sizeof(out), "batch line writes a response");
-    check(strstr(out, "\"code\":-32600") != nullptr, "batch is rejected with -32600");
+    check(string_contains(out, "\"code\":-32600"), "batch is rejected with -32600");
 
     out[0] = '\0';
     const bool wrote = McpServer_handleLine(srv,
@@ -2336,10 +2329,10 @@ static i32 suite_mcp_server() {
     check(!wrote2, "null id is silent (notification semantics)");
 
     if (s_mcp_server_sFailures == 0) {
-        printf("mcp_server_test: all checks green\n");
+        print("mcp_server_test: all checks green");
         return 0;
     }
-    printf("mcp_server_test: %d check(s) FAILED\n", s_mcp_server_sFailures);
+    print("mcp_server_test: ", s_mcp_server_sFailures, " check(s) FAILED");
     return 1;
 }
 
@@ -2366,7 +2359,7 @@ static i32 s_probe_consumer_sFailures = 0;
 #define CHECK(cond)                                                    \
     do {                                                               \
         if (!(cond)) {                                                 \
-            printf("FAIL %s:%d: %s\n", __FILE__, __LINE__, #cond);     \
+            print("FAIL ", __FILE__, ":", __LINE__, ": ", #cond);     \
             s_probe_consumer_sFailures++;                                               \
         }                                                              \
     } while (0)
@@ -2376,7 +2369,7 @@ static i32 suite_probe_consumer(i32 argc, utf8 **argv) {
     AppDetect *detect = AppDetect_shared();
     CHECK(detect != nullptr);
     const u32 appCount = AppDetect_count(detect);
-    printf("AppDetect_count (via api_haven) = %u\n", appCount);
+    print("AppDetect_count (via api_haven) = ", appCount);
     CHECK(appCount >= 12);
     CHECK(AppDetect_get(detect, "opencode") != nullptr);
     CHECK(AppDetect_get(detect, "codex") != nullptr);
@@ -2388,14 +2381,14 @@ static i32 suite_probe_consumer(i32 argc, utf8 **argv) {
     CaptureTool *tools = CaptureTool_shared();
     CHECK(tools != nullptr);
     const u32 captureCount = CaptureTool_count(tools);
-    printf("CaptureTool_count (via api_haven) = %u\n", captureCount);
+    print("CaptureTool_count (via api_haven) = ", captureCount);
     CHECK(captureCount >= 12);
     const CaptureSlot *obs = CaptureTool_get(tools, "obs");
     CHECK(obs != nullptr);
     CHECK(obs && CaptureTool_getKind(tools, obs) == CAPTURE_KIND_SCREEN);
     CHECK(CaptureTool_get(tools, "quicktime-player") != nullptr);
 
-    const char *selfName = argc > 0 && argv[0] ? strrchr(argv[0], '/') : nullptr;
+    string selfName = argc > 0 && argv[0] ? strrchr(argv[0], '/') : nullptr;
     selfName = selfName ? selfName + 1 : (argc > 0 ? argv[0] : nullptr);
     ProcessProbe *probe = ProcessProbe_shared();
     CHECK(selfName && ProcessProbe_isRunning(probe, selfName));
@@ -2403,9 +2396,8 @@ static i32 suite_probe_consumer(i32 argc, utf8 **argv) {
     const CaptureSlot *blackhole = CaptureTool_get(tools, "blackhole");
     CHECK(blackhole && !CaptureTool_isRunning(tools, blackhole));
 
-    printf("isInstalled(opencode) = %s\n",
-           AppDetect_isInstalled(detect, AppDetect_get(detect, "opencode")) ? "yes" : "no");
-    printf("isRunning(obs) = %s\n", CaptureTool_isRunning(tools, obs) ? "yes" : "no");
+    print("isInstalled(opencode) = ", AppDetect_isInstalled(detect, AppDetect_get(detect, "opencode")) ? "yes" : "no");
+    print("isRunning(obs) = ", CaptureTool_isRunning(tools, obs) ? "yes" : "no");
 
     CHECK(AppDetect_count(nullptr) == 0);
     CHECK(CaptureTool_count(nullptr) == 0);
@@ -2415,10 +2407,10 @@ static i32 suite_probe_consumer(i32 argc, utf8 **argv) {
     CHECK(ProcessProbe_isDriverLoaded(nullptr, nullptr, nullptr) == false);
 
     if (s_probe_consumer_sFailures == 0) {
-        printf("probe_consumer_test: ALL CHECKS PASSED (vexspoke probes reachable)\n");
+        print("probe_consumer_test: ALL CHECKS PASSED (vexspoke probes reachable)");
         return 0;
     }
-    printf("probe_consumer_test: %d FAILURES\n", s_probe_consumer_sFailures);
+    print("probe_consumer_test: ", s_probe_consumer_sFailures, " FAILURES");
     return 1;
 }
 #undef CHECK
@@ -2454,16 +2446,16 @@ static Capture g_cap;
 static i32 s_webhook_loopback_g_failures = 0;
 
 #define CHECK(name, cond) do { \
-    if (cond) { printf("[loopback] PASS %s\n", name); } \
-    else { printf("[loopback] FAIL %s\n", name); s_webhook_loopback_g_failures++; } \
+    if (cond) { print("[loopback] PASS ", name); } \
+    else { print("[loopback] FAIL ", name); s_webhook_loopback_g_failures++; } \
 } while (0)
 
 ;;GETTER
-static inline const char *HttpExchange_method(const HttpExchange *self) {
+static inline string HttpExchange_method(const HttpExchange *self) {
     return (*self).method;
 }
 ;;GETTER
-static inline const char *s_webhook_loopback_HttpExchange_path(const HttpExchange *self) {
+static inline string s_webhook_loopback_HttpExchange_path(const HttpExchange *self) {
     return (*self).path;
 }
 ;;GETTER
@@ -2471,20 +2463,20 @@ static inline bytes HttpExchange_bodyLen(const HttpExchange *self) {
     return (*self).bodyLen;
 }
 ;;GETTER
-static inline const char *HttpExchange_body(const HttpExchange *self) {
+static inline string HttpExchange_body(const HttpExchange *self) {
     return (*self).body;
 }
 
 ;;GETTER
-static inline char *Capture_method(Capture *self) {
+static inline utf8 *Capture_method(Capture *self) {
     return (*self).method;
 }
 ;;GETTER
-static inline char *Capture_path(Capture *self) {
+static inline utf8 *Capture_path(Capture *self) {
     return (*self).path;
 }
 ;;GETTER
-static inline char *Capture_body(Capture *self) {
+static inline utf8 *Capture_body(Capture *self) {
     return (*self).body;
 }
 ;;SETTER
@@ -2504,29 +2496,29 @@ static inline fn Capture_setHits(Capture *self, i32 hits) {
 static fn captureHandler(const HttpExchange *exchange, i32 clientFd, any userdata) {
     (discard) userdata;
     Capture *cap = &g_cap;
-    const char *method = HttpExchange_method(exchange);
+    string method = HttpExchange_method(exchange);
     strncpy(Capture_method(cap), method, sizeof(((Capture) {0}).method) - 1);
     strncpy(Capture_path(cap), s_webhook_loopback_HttpExchange_path(exchange), sizeof(((Capture) {0}).path) - 1);
     bytes n = HttpExchange_bodyLen(exchange);
     if (n >= sizeof(((Capture) {0}).body))
         n = sizeof(((Capture) {0}).body) - 1;
-    const char *body = HttpExchange_body(exchange);
-    char *capBody = Capture_body(cap);
+    string body = HttpExchange_body(exchange);
+    utf8 *capBody = Capture_body(cap);
     if (n > 0 && body)
         memcpy(capBody, body, n);
     capBody[n] = '\0';
     Capture_setBodyLen(cap, n);
     Capture_setHits(cap, Capture_hits(cap) + 1);
-    if (strcmp(method, "GET") == 0)
+    if (string_equals(method, "GET"))
         Http_respond(clientFd, 200, "application/json", "{\"ok\":true}", 11);
     else
         Http_respond(clientFd, 204, "text/plain", "", 0);
 }
 
 /* Parses a captured JSON body and checks one string-valued member exactly. */
-static bool bodyHas(const char *body, const char *key, const char *want) {
+static bool bodyHas(string body, string key, string want) {
     JsonNode nodes[64];
-    char scratch[1024];
+    utf8 scratch[1024];
     JsonDoc doc;
     if (!Json_parse(&doc, nodes, 64, scratch, sizeof(scratch), body))
         return false;
@@ -2535,45 +2527,45 @@ static bool bodyHas(const char *body, const char *key, const char *want) {
     JsonRef root = Json_root(&doc);
     JsonRef ref = Json_member(&doc, root, key);
     u32 len = 0;
-    const char *got = Json_string(&doc, ref, &len);
+    string got = Json_string(&doc, ref, &len);
     if (!got)
         return false;
     if (strlen(want) != len)
         return false;
-    return strncmp(got, want, len) == 0;
+    return string_startsWith(got, want, len);
 }
 
 /* Supplies a fixed token for testing callback-based bearer credential formatting. */
-static const char *staticToken(any userdata) {
+static string staticToken(any userdata) {
     (discard) userdata;
     return "fn-token-123";
 }
 
 /* Runs Discord, Slack, auth-formatting, and REST-get checks against a local loopback server. */
 static i32 suite_webhook_loopback() {
-    printf("=== Webhook Loopback Suite (Shape A/B, no accounts) ===\n");
+    print("=== Webhook Loopback Suite (Shape A/B, no accounts) ===");
     HttpServer srv = { 0 };
     i32 port = 0;
     if (!HttpServer_start(&srv, 0, captureHandler, nullptr, &port)) {
-        printf("[loopback] FAIL server start\n");
+        print("[loopback] FAIL server start");
         return 1;
     }
-    char url[128];
+    utf8 url[128];
     snprintf(url, sizeof(url), "http://127.0.0.1:%d/webhook", port);
 
     memset(&g_cap, 0, sizeof(g_cap));
     bool dok = DiscordWebhook_sendText(url, "hello loopback", "vexbot", nullptr);
     bool loopbackBlocked = (!dok && g_cap.hits == 0);
     if (loopbackBlocked) {
-        printf("[loopback] SKIP socket tests (loopback blocked by sandbox environment)\n");
+        print("[loopback] SKIP socket tests (loopback blocked by sandbox environment)");
     } else {
         CHECK("discord post 204", dok && g_cap.hits == 1);
-        CHECK("discord method+path", strcmp(g_cap.method, "POST") == 0);
+        CHECK("discord method+path", string_equals(g_cap.method, "POST"));
         CHECK("discord content", bodyHas(g_cap.body, "content", "hello loopback"));
         CHECK("discord username", bodyHas(g_cap.body, "username", "vexbot"));
     }
 
-    const char *dumpPath = getenv("LOOPBACK_DUMP_BODY");
+    string dumpPath = getenv("LOOPBACK_DUMP_BODY");
     if (dumpPath && dumpPath[0] != '\0' && !loopbackBlocked) {
         FILE *f = fopen(dumpPath, "wb");
         if (f) {
@@ -2590,44 +2582,43 @@ static i32 suite_webhook_loopback() {
         CHECK("slack username", bodyHas(g_cap.body, "username", "vexbot"));
     }
 
-    const char *nameOut = nullptr;
-    char valueBuf[128];
+    string nameOut = nullptr;
+    utf8 valueBuf[128];
     ApiAuth none = ApiAuth_none();
     CHECK("auth none renders nothing", !ApiAuth_apply(&none, &nameOut, valueBuf, sizeof(valueBuf)));
     ApiAuth key = ApiAuth_apiKey("Api-Key", "abc123");
     bool kok = ApiAuth_apply(&key, &nameOut, valueBuf, sizeof(valueBuf));
-    CHECK("auth apikey", kok && strcmp(nameOut, "Api-Key") == 0 && strcmp(valueBuf, "abc123") == 0);
+    CHECK("auth apikey", kok && string_equals(nameOut, "Api-Key") && string_equals(valueBuf, "abc123"));
     ApiAuth bearer = ApiAuth_bearer("tok-xyz");
     bool bok = ApiAuth_apply(&bearer, &nameOut, valueBuf, sizeof(valueBuf));
-    CHECK("auth bearer", bok && strcmp(nameOut, "Authorization") == 0 && strcmp(valueBuf, "Bearer tok-xyz") == 0);
+    CHECK("auth bearer", bok && string_equals(nameOut, "Authorization") && string_equals(valueBuf, "Bearer tok-xyz"));
     ApiAuth bearerFn = ApiAuth_bearerFn(staticToken, nullptr);
     bool fok = ApiAuth_apply(&bearerFn, &nameOut, valueBuf, sizeof(valueBuf));
-    CHECK("auth bearerFn", fok && strcmp(valueBuf, "Bearer fn-token-123") == 0);
+    CHECK("auth bearerFn", fok && string_equals(valueBuf, "Bearer fn-token-123"));
     ApiAuth nullBearer = ApiAuth_bearer(nullptr);
     CHECK("auth null bearer fails", !ApiAuth_apply(&nullBearer, &nameOut, valueBuf, sizeof(valueBuf)));
-    char tiny[8];
+    utf8 tiny[8];
     CHECK("auth truncation fails", !ApiAuth_apply(&bearer, &nameOut, tiny, sizeof(tiny)));
 
     if (!loopbackBlocked) {
-        char respBody[1024];
+        utf8 respBody[1024];
         HttpResponse resp = { 0 };
         resp.body = respBody;
         resp.bodyCap = sizeof(respBody);
         ApiAuth noAuth = ApiAuth_none();
         bool gok = Rest_get(url, &noAuth, &resp);
         CHECK("rest get 200", gok && resp.status == 200);
-        CHECK("rest get body", strstr(respBody, "true") != nullptr);
+        CHECK("rest get body", string_contains(respBody, "true"));
     }
 
     HttpServer_stop(&srv);
     if (s_webhook_loopback_g_failures != 0) {
-        printf("=== %d LOOPBACK FAILURES ===\n", s_webhook_loopback_g_failures);
+        print("=== ", s_webhook_loopback_g_failures, " LOOPBACK FAILURES ===");
         return s_webhook_loopback_g_failures;
     }
-    if (loopbackBlocked) {
+    if (loopbackBlocked)
         return B_TEST_SKIP;
-    }
-    printf("=== ALL LOOPBACK PASS ===\n");
+    print("=== ALL LOOPBACK PASS ===");
     return 0;
 }
 #undef CHECK
@@ -2675,7 +2666,7 @@ static i32 g_checks = 0;
         g_checks++;                                                             \
         if (!(condition)) {                                                     \
             s_ws_source_binding_g_failures++;                                                       \
-            printf("  FAIL line %d: %s\n", __LINE__, #condition);               \
+            print("  FAIL line ", __LINE__, ": ", #condition);               \
         }                                                                       \
     } while (0)
 
@@ -2692,7 +2683,7 @@ static bool peerWrite(i32 fd, const_any data, bytes length) {
 }
 
 /** Server-side frame: never masked, which is what the RFC demands of a peer. */
-static bool peerFrame(i32 fd, u8 opcode, const char *text) {
+static bool peerFrame(i32 fd, u8 opcode, string text) {
     bytes length = strlen(text);
     u8 header[4];
     header[0] = (u8) (0x80u | opcode);
@@ -2747,7 +2738,7 @@ static i32 peerRun(i32 readyWriteFd) {
     setsockopt(peer, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
     setsockopt(peer, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
 
-    char request[4096];
+    utf8 request[4096];
     bytes used = 0u;
     while (used + 1u < sizeof(request)) {
         ssize_t n = recv(peer, request + used, 1u, 0);
@@ -2755,17 +2746,17 @@ static i32 peerRun(i32 readyWriteFd) {
             break;
         used += (bytes) n;
         request[used] = '\0';
-        if (used >= 4u && strstr(request, "\r\n\r\n") != nullptr)
+        if (used >= 4u && string_contains(request, "\r\n\r\n"))
             break;
     }
-    const char *key = strstr(request, "Sec-WebSocket-Key: ");
+    string key = string_find(request, "Sec-WebSocket-Key: ");
     if (key == nullptr)
         return 96;
     key += strlen("Sec-WebSocket-Key: ");
-    const char *keyEnd = strstr(key, "\r\n");
+    string keyEnd = string_find(key, "\r\n");
     if (keyEnd == nullptr)
         return 97;
-    char value[64];
+    utf8 value[64];
     bytes keyLength = (bytes) (keyEnd - key);
     if (keyLength + 1u > sizeof(value))
         return 98;
@@ -2777,10 +2768,10 @@ static i32 peerRun(i32 readyWriteFd) {
     Crypto_sha1Update(&digest, WS_HANDSHAKE_GUID, strlen(WS_HANDSHAKE_GUID));
     u8 hash[CRYPTO_SHA1_DIGEST_SIZE];
     Crypto_sha1Final(&digest, hash);
-    char accept[64];
+    utf8 accept[64];
     if (Url_base64(hash, CRYPTO_SHA1_DIGEST_SIZE, accept, sizeof(accept)) <= 0)
         return 99;
-    char response[256];
+    utf8 response[256];
     i32 written = snprintf(response, sizeof(response),
         "HTTP/1.1 101 Switching Protocols\r\n"
         "Upgrade: websocket\r\nConnection: Upgrade\r\n"
@@ -2810,11 +2801,11 @@ static i32 peerRun(i32 readyWriteFd) {
     u8 body[16];
     if (payloadLength > 0u && !peerReadExact(peer, body, payloadLength))
         return 108;
-    char decoded[17];
+    utf8 decoded[17];
     for (bytes i = 0u; i < payloadLength; i++)
-        decoded[i] = (char) (body[i] ^ mask[i & 3u]);
+        decoded[i] = (utf8) (body[i] ^ mask[i & 3u]);
     decoded[payloadLength] = '\0';
-    if (payloadLength != 4u || strncmp(decoded, "pong", 4u) != 0)
+    if (payloadLength != 4u || !string_startsWith(decoded, "pong", 4u))
         return 109;
     close(peer);
     close(listener);
@@ -2822,12 +2813,12 @@ static i32 peerRun(i32 readyWriteFd) {
 }
 
 static i32 suite_ws_source_binding() {
-    printf("=== WebSocket WsSource binding ===\n");
+    print("=== WebSocket WsSource binding ===");
     signal(SIGPIPE, SIG_IGN);
 
     i32 fds[2];
     if (pipe(fds) != 0) {
-        printf("pipe failed\n");
+        print("pipe failed");
         return 1;
     }
     pid_t child = fork();
@@ -2838,12 +2829,12 @@ static i32 suite_ws_source_binding() {
     close(fds[1]);
     i32 port = 0;
     if (read(fds[0], &port, sizeof(port)) != (ssize_t) sizeof(port)) {
-        printf("peer never reported a port\n");
+        print("peer never reported a port");
         return 1;
     }
     close(fds[0]);
 
-    char url[128];
+    utf8 url[128];
     snprintf(url, sizeof(url), "ws://127.0.0.1:%d/live", port);
 
     VexWsSource handle = VexWsSource();
@@ -2855,7 +2846,7 @@ static i32 suite_ws_source_binding() {
     config.maxMessageBytes = 4096u;
     CHECK(VexWsSource_open(&handle, url, config));
     CHECK(VexWsSource_isOpen(&handle));
-    CHECK(strcmp(VexWsSource_url(&handle), url) == 0);
+    CHECK(string_equals(VexWsSource_url(&handle), url));
 
     CHECK(HavenWsFanout_attach(fanout, &handle, &kBinding));
     CHECK(HavenWsFanout_getCount(fanout) == 1u);
@@ -2885,16 +2876,16 @@ static i32 suite_ws_source_binding() {
     CHECK(socket != nullptr && WebSocket_framesIn(socket) == 2u);
     CHECK(socket != nullptr && WebSocket_framesOut(socket) == 1u);
 
-    char text[512];
+    utf8 text[512];
     bool truncated = false;
     VexWsSource_toString(&handle, text, sizeof(text), &truncated);
-    CHECK(strstr(text, "VexWsSource {") != nullptr && strstr(text, url) != nullptr);
+    CHECK(string_contains(text, "VexWsSource {") && string_contains(text, url));
     VexWsSource_toStringStruct(&handle, text, sizeof(text), &truncated);
-    CHECK(strstr(text, "configured=true") != nullptr);
+    CHECK(string_contains(text, "configured=true"));
     VexWsSource_toString(nullptr, text, sizeof(text), &truncated);
-    CHECK(strcmp(text, "nullptr") == 0);
+    CHECK(string_equals(text, "nullptr"));
     VexWsSource_toStringStruct(nullptr, text, sizeof(text), &truncated);
-    CHECK(strcmp(text, "nullptr") == 0);
+    CHECK(string_equals(text, "nullptr"));
 
     CHECK(!VexWsSource_connect(nullptr));
     CHECK(VexWsSource_poll(nullptr, 10u) == 0u);
@@ -2916,9 +2907,9 @@ static i32 suite_ws_source_binding() {
     CHECK(waitpid(child, &status, 0) == child);
     CHECK(WIFEXITED(status) && WEXITSTATUS(status) == 0);
 
-    printf("%d checks, %d failed\n", g_checks, s_ws_source_binding_g_failures);
+    print(g_checks, " checks, ", s_ws_source_binding_g_failures, " failed");
     if (s_ws_source_binding_g_failures == 0)
-        printf("=== WebSocket WsSource binding: ALL PASS ===\n");
+        print("=== WebSocket WsSource binding: ALL PASS ===");
     return s_ws_source_binding_g_failures == 0 ? 0 : 1;
 }
 #undef CHECK
@@ -2984,19 +2975,19 @@ static i32 suite_snapshot_io() {
 static i32 s_rest_g_failures = 0;
 
 #define CHECK(name, cond) do {                                  \
-    if (cond) { printf("[rest] PASS %s\n", name); }             \
-    else { printf("[rest] FAIL %s\n", name); s_rest_g_failures++; }    \
+    if (cond) { print("[rest] PASS ", name); }             \
+    else { print("[rest] FAIL ", name); s_rest_g_failures++; }    \
 } while (0)
 
 /* Counts requests and answers "/status/NNN" with that status, else 200. */
 static i32 g_hits;
 
 ;;GETTER
-static inline const char *s_rest_HttpExchange_path(const HttpExchange *self) {
+static inline string s_rest_HttpExchange_path(const HttpExchange *self) {
     return (*self).path;
 }
 ;;SETTER
-static inline fn HttpResponse_setBody(HttpResponse *self, char *body) {
+static inline fn HttpResponse_setBody(HttpResponse *self, utf8 *body) {
     (*self).body = body;
 }
 ;;SETTER
@@ -3008,10 +2999,10 @@ static fn statusHandler(const HttpExchange *exchange, i32 clientFd, any userdata
     (discard) userdata;
     g_hits++;
     i32 status = 200;
-    const char *path = s_rest_HttpExchange_path(exchange);
-    if (strncmp(path, "/status/", 8) == 0)
+    string path = s_rest_HttpExchange_path(exchange);
+    if (string_startsWith(path, "/status/", 8))
         status = atoi(path + 8);
-    char body[64];
+    utf8 body[64];
     i32 n = snprintf(body, sizeof(body), "{\"status\":%d}", status);
     if (n < 0)
         n = 0;
@@ -3019,7 +3010,7 @@ static fn statusHandler(const HttpExchange *exchange, i32 clientFd, any userdata
 }
 
 /* One GET into a fresh caller buffer; returns the call result and leaves resp. */
-static bool getStatus(const char *url, const ApiAuth *auth, HttpResponse *resp, char *body, bytes cap) {
+static bool getStatus(string url, const ApiAuth *auth, HttpResponse *resp, utf8 *body, bytes cap) {
     memset(resp, 0, sizeof(*resp));
     HttpResponse_setBody(resp, body);
     HttpResponse_setBodyCap(resp, cap);
@@ -3028,14 +3019,14 @@ static bool getStatus(const char *url, const ApiAuth *auth, HttpResponse *resp, 
 }
 
 static i32 suite_rest() {
-    printf("=== Rest core owner suite (loopback) ===\n");
+    print("=== Rest core owner suite (loopback) ===");
     HttpServer srv = { 0 };
     i32 port = 0;
     if (!HttpServer_start(&srv, 0, statusHandler, nullptr, &port)) {
-        fprintf(stderr, "rest_test: SKIP (loopback server unavailable)\n");
+        fprint(stderr, "rest_test: SKIP (loopback server unavailable)");
         return B_TEST_SKIP;
     }
-    char url200[128], url204[128], url302[128], url400[128], url404[128], url429[128], url503[128], url500[128];
+    utf8 url200[128], url204[128], url302[128], url400[128], url404[128], url429[128], url503[128], url500[128];
     snprintf(url200, sizeof(url200), "http://127.0.0.1:%d/status/200", port);
     snprintf(url204, sizeof(url204), "http://127.0.0.1:%d/status/204", port);
     snprintf(url302, sizeof(url302), "http://127.0.0.1:%d/status/302", port);
@@ -3046,14 +3037,14 @@ static i32 suite_rest() {
     snprintf(url500, sizeof(url500), "http://127.0.0.1:%d/status/500", port);
 
     ApiAuth none = ApiAuth_none();
-    char body[512];
+    utf8 body[512];
     HttpResponse resp;
 
     g_hits = 0;
     bool ok200 = getStatus(url200, &none, &resp, body, sizeof(body));
     if (g_hits == 0) {
         HttpServer_stop(&srv);
-        fprintf(stderr, "rest_test: SKIP (loopback blocked by sandbox)\n");
+        fprint(stderr, "rest_test: SKIP (loopback blocked by sandbox)");
         return B_TEST_SKIP;
     }
     CHECK("200 -> true", ok200 && resp.status == 200);
@@ -3078,7 +3069,7 @@ static i32 suite_rest() {
     bool ok500 = getStatus(url500, &none, &resp, body, sizeof(body));
     CHECK("500 -> false", !ok500 && resp.status == 500);
     CHECK("500 -> transport ok", resp.ok);
-    CHECK("500 -> error body preserved", strstr(body, "500") != nullptr);
+    CHECK("500 -> error body preserved", string_contains(body, "500"));
 
     i32 before = g_hits;
     CHECK("null auth -> sent", getStatus(url200, nullptr, &resp, body, sizeof(body)) && g_hits == before + 1);
@@ -3090,10 +3081,10 @@ static i32 suite_rest() {
 
     HttpServer_stop(&srv);
     if (s_rest_g_failures != 0) {
-        printf("=== %d REST FAILURES ===\n", s_rest_g_failures);
+        print("=== ", s_rest_g_failures, " REST FAILURES ===");
         return 1;
     }
-    printf("=== ALL REST PASS ===\n");
+    print("=== ALL REST PASS ===");
     return 0;
 }
 #undef _POSIX_C_SOURCE
@@ -3119,12 +3110,12 @@ i32 main(i32 argc, utf8 **argv) {
         { "snapshot_io", suite_snapshot_io },
         { "rest", suite_rest },
     };
-    const utf8 *filter = argc > 1 ? argv[1] : nullptr;
+    string filter = argc > 1 ? argv[1] : nullptr;
     bytes ran = 0;
     i32 failed = 0;
 
     for (bytes i = 0; i < sizeof(suites) / sizeof(suites[0]); i++) {
-        if (filter && strcmp(filter, suites[i].name) != 0)
+        if (filter && !string_equals(filter, suites[i].name))
             continue;
         if (suites[i].run() != 0)
             failed++;
@@ -3132,11 +3123,11 @@ i32 main(i32 argc, utf8 **argv) {
     }
 
     if (filter && ran == 0) {
-        fprintf(stderr, "api_haven_test: unknown suite '%s'\n", filter);
+        fprint(stderr, "api_haven_test: unknown suite '", filter, "'");
         return 2;
     }
     if (failed != 0) {
-        fprintf(stderr, "api_haven_test: %d suite(s) FAILED\n", failed);
+        fprint(stderr, "api_haven_test: ", failed, " suite(s) FAILED");
         return 1;
     }
     puts("api_haven_test: PASS");

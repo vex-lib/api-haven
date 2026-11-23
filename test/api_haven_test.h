@@ -9,7 +9,7 @@
  * run: suite entrypoint returning 0 on pass or non-zero on failure.
  */
 typedef struct SuiteEntry {
-    const utf8 *name;
+    string name;
     i32 (*run)();
 } SuiteEntry;
 
@@ -34,9 +34,9 @@ typedef struct MockTransport {
  * hits: number of requests observed by the loopback server.
  */
 typedef struct Capture {
-    char method[16];
-    char path[1024];
-    char body[8192];
+    utf8 method[16];
+    utf8 path[1024];
+    utf8 body[8192];
     bytes bodyLen;
     i32 hits;
 } Capture;

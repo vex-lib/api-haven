@@ -16,13 +16,13 @@
 ;;OVERVIEW
 /**
  * ============================================================================
- * MODULE: mcp_main (_main/mcp_main.c — thin entry point, owns zero structs;
+ * MODULE: mcp_main (_main/mcp_main.c, thin entry point, owns zero structs;
  * Rule 23 MODULE allowance: procedural stdio transport for McpServer)
  * ============================================================================
  * Model Context Protocol stdio server runner. Reads newline-delimited
  * JSON-RPC from stdin, hands each line to McpServer_handleLine, and
  * writes each produced response back to stdout followed by '\n' (flushed
- * immediately — MCP clients wait on pipe output). Logs live on stderr
+ * immediately, MCP clients wait on pipe output). Logs live on stderr
  * only so stdout stays a pure JSON channel (clients parse it as the
  * protocol stream; any stray byte corrupts the handshake).
  *
@@ -36,23 +36,19 @@
  * ============================================================================
  */
 
-// Overflow guard: line must fit the 64 KiB buffer (MCP payloads are small).
+/** Overflow guard: line must fit the 64 KiB buffer (MCP payloads are small). */
 #define kLineCap 65536u
 
 /** Runs the newline-framed MCP stdio loop until stdin reaches EOF. */
 i32 main() {
-    // Banner to stderr — never stdout (Rule: stdout is the JSON-RPC wire).
-    fprintf(stderr, "vexgraph-mcp %s (stdio JSON-RPC; logs to stderr)\n",
-            MCP_SERVER_VERSION);
+    fprint(stderr, "vexgraph-mcp ", MCP_SERVER_VERSION, " (stdio JSON-RPC; logs to stderr)");
 
     McpServer *server = McpServer_shared();
-    static char line[kLineCap];
-    char response[262144]; // worst case: full capture/app-dump escape
+    static utf8 line[kLineCap];
+    utf8 response[262144];
 
     while (fgets(line, (i32)kLineCap, stdin) != nullptr) {
         const bytes len = strlen(line);
-        // Strip the trailing newline (MCP framing is newline-delimited;
-        // keep CR out of the parser too).
         bytes lineLen = len;
         if (lineLen > 0 && line[lineLen - 1] == '\n')
             lineLen--;
@@ -60,8 +56,6 @@ i32 main() {
             lineLen--;
         line[lineLen] = '\0';
 
-        // Overlong line: drain the remainder, answer a parse error so the
-        // client learns the frame was rejected.
         if (lineLen == kLineCap - 1 && line[kLineCap - 2] != '\n') {
             i32 c;
             while ((c = getchar()) != '\n' && c != EOF)
@@ -82,6 +76,6 @@ i32 main() {
         }
     }
 
-    fprintf(stderr, "vexgraph-mcp: stdin closed, exiting\n");
+    fprint(stderr, "vexgraph-mcp: stdin closed, exiting");
     return 0;
 }

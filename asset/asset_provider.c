@@ -1,5 +1,6 @@
 #include "vex.h"
 #include "asset/asset_provider.h"
+#include "re/primitive/vex-string.h"
 
 #include <string.h>
 
@@ -21,30 +22,30 @@
  * blessed public APIs (Unsplash, Pexels, Pixabay, Openverse, Wikimedia
  * Commons, Sketchfab, Freesound, Poly Haven, AmbientCG, OpenGameArt)
  * plus catalog-only rows with curated static manifests (Kenney,
- * Quaternius — no public search API, apiBase NULL). Each row carries
+ * Quaternius, no public search API, apiBase nullptr). Each row carries
  * one hand-verified sample (title, author, preview + download URLs) so
  * the AssetBroker path proves without scraping or network. One table,
  * linear lookups, zero allocation, immutable (thread-safe reads
  * without locks).
  *
- * STRUCT FIELDS (Mirroring asset/asset_provider.h — exactly this
+ * STRUCT FIELDS (Mirroring asset/asset_provider.h, exactly this
  * file's class):
  * ----------------------------------------------------------------------------
- *   u32 reserved;   // singleton marker; no mutable state — all data
+ *   u32 reserved;   // singleton marker; no mutable state, all data
  *                        // lives in the static const AssetProviderSlot rows
  *
- * SLOT RECORD (AssetProviderSlot — Rule 3 co-location, zero behavior
+ * SLOT RECORD (AssetProviderSlot, Rule 3 co-location, zero behavior
  * of its own; all query behavior hangs off this table class):
  * ----------------------------------------------------------------------------
- *   const char *slug;           // canonical key, e.g. "unsplash"
- *   const char *displayName;    // human label, e.g. "Unsplash"
- *   const char *apiBase;        // blessed search-API base; NULL = catalog-only
- *   const char *licenseFamily;  // dominant license, e.g. "CC0"; never NULL
- *   const char *sampleTitle;    // hand-verified sample asset title
- *   const char *sampleAuthor;   // sample attribution
- *   const char *samplePreview;  // sample preview URL (hand-verified)
- *   const char *sampleDownload; // sample download URL (hand-verified)
- *   const char *note;           // caveat; NULL when none
+ *   string slug;           // canonical key, e.g. "unsplash"
+ *   string displayName;    // human label, e.g. "Unsplash"
+ *   string apiBase;        // blessed search-API base; nullptr = catalog-only
+ *   string licenseFamily;  // dominant license, e.g. "CC0"; never nullptr
+ *   string sampleTitle;    // hand-verified sample asset title
+ *   string sampleAuthor;   // sample attribution
+ *   string samplePreview;  // sample preview URL (hand-verified)
+ *   string sampleDownload; // sample download URL (hand-verified)
+ *   string note;           // caveat; nullptr when none
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
@@ -56,14 +57,14 @@
  *   - AssetProvider_at(self, i)  : row at index i
  *   - AssetProvider_get(self, slug) : row by slug
  *
- * Getters (Rule 24; null-safe. Setters omitted — immutable rows, waiver):
+ * Getters (Rule 24; null-safe. Setters omitted, immutable rows, waiver):
  *   - AssetProvider_getSlug / getDisplayName / getApiBase /
  *     getLicenseFamily / getSampleTitle / getSampleAuthor /
  *     getSamplePreview / getSampleDownload / getNote(self, slot)
  * ============================================================================
  */
-;;INTENTION("catalog, not scraping: every row is a blessed public search API or a catalog-only curated manifest — interface scraping is a defect per Rule 34")
-;;INTENTION("immutable slot records — setters omitted; data is static const; access via AssetProvider_* table functions — Rule 33 Tier-2 waiver")
+;;INTENTION("catalog, not scraping: every row is a blessed public search API or a catalog-only curated manifest, interface scraping is a defect per Rule 34")
+;;INTENTION("immutable slot records, setters omitted; data is static const; access via AssetProvider_* table functions, Rule 33 Tier-2 waiver")
 
 static const AssetProviderSlot kAssetProviders[] = {
     {
@@ -203,16 +204,16 @@ static const AssetProviderSlot kAssetProviders[] = {
 static const u32 kAssetProviderCount =
     (u32)(sizeof(kAssetProviders) / sizeof(kAssetProviders[0]));
 
-static AssetProvider sAssetProviderShared; // zero-init singleton
+static AssetProvider sAssetProviderShared; /** zero-init singleton */
 
-// CONSTRUCTORS
+/** CONSTRUCTORS */
 
 /** Returns the process-wide immutable asset-source directory handle. */
 AssetProvider *AssetProvider_shared() {
     return &sAssetProviderShared;
 }
 
-// CORE FUNCTIONS
+/** CORE FUNCTIONS */
 
 /** Returns the directory row count, or zero for a null receiver. */
 u32 AssetProvider_count(const AssetProvider *self) {
@@ -229,77 +230,78 @@ const AssetProviderSlot *AssetProvider_at(const AssetProvider *self, u32 i) {
 }
 
 /** Finds an asset source by exact slug, returning nullptr when absent. */
-const AssetProviderSlot *AssetProvider_get(const AssetProvider *self, const char *slug) {
+const AssetProviderSlot *AssetProvider_get(const AssetProvider *self, string slug) {
     if (!self || !slug || (*slug) == '\0')
         return nullptr;
+    string target = slug;
     for (u32 i = 0; i < kAssetProviderCount; i++) {
-        if (kAssetProviders[i].slug && strcmp(kAssetProviders[i].slug, slug) == 0)
+        if (kAssetProviders[i].slug && string_equals(kAssetProviders[i].slug, target))
             return &kAssetProviders[i];
     }
     return nullptr;
 }
 
-// GETTERS
+/** GETTERS */
 
 /** Returns the slot's canonical slug, or nullptr when no slot is supplied. */
 ;;GETTER
-const char *AssetProvider_getSlug(const AssetProvider *self, const AssetProviderSlot *slot) {
+string AssetProvider_getSlug(const AssetProvider *self, const AssetProviderSlot *slot) {
     (discard) self;
     return slot ? (*slot).slug : nullptr;
 }
 
 /** Returns the slot's display label, or nullptr when no slot is supplied. */
 ;;GETTER
-const char *AssetProvider_getDisplayName(const AssetProvider *self, const AssetProviderSlot *slot) {
+string AssetProvider_getDisplayName(const AssetProvider *self, const AssetProviderSlot *slot) {
     (discard) self;
     return slot ? (*slot).displayName : nullptr;
 }
 
 /** Returns the slot's public search API base, if configured. */
 ;;GETTER
-const char *AssetProvider_getApiBase(const AssetProvider *self, const AssetProviderSlot *slot) {
+string AssetProvider_getApiBase(const AssetProvider *self, const AssetProviderSlot *slot) {
     (discard) self;
     return slot ? (*slot).apiBase : nullptr;
 }
 
 /** Returns the slot's license-family label. */
 ;;GETTER
-const char *AssetProvider_getLicenseFamily(const AssetProvider *self, const AssetProviderSlot *slot) {
+string AssetProvider_getLicenseFamily(const AssetProvider *self, const AssetProviderSlot *slot) {
     (discard) self;
     return slot ? (*slot).licenseFamily : nullptr;
 }
 
 /** Returns the title of the slot's curated sample asset. */
 ;;GETTER
-const char *AssetProvider_getSampleTitle(const AssetProvider *self, const AssetProviderSlot *slot) {
+string AssetProvider_getSampleTitle(const AssetProvider *self, const AssetProviderSlot *slot) {
     (discard) self;
     return slot ? (*slot).sampleTitle : nullptr;
 }
 
 /** Returns the attribution author for the curated sample asset. */
 ;;GETTER
-const char *AssetProvider_getSampleAuthor(const AssetProvider *self, const AssetProviderSlot *slot) {
+string AssetProvider_getSampleAuthor(const AssetProvider *self, const AssetProviderSlot *slot) {
     (discard) self;
     return slot ? (*slot).sampleAuthor : nullptr;
 }
 
 /** Returns the curated sample's preview URL. */
 ;;GETTER
-const char *AssetProvider_getSamplePreview(const AssetProvider *self, const AssetProviderSlot *slot) {
+string AssetProvider_getSamplePreview(const AssetProvider *self, const AssetProviderSlot *slot) {
     (discard) self;
     return slot ? (*slot).samplePreview : nullptr;
 }
 
 /** Returns the curated sample's download URL. */
 ;;GETTER
-const char *AssetProvider_getSampleDownload(const AssetProvider *self, const AssetProviderSlot *slot) {
+string AssetProvider_getSampleDownload(const AssetProvider *self, const AssetProviderSlot *slot) {
     (discard) self;
     return slot ? (*slot).sampleDownload : nullptr;
 }
 
 /** Returns the slot's optional provider caveat. */
 ;;GETTER
-const char *AssetProvider_getNote(const AssetProvider *self, const AssetProviderSlot *slot) {
+string AssetProvider_getNote(const AssetProvider *self, const AssetProviderSlot *slot) {
     (discard) self;
     return slot ? (*slot).note : nullptr;
 }

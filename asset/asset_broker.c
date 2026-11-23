@@ -8,7 +8,7 @@
  * can afford: the host feeds 64KiB chunk Bytes and the broker copies them into
  * caller-owned dest at the usedLen cursor, one 100ms budget and one cancel flag
  * per chunk. A dead source drops one chunk and teardown still joins; dest
- * overflow reports truncation instead of dropping silently. A value struct — no
+ * overflow reports truncation instead of dropping silently. A value struct, no
  * sockets, no threads, no allocation, no exec, no vendor SDK. */
 
 ;;OVERVIEW
@@ -21,18 +21,18 @@
  * copies: the host feeds srcChunk Bytes (decoded through the R1
  * ProcessSpawn shape, never fetched here) and this broker copies them
  * into the caller-owned dest buffer at the *usedLen cursor. Each chunk
- * runs under its own 100ms budget with a cancel flag — a dead source
+ * runs under its own 100ms budget with a cancel flag, a dead source
  * drops one chunk and the teardown still joins (Rule 27). Dest
  * overflow returns false with the truncation flag set (Rule 35.3,
  * never silent). Cache confinement: dest buffers live under
  * VexHome_cache(cacheSub) and close before Memory_freeAll (Rule 26);
- * the broker itself is a value struct — no sockets, no threads, no
+ * the broker itself is a value struct, no sockets, no threads, no
  * allocation, no exec, no vendor SDK.
  *
- * STRUCT FIELDS (Mirroring asset/asset_broker.h — exactly this file's
+ * STRUCT FIELDS (Mirroring asset/asset_broker.h, exactly this file's
  * class):
  * ----------------------------------------------------------------------------
- *   char cacheSub[ASSET_BROKER_CACHE_SUB_CAP]; // VexHome_cache slot (64)
+ *   utf8 cacheSub[ASSET_BROKER_CACHE_SUB_CAP]; // VexHome_cache slot (64)
  *   u64 chunkBudgetMs;                    // per-chunk bound (dflt 100)
  *   bool cancelled;                            // cancel flag: copy degrades
  *   u32 bytesCopied;                      // lifetime copied Bytes
@@ -63,23 +63,23 @@
  *   - AssetBroker_getBytesCopied(self)
  * ============================================================================
  */
-;;INTENTION("per-chunk budgets, never a whole-file budget: a 100ms slice bounds one 64KiB copy — a stall drops the chunk and the join still lands (Rule 27)")
-;;INTENTION("cache-confined by construction: the broker shapes relative cache paths only — VexHome_cache resolution and file close-before-free stay with the caller (Rule 26)")
+;;INTENTION("per-chunk budgets, never a whole-file budget: a 100ms slice bounds one 64KiB copy, a stall drops the chunk and the join still lands (Rule 27)")
+;;INTENTION("cache-confined by construction: the broker shapes relative cache paths only, VexHome_cache resolution and file close-before-free stay with the caller (Rule 26)")
 
-// CONSTRUCTORS
+/** CONSTRUCTORS */
 
 /** Creates a broker value using the default cache subdirectory and budget. */
 AssetBroker AssetBroker_0() {
     AssetBroker broker;
     memset(&broker, 0, sizeof(broker));
-    const char *dflt = "assets";
+    string dflt = "assets";
     memcpy(broker.cacheSub, dflt, strlen(dflt) + 1);
     broker.chunkBudgetMs = ASSET_BROKER_CHUNK_BUDGET_MS;
     return broker;
 }
 
 /** Creates a broker value configured with the supplied cache subdirectory. */
-AssetBroker AssetBroker_1(const char *cacheSub) {
+AssetBroker AssetBroker_1(string cacheSub) {
     AssetBroker broker = AssetBroker();
     if (cacheSub) {
         bytes n = strlen(cacheSub);
@@ -91,7 +91,7 @@ AssetBroker AssetBroker_1(const char *cacheSub) {
     return broker;
 }
 
-// CORE FUNCTIONS
+/** CORE FUNCTIONS */
 
 /** Copies one bounded source chunk to dest at usedLen, reporting capacity truncation. */
 bool AssetBroker_copyChunk(AssetBroker *self, const u8 *srcChunk, bytes chunkLen,
@@ -126,16 +126,16 @@ bool AssetBroker_copyChunk(AssetBroker *self, const u8 *srcChunk, bytes chunkLen
 }
 
 /** Builds a relative cache path from the configured subdirectory and file name. */
-bool AssetBroker_cachePath(const AssetBroker *self, const char *fileName,
-                           char *out, bytes outCap) {
+bool AssetBroker_cachePath(const AssetBroker *self, string fileName,
+                           utf8 *out, bytes outCap) {
     if (self == nullptr)
         return false;
     if (fileName == nullptr || (*fileName) == '\0')
         return false;
     if (out == nullptr || outCap == 0)
         return false;
-    const char *prefix = "cache/";
-    const char *sub = AssetBroker_getCacheSub(self);
+    string prefix = "cache/";
+    string sub = AssetBroker_getCacheSub(self);
     bytes need = strlen(prefix) + strlen(sub) + 1 + strlen(fileName) + 1;
     if (need > outCap)
         return false;
@@ -166,13 +166,16 @@ fn AssetBroker_cancel(AssetBroker *self) {
     AssetBroker_setCancelled(self, true);
 }
 
-// SETTERS
+/** SETTERS */
 
 ;;GETTER
-static inline char *AssetBroker_cacheSubMut(AssetBroker *self) { return (*self).cacheSub; }
+static inline utf8 *AssetBroker_cacheSubMut(AssetBroker *self)
+{
+    return (*self).cacheSub;
+}
 
 /** Replaces the cache subdirectory only when the full name fits its field. */
-bool AssetBroker_setCacheSub(AssetBroker *self, const char *sub, bool *outTruncated) {
+bool AssetBroker_setCacheSub(AssetBroker *self, string sub, bool *outTruncated) {
     if (self == nullptr)
         return false;
     if (outTruncated)
@@ -213,11 +216,11 @@ fn AssetBroker_setBytesCopied(AssetBroker *self, u32 bytesCopied) {
     (*self).bytesCopied = bytesCopied;
 }
 
-// GETTERS
+/** GETTERS */
 
 /** Returns a borrowed view of the configured cache subdirectory. */
 ;;GETTER
-const char *AssetBroker_getCacheSub(const AssetBroker *self) {
+string AssetBroker_getCacheSub(const AssetBroker *self) {
     return self ? (*self).cacheSub : nullptr;
 }
 

@@ -7,7 +7,7 @@
  * slot: each job owns one entry in a fixed jobs[] array, a per-slot timeout
  * bounds every wait, and a per-slot cancel gives teardown its bounded join.
  * Preconditions (engine, driver, prompt) are validated before a slot is issued,
- * so a rejected run consumes nothing. No exec, no threads, no allocation —
+ * so a rejected run consumes nothing. No exec, no threads, no allocation,
  * spawn/poll/cancel run behind the injected HarnessDriverTable. */
 
 ;;OVERVIEW
@@ -16,44 +16,44 @@
  * CLASS: Harness (harness/harness)
  * ============================================================================
  * Bounded CLI-engine job seam: each job owns one slot in a fixed
- * jobs[HARNESS_MAX_JOBS] array (BitPool discipline) — a count, BUSY_FULL
+ * jobs[HARNESS_MAX_JOBS] array (BitPool discipline), a count, BUSY_FULL
  * when all 16 slots RUNNING, never an unbounded grow. Per-slot timeoutMs
  * bounds every driver wait (Rule 27 drop-degrade); per-slot cancel gives
  * teardown its bounded join (Rule 26). Preconditions (engine, driver,
  * prompt) are validated BEFORE a slot is issued, so rejected runs never
- * consume slots. No exec, no threads, no allocation — spawn/poll/cancel
+ * consume slots. No exec, no threads, no allocation, spawn/poll/cancel
  * run behind the injected HarnessDriverTable (vexspoke/R3).
  *
- * STRUCT FIELDS (Mirroring harness/harness.h — exactly this file's
+ * STRUCT FIELDS (Mirroring harness/harness.h, exactly this file's
  * class):
  * ----------------------------------------------------------------------------
  *   HarnessJob jobs[16];               // fixed slots, BitPool discipline
  *   u32 jobCount;                 // slots ever issued, capped at 16
  *   u64 timeoutMs;                // default bound for new jobs (ms)
- *   const EngineProviderSlot *engine;  // bound engine row; NULL = unbound
+ *   const EngineProviderSlot *engine;  // bound engine row; nullptr = unbound
  *   any driver;                      // opaque driver ctx, never touched
  *   HarnessDriverTable table;          // injected spawn/poll/cancel fns
  *   HarnessStatus lastStatus;          // verdict of the last run call
  *
- * SLOT RECORD (HarnessJob — Rule 3 co-location, zero behavior of its
+ * SLOT RECORD (HarnessJob, Rule 3 co-location, zero behavior of its
  * own; all behavior hangs off this class):
  * ----------------------------------------------------------------------------
  *   u32 jobId;                    // slot index + 1; stable per slot
  *   const EngineProviderSlot *engine;  // borrowed descriptor row
  *   HarnessStatus status;              // lifecycle state
  *   u64 timeoutMs;                // per-slot bound for the driver
- *   any driverHandle;                // opaque driver job; NULL when idle
+ *   any driverHandle;                // opaque driver job; nullptr when idle
  *   bytes outLen;                     // driver-reported output length
  *
- * PRIVATE HELPERS (none — slot scan is inline in Harness_run):
+ * PRIVATE HELPERS (none, slot scan is inline in Harness_run):
  * ----------------------------------------------------------------------------
  *   (none)
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
  * Constructors:
- *   - Harness_0()            : engine NULL, driver NULL, 100ms default
- *   - Harness_1(timeoutMs)   : engine NULL, driver NULL, given default
+ *   - Harness_0()            : engine nullptr, driver nullptr, 100ms default
+ *   - Harness_1(timeoutMs)   : engine nullptr, driver nullptr, given default
  *
  * Core Functions:
  *   - Harness_run(self, prompt, promptLen, timeoutMs, outJobId) : issue
@@ -71,12 +71,12 @@
  *     getJobCount / getJobAt / getJobStatus / getLastStatus
  * ============================================================================
  */
-;;INTENTION("fixed slots + count + BUSY_FULL instead of a growable queue — BitPool discipline; teardown stays bounded per Rule 26/27")
-;;INTENTION("no exec/threads/allocation inside api-haven — spawn/poll/cancel are injected vexspoke/R3 fns; unbound driver degrades to false, never crashes — Rule 17 api-haven clause")
+;;INTENTION("fixed slots + count + BUSY_FULL instead of a growable queue, BitPool discipline; teardown stays bounded per Rule 26/27")
+;;INTENTION("no exec/threads/allocation inside api-haven, spawn/poll/cancel are injected vexspoke/R3 fns; unbound driver degrades to false, never crashes, Rule 17 api-haven clause")
 
 #define HARNESS_DEFAULT_TIMEOUT_MS 100
 
-// CONSTRUCTORS
+/** CONSTRUCTORS */
 
 /** Creates a harness with no bound driver and the default timeout. */
 Harness Harness_0() {
@@ -94,39 +94,81 @@ Harness Harness_1(u64 timeoutMs) {
     return self;
 }
 
-// CORE FUNCTIONS
+/** CORE FUNCTIONS */
 
 ;;GETTER
-static inline HarnessDriverTable Harness_table(const Harness *self) { return (*self).table; }
+static inline HarnessDriverTable Harness_table(const Harness *self)
+{
+    return (*self).table;
+}
 ;;SETTER
-static inline fn Harness_setLastStatus(Harness *self, HarnessStatus lastStatus) { (*self).lastStatus = lastStatus; }
+static inline fn Harness_setLastStatus(Harness *self, HarnessStatus lastStatus)
+{
+    (*self).lastStatus = lastStatus;
+}
 ;;SETTER
-static inline fn Harness_setJobCount(Harness *self, u32 jobCount) { (*self).jobCount = jobCount; }
+static inline fn Harness_setJobCount(Harness *self, u32 jobCount)
+{
+    (*self).jobCount = jobCount;
+}
 ;;GETTER
-static inline HarnessJob *Harness_jobs(Harness *self) { return (*self).jobs; }
+static inline HarnessJob *Harness_jobs(Harness *self)
+{
+    return (*self).jobs;
+}
 ;;GETTER
-static inline u32 HarnessJob_jobId(const HarnessJob *self) { return (*self).jobId; }
+static inline u32 HarnessJob_jobId(const HarnessJob *self)
+{
+    return (*self).jobId;
+}
 ;;SETTER
-static inline fn HarnessJob_setJobId(HarnessJob *self, u32 jobId) { (*self).jobId = jobId; }
+static inline fn HarnessJob_setJobId(HarnessJob *self, u32 jobId)
+{
+    (*self).jobId = jobId;
+}
 ;;SETTER
-static inline fn HarnessJob_setEngine(HarnessJob *self, const EngineProviderSlot *engine) { (*self).engine = engine; }
+static inline fn HarnessJob_setEngine(HarnessJob *self, const EngineProviderSlot *engine)
+{
+    (*self).engine = engine;
+}
 ;;GETTER
-static inline HarnessStatus HarnessJob_status(const HarnessJob *self) { return (*self).status; }
+static inline HarnessStatus HarnessJob_status(const HarnessJob *self)
+{
+    return (*self).status;
+}
 ;;SETTER
-static inline fn HarnessJob_setStatus(HarnessJob *self, HarnessStatus status) { (*self).status = status; }
+static inline fn HarnessJob_setStatus(HarnessJob *self, HarnessStatus status)
+{
+    (*self).status = status;
+}
 ;;GETTER
-static inline u64 HarnessJob_timeoutMs(const HarnessJob *self) { return (*self).timeoutMs; }
+static inline u64 HarnessJob_timeoutMs(const HarnessJob *self)
+{
+    return (*self).timeoutMs;
+}
 ;;SETTER
-static inline fn HarnessJob_setTimeoutMs(HarnessJob *self, u64 timeoutMs) { (*self).timeoutMs = timeoutMs; }
+static inline fn HarnessJob_setTimeoutMs(HarnessJob *self, u64 timeoutMs)
+{
+    (*self).timeoutMs = timeoutMs;
+}
 ;;GETTER
-static inline any HarnessJob_driverHandle(const HarnessJob *self) { return (*self).driverHandle; }
+static inline any HarnessJob_driverHandle(const HarnessJob *self)
+{
+    return (*self).driverHandle;
+}
 ;;SETTER
-static inline fn HarnessJob_setDriverHandle(HarnessJob *self, any driverHandle) { (*self).driverHandle = driverHandle; }
+static inline fn HarnessJob_setDriverHandle(HarnessJob *self, any driverHandle)
+{
+    (*self).driverHandle = driverHandle;
+}
 ;;SETTER
-static inline fn HarnessJob_setOutLen(HarnessJob *self, bytes outLen) { (*self).outLen = outLen; }
+static inline fn HarnessJob_setOutLen(HarnessJob *self, bytes outLen)
+{
+    (*self).outLen = outLen;
+}
 
 /** Starts a bounded driver job in an available slot and returns its job id. */
-bool Harness_run(Harness *self, const char *prompt, bytes promptLen,
+bool Harness_run(Harness *self, string prompt, bytes promptLen,
                  u64 timeoutMs, u32 *outJobId) {
     if (!self)
         return false;
@@ -227,7 +269,7 @@ bool Harness_cancel(Harness *self, u32 jobId) {
     return false;
 }
 
-// SETTERS
+/** SETTERS */
 
 /** Sets the borrowed engine descriptor used by subsequent runs. */
 ;;SETTER
@@ -254,7 +296,7 @@ fn Harness_setTimeout(Harness *self, u64 timeoutMs) {
     (*self).timeoutMs = timeoutMs;
 }
 
-// GETTERS
+/** GETTERS */
 
 /** Returns the borrowed engine descriptor, or nullptr when unset. */
 ;;GETTER

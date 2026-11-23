@@ -1,5 +1,6 @@
 #include "vex.h"
 #include "harness/engine_provider.h"
+#include "re/primitive/vex-string.h"
 
 #include <string.h>
 
@@ -8,7 +9,7 @@
  * Harness may drive, each with slug, display name, CLI binary, transport family
  * and credential scheme. It exists so an engine is a row, not a branch. Lookup
  * is linear and allocation-free and the table is immutable. Execution lives
- * behind the injected HarnessDriverTable — this file never spawns. */
+ * behind the injected HarnessDriverTable, this file never spawns. */
 
 ;;OVERVIEW
 /**
@@ -20,35 +21,35 @@
  * the CLI engines the Harness may drive (claude-code, opencode,
  * kilocode, t3-code, agy, codex, gemini-cli, aider, pi, goose,
  * cursor-cli, kiro-cli, windsurf, qwen-code, crush, hermes, amp,
- * gptme, openhands, copilot-cli) — each with a canonical slug,
+ * gptme, openhands, copilot-cli), each with a canonical slug,
  * display name, CLI binary name, transport family, and credential
  * scheme. One table, linear slug lookup, zero allocation, immutable
  * (thread-safe reads without locks). Execution lives behind the
  * injected HarnessDriverTable (harness.h), implemented in
- * vexspoke/R3 — this file never spawns.
+ * vexspoke/R3, this file never spawns.
  *
- * STRUCT FIELDS (Mirroring harness/engine_provider.h — exactly this
+ * STRUCT FIELDS (Mirroring harness/engine_provider.h, exactly this
  * file's class):
  * ----------------------------------------------------------------------------
- *   u32 reserved;   // singleton marker; no mutable state — all data
+ *   u32 reserved;   // singleton marker; no mutable state, all data
  *                        // lives in the static const EngineProviderSlot rows
  *
- * SLOT RECORD (EngineProviderSlot — Rule 3 co-location, zero behavior of
+ * SLOT RECORD (EngineProviderSlot, Rule 3 co-location, zero behavior of
  * its own; all query behavior hangs off this table class):
  * ----------------------------------------------------------------------------
- *   const char *slug;           // canonical key, e.g. "claude-code"
- *   const char *displayName;    // human label, e.g. "Claude Code"
- *   const char *cliName;        // CLI binary the driver spawns
+ *   string slug;           // canonical key, e.g. "claude-code"
+ *   string displayName;    // human label, e.g. "Claude Code"
+ *   string cliName;        // CLI binary the driver spawns
  *   EngineProviderFamily family;// transport bucket enum
  *   EngineProviderAuth   auth;  // credential scheme enum
- *   const char *note;           // caveat; NULL when none
+ *   string note;           // caveat; nullptr when none
  *
- * PRIVATE HELPERS (none — rows live in kEngineProviders[] below, each
+ * PRIVATE HELPERS (none, rows live in kEngineProviders[] below, each
  * row carrying exactly the SLOT RECORD fields above):
  * ----------------------------------------------------------------------------
- *   kEngineProviders[]      — 20 static const rows (this file only)
- *   kEngineProviderCount    — row count derived from the array
- *   sEngineProviderShared   — zero-init singleton handle
+ *   kEngineProviders[]     , 20 static const rows (this file only)
+ *   kEngineProviderCount   , row count derived from the array
+ *   sEngineProviderShared  , zero-init singleton handle
  *
  * FUNCTION REGISTRY:
  * ----------------------------------------------------------------------------
@@ -61,13 +62,13 @@
  *   - EngineProvider_get(self, slug)               : row by slug
  *   - EngineProvider_resolveCli(self, slot, dest)  : cliName copy, dest-last
  *
- * Getters (Rule 24; null-safe. Setters omitted — immutable rows, waiver):
+ * Getters (Rule 24; null-safe. Setters omitted, immutable rows, waiver):
  *   - EngineProvider_getSlug / getDisplayName / getCliName / getFamily /
  *     getAuth / getNote(self, slot)
  * ============================================================================
  */
-;;INTENTION("immutable slot records — setters omitted; data is static const; access via EngineProvider_* table functions — Rule 33 Tier-2 waiver")
-;;INTENTION("descriptors only: no spawn/popen/system/fork/exec or threads here; execution is injected via HarnessDriverTable from vexspoke/R3 — Rule 17 api-haven clause")
+;;INTENTION("immutable slot records, setters omitted; data is static const; access via EngineProvider_* table functions, Rule 33 Tier-2 waiver")
+;;INTENTION("descriptors only: no spawn/popen/system/fork/exec or threads here; execution is injected via HarnessDriverTable from vexspoke/R3, Rule 17 api-haven clause")
 
 static const EngineProviderSlot kEngineProviders[] = {
     {"claude-code", "Claude Code", "claude",
@@ -135,16 +136,16 @@ static const EngineProviderSlot kEngineProviders[] = {
 static const u32 kEngineProviderCount =
     (u32)(sizeof(kEngineProviders) / sizeof(kEngineProviders[0]));
 
-static EngineProvider sEngineProviderShared; // zero-init singleton
+static EngineProvider sEngineProviderShared; /** zero-init singleton */
 
-// CONSTRUCTORS
+/** CONSTRUCTORS */
 
 /** Returns the process-wide immutable engine directory handle. */
 EngineProvider *EngineProvider_shared() {
     return &sEngineProviderShared;
 }
 
-// CORE FUNCTIONS
+/** CORE FUNCTIONS */
 
 /** Returns the directory row count, or zero for a null receiver. */
 u32 EngineProvider_count(const EngineProvider *self) {
@@ -163,13 +164,14 @@ const EngineProviderSlot *EngineProvider_at(const EngineProvider *self, u32 i) {
 }
 
 /** Finds an engine by exact slug, returning nullptr when absent or invalid. */
-const EngineProviderSlot *EngineProvider_get(const EngineProvider *self, const char *slug) {
+const EngineProviderSlot *EngineProvider_get(const EngineProvider *self, string slug) {
     if (!self || !slug || (*slug) == '\0')
         return nullptr;
+    string target = slug;
     for (u32 i = 0; i < kEngineProviderCount; i++) {
         const EngineProviderSlot *slot = &kEngineProviders[i];
-        const char *rowSlug = EngineProvider_getSlug(self, slot);
-        if (rowSlug && strcmp(rowSlug, slug) == 0)
+        string rowSlug = EngineProvider_getSlug(self, slot);
+        if (rowSlug && string_equals(rowSlug, target))
             return slot;
     }
     return nullptr;
@@ -178,10 +180,10 @@ const EngineProviderSlot *EngineProvider_get(const EngineProvider *self, const c
 /** Copies the row's CLI executable name into the bounded destination. */
 bool EngineProvider_resolveCli(const EngineProvider *self,
                                const EngineProviderSlot *slot,
-                               char *outBuf, bytes outCap) {
+                               utf8 *outBuf, bytes outCap) {
     if (!self || !slot || !outBuf || outCap == 0)
         return false;
-    const char *cli = EngineProvider_getCliName(self, slot);
+    string cli = EngineProvider_getCliName(self, slot);
     if (!cli)
         return false;
     bytes len = strlen(cli);
@@ -191,11 +193,11 @@ bool EngineProvider_resolveCli(const EngineProvider *self,
     return true;
 }
 
-// GETTERS
+/** GETTERS */
 
 /** Returns the slot's canonical slug, or nullptr when no slot is supplied. */
 ;;GETTER
-const char *EngineProvider_getSlug(const EngineProvider *self,
+string EngineProvider_getSlug(const EngineProvider *self,
                                    const EngineProviderSlot *slot) {
     (discard) self;
     return slot ? (*slot).slug : nullptr;
@@ -203,7 +205,7 @@ const char *EngineProvider_getSlug(const EngineProvider *self,
 
 /** Returns the slot's display label, or nullptr when no slot is supplied. */
 ;;GETTER
-const char *EngineProvider_getDisplayName(const EngineProvider *self,
+string EngineProvider_getDisplayName(const EngineProvider *self,
                                           const EngineProviderSlot *slot) {
     (discard) self;
     return slot ? (*slot).displayName : nullptr;
@@ -211,7 +213,7 @@ const char *EngineProvider_getDisplayName(const EngineProvider *self,
 
 /** Returns the slot's CLI executable name, or nullptr when absent. */
 ;;GETTER
-const char *EngineProvider_getCliName(const EngineProvider *self,
+string EngineProvider_getCliName(const EngineProvider *self,
                                       const EngineProviderSlot *slot) {
     (discard) self;
     return slot ? (*slot).cliName : nullptr;
@@ -222,7 +224,7 @@ const char *EngineProvider_getCliName(const EngineProvider *self,
 EngineProviderFamily EngineProvider_getFamily(const EngineProvider *self,
                                               const EngineProviderSlot *slot) {
     if (!self || !slot)
-        return ENGINE_PROVIDER_FAMILY_CLI; // safe default
+        return ENGINE_PROVIDER_FAMILY_CLI;
     return (*slot).family;
 }
 
@@ -231,13 +233,13 @@ EngineProviderFamily EngineProvider_getFamily(const EngineProvider *self,
 EngineProviderAuth EngineProvider_getAuth(const EngineProvider *self,
                                           const EngineProviderSlot *slot) {
     if (!self || !slot)
-        return ENGINE_PROVIDER_AUTH_NONE; // safe default
+        return ENGINE_PROVIDER_AUTH_NONE;
     return (*slot).auth;
 }
 
 /** Returns the slot's optional provider note. */
 ;;GETTER
-const char *EngineProvider_getNote(const EngineProvider *self,
+string EngineProvider_getNote(const EngineProvider *self,
                                    const EngineProviderSlot *slot) {
     (discard) self;
     return slot ? (*slot).note : nullptr;
